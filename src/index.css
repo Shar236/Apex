@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --color-brand-pink: #FF005C;
+}
+
+:root {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --brand-pink: #FF005C;
+  --brand-pink-hover: #E00052;
+  --soft-accent-bg: #F1F5F9;
+  --border-color: #E2E8F0;
+}
+
+.dark {
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #111111;
+  --bg-card: #161616;
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --brand-pink: #FF005C;
+  --brand-pink-hover: #E00052;
+  --soft-accent-bg: #1E293B;
+  --border-color: #262626;
+  color-scheme: dark;
+}
+
+* {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  background-color: #0A0A0A;
+  color: #FFFFFF;
+}
+
+.font-heading {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; border: 2px solid var(--bg-primary); }
+.dark ::-webkit-scrollbar-thumb { background: #334155; border: 2px solid #0A0A0A; }
+
+/* Custom Animations */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float-gentle {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.5s infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Tasteful Selective Pink Highlight */
+.text-pink-highlight {
+  color: #FF005C;
+  font-weight: 900;
+}
+
+/* Crisp Brand Buttons (#FF005C) */
+.btn-pink {
+  background: #FF005C;
+  color: #FFFFFF;
+  font-weight: 800;
+  border-radius: 14px;
+  padding: 13px 26px;
+  box-shadow: 0 4px 14px rgba(255, 0, 92, 0.25);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 0, 92, 0.4);
+}
+.btn-pink:hover {
+  background: #E00052;
+  color: #FFFFFF;
+  box-shadow: 0 6px 20px rgba(255, 0, 92, 0.35);
+  transform: translateY(-1.5px);
+}
+.btn-pink:active {
+  transform: translateY(1px);
+}
+
+.btn-dark {
+  background: #0F172A;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 14px;
+  padding: 13px 26px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border: 1px solid #334155;
+}
+.btn-dark:hover {
+  background: #1E293B;
+  border-color: #FF005C;
+  color: #FF005C;
+  transform: translateY(-1.5px);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 700;
+  border-radius: 14px;
+  padding: 12px 24px;
+  border: 1.5px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  border-color: #94A3B8;
+  background: var(--bg-secondary);
+  transform: translateY(-1.5px);
+}
+
+/* Card Shadows */
+.card-shadow {
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.02);
+}
+.dark .card-shadow {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+}
