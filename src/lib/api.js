@@ -1,0 +1,217 @@
+const TOKEN_KEY = 'apex.token';
+const USER_KEY = 'apex.user';
+
+export const apiBase = () => {
+  if (typeof window !== 'undefined' && import.meta.env?.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE.replace(/\/$/, '');
+  }
+  return '';
+};
+
+const storage = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  return window.localStorage;
+};
+
+export const getToken = () => {
+  try {
+    return storage()?.getItem(TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+export const setToken = (t) => {
+  try {
+    if (t) storage()?.setItem(TOKEN_KEY, t);
+    else storage()?.removeItem(TOKEN_KEY);
+  } catch {}
+};
+export const getStoredUser = () => {
+  try {
+    const raw = storage()?.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+export const setStoredUser = (u) => {
+  try {
+    if (u) storage()?.setItem(USER_KEY, JSON.stringify(u));
+    else storage()?.removeItem(USER_KEY);
+  } catch {}
+};
+export const clearAuth = () => {
+  try {
+    storage()?.removeItem(TOKEN_KEY);
+    storage()?.removeItem(USER_KEY);
+  } catch {}
+};
+
+const parseJSON = async (resp) => {
+  const text = await resp.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: false, message: text || 'Invalid server response' };
+  }
+};
+
+export const request = async (url, options = {}) => {
+  const base = apiBase();
+  const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  let resp;
+  try {
+    resp = await fetch(fullUrl, { ...options, headers });
+  } catch (err) {
+    return { success: false, message: `Network error: ${err.message}`, code: 'NETWORK' };
+  }
+
+  const data = await parseJSON(resp);
+  if (!resp.ok || data.success === false) {
+    return {
+      success: false,
+      message: data?.message || `Request failed (${resp.status})`,
+      code: data?.code || String(resp.status),
+      status: resp.status,
+      data,
+    };
+  }
+  return { success: true, data: data?.data ?? data, user: data?.user ?? data?.data, ...data };
+};
+
+export const authApi = {
+  register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  forgotPassword: (email) => request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token, password) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+  me: () => request('/api/auth/me'),
+};
+
+export const productApi = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/products${qs ? `?${qs}` : ''}`);
+  },
+  get: (id) => request(`/api/products/${id}`),
+};
+
+export const accountApi = {
+  me: () => request('/api/account'),
+  updateProfile: (data) => request('/api/account/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  stats: () => request('/api/account/stats'),
+  orders: () => request('/api/account/orders'),
+  vouchers: () => request('/api/account/vouchers'),
+  transferVoucher: (id, targetEmail) =>
+    request(`/api/account/vouchers/${id}/transfer`, { method: 'PATCH', body: JSON.stringify({ targetEmail }) }),
+  markUsed: (id) => request(`/api/account/vouchers/${id}/used`, { method: 'PATCH' }),
+  validatePromo: (payload) =>
+    request('/api/account/validate-promo', { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+export const orderApi = {
+  create: (payload) => request('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
+  get: (id) => request(`/api/orders/${id}`),
+  simulatePay: (id, payload = {}) =>
+    request(`/api/orders/${id}/pay`, { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+export const adminApi = {
+  dashboard: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/dashboard${qs ? `?${qs}` : ''}`);
+  },
+  users: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/users${qs ? `?${qs}` : ''}`);
+  },
+  user: (id) => request(`/api/admin/users/${id}`),
+  setUserStatus: (id, status) =>
+    request(`/api/admin/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  products: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/products${qs ? `?${qs}` : ''}`);
+  },
+  getProduct: (id) => request(`/api/admin/products/${id}`),
+  createProduct: (data) => request('/api/admin/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateProduct: (id, data) => request(`/api/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  quickUpdatePrice: (id, payload) => request(`/api/admin/products/${id}/price`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  quickUpdateStatus: (id, active) => request(`/api/admin/products/${id}/status`, { method: 'PATCH', body: JSON.stringify({ active }) }),
+  quickUpdateFeatured: (id, featured) => request(`/api/admin/products/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  deleteProduct: (id) => request(`/api/admin/products/${id}`, { method: 'DELETE' }),
+  getProductInventory: (id) => request(`/api/admin/products/${id}/inventory`),
+  vouchers: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);
+  },
+  addVouchers: (payload) => request('/api/admin/vouchers', { method: 'POST', body: JSON.stringify(payload) }),
+  addVouchersBulk: (payload) => request('/api/admin/vouchers/bulk', { method: 'POST', body: JSON.stringify(payload) }),
+  updateVoucher: (id, data) => request(`/api/admin/vouchers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  orders: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/orders${qs ? `?${qs}` : ''}`);
+  },
+  order: (id) => request(`/api/admin/orders/${id}`),
+  updateOrderStatus: (id, payload) =>
+    request(`/api/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  promotions: () => request('/api/admin/promotions'),
+  createPromotion: (data) => request('/api/admin/promotions', { method: 'POST', body: JSON.stringify(data) }),
+  updatePromotion: (id, data) => request(`/api/admin/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deletePromotion: (id) => request(`/api/admin/promotions/${id}`, { method: 'DELETE' }),
+  auditLogs: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`);
+  },
+  downloadExport: async (resource, unmasked = false) => {
+    const token = getToken();
+    const url = `${apiBase()}/api/admin/export/${resource}${unmasked ? '?unmasked=true' : ''}`;
+    const resp = await fetch(url, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!resp.ok) return { success: false, message: 'Export failed' };
+    const text = await resp.text();
+    const blob = new Blob([text], { type: 'text/csv' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `apex_${resource}_export.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    return { success: true };
+  },
+  videos: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/videos${qs ? `?${qs}` : ''}`);
+  },
+  createVideo: (data) => request('/api/admin/videos', { method: 'POST', body: JSON.stringify(data) }),
+  updateVideo: (id, data) => request(`/api/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  quickToggleFeaturedVideo: (id, featured) => request(`/api/admin/videos/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  quickTogglePublishVideo: (id, published) => request(`/api/admin/videos/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
+  deleteVideo: (id) => request(`/api/admin/videos/${id}`, { method: 'DELETE' }),
+  updateVideoSettings: (data) => request('/api/admin/videos/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+export const videoApi = {
+  list: () => request('/api/videos'),
+  incrementView: (id) => request(`/api/videos/${id}/view`, { method: 'POST' }),
+};
+
+export const formatPrice = (amount, currency = 'INR') => {
+  if (currency === 'USD') {
+    const val = (amount / 83.5).toFixed(2);
+    return `$${val}`;
+  }
+  if (amount == null) return '—';
+  return `₹${Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+};

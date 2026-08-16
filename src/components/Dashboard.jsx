@@ -1,22 +1,50 @@
 import React, { useState } from 'react';
 import { useVoucher } from '../context/VoucherContext';
-import { Ticket, Copy, Check, Send, RefreshCw, Clock, ShieldCheck, ExternalLink, HelpCircle, AlertCircle, FileText } from 'lucide-react';
+import { Ticket, Copy, Check, Send, RefreshCw, Clock, ShieldCheck, ExternalLink, HelpCircle, AlertCircle } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
 
 export const Dashboard = () => {
-  const { userVouchers, formatPrice, transferVoucher, requestRefund, setActiveTab } = useVoucher();
+  const {
+    userVouchers,
+    formatPrice,
+    transferVoucher,
+    requestRefund,
+    setActiveTab,
+    accountOrders,
+  } = useVoucher();
   const [copiedId, setCopiedId] = useState(null);
   const [revealedCodes, setRevealedCodes] = useState({});
   const [transferModalId, setTransferModalId] = useState(null);
   const [transferEmail, setTransferEmail] = useState('');
   const [refundConfirmId, setRefundConfirmId] = useState(null);
 
+  const getOrderForVoucher = (orderNo) => {
+    if (!accountOrders || !orderNo) return null;
+    return accountOrders.find((o) => o.orderNo === orderNo) || null;
+  };
+
+  const computeVoucherSavings = (v) => {
+    const order = getOrderForVoucher(v.orderNo);
+    if (order) {
+      const totalPaid = order.total;
+      const itemsTotal =
+        order.items?.reduce((s, i) => s + i.originalPrice * i.quantity, 0) || 0;
+      const qty = order.items?.reduce((s, i) => s + i.quantity, 0) || 1;
+      return {
+        savings: Math.max(0, Math.round((itemsTotal - totalPaid) / (qty || 1))),
+        paidPrice: Math.round(totalPaid / (qty || 1)),
+        originalPrice: Math.round(itemsTotal / (qty || 1)),
+      };
+    }
+    return { savings: 0, paidPrice: 0, originalPrice: 0 };
+  };
+
   const toggleRevealCode = (id) => {
-    setRevealedCodes(prev => ({ ...prev, [id]: !prev[id] }));
+    setRevealedCodes((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleCopyCode = (id, code) => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard?.writeText(code).catch(() => {});
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 3000);
   };
@@ -37,7 +65,6 @@ export const Dashboard = () => {
   return (
     <section className="py-16 bg-white dark:bg-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#292929] min-h-[80vh] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 pb-6 border-b border-[#EAEAEA] dark:border-[#292929]">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -63,37 +90,49 @@ export const Dashboard = () => {
           </button>
         </div>
 
-        {/* Voucher Cards Vault List */}
         {userVouchers && userVouchers.length > 0 ? (
           <div className="space-y-6">
             {userVouchers.map((v) => {
               const isRevealed = revealedCodes[v.id];
-              const isExpired = v.status === 'Expired' || v.daysRemaining <= 0;
-              const isRefunded = v.status === 'Refunded';
+              const isExpired = v.status === 'EXPIRED' || v.daysRemaining <= 0;
+              const isUsed = v.status === 'USED';
+              const isRefunded = v.status === 'REFUNDED' || v.status === 'CANCELLED';
+              const transferred = v.transferredTo ? true : false;
+              const pricing = computeVoucherSavings(v);
+              const purchaseDate = v.assignedAt
+                ? new Date(v.assignedAt).toLocaleDateString()
+                : new Date(v.createdAt || Date.now()).toLocaleDateString();
+              const redeemUrl = v.productName?.toLowerCase()?.includes('pte')
+                ? 'https://mypte.pearsonpte.com/'
+                : v.productName?.toLowerCase()?.includes('gre') || v.productName?.toLowerCase()?.includes('toefl')
+                ? 'https://www.ets.org/'
+                : 'https://englishtest.duolingo.com/';
 
               return (
                 <div
                   key={v.id}
                   className={`bg-white dark:bg-[#161616] rounded-3xl p-6 sm:p-8 border border-[#EAEAEA] dark:border-[#292929] shadow-lg transition-all duration-300 ${
                     isRefunded ? 'opacity-60 bg-neutral-50 dark:bg-[#111111]' : ''
-                  }`}
+                  } ${isUsed ? 'border-sky-200/40 dark:border-sky-900/40' : ''}`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[#EAEAEA] dark:border-[#292929]">
-                    
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          isRefunded 
-                            ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400' 
-                            : isExpired 
-                            ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400' 
-                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400'
-                        }`}>
-                          • Status: {v.status}
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            isRefunded
+                              ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400'
+                              : isExpired
+                              ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                              : isUsed
+                              ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900/40'
+                              : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400'
+                          }`}
+                        >
+                          • Status: {transferred ? 'TRANSFERRED' : v.status}
                         </span>
-
                         <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500">
-                          Purchased on {v.purchaseDate}
+                          Purchased on {purchaseDate}
                         </span>
                       </div>
 
@@ -103,22 +142,35 @@ export const Dashboard = () => {
 
                       <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-[#FF005C]" />
-                        <span>Valid until <strong className="text-neutral-900 dark:text-white">{v.expiryDate}</strong> ({v.daysRemaining} days remaining)</span>
+                        <span>
+                          Valid until <strong className="text-neutral-900 dark:text-white">
+                            {new Date(v.expiryDate).toLocaleDateString()}
+                          </strong> ({v.daysRemaining > 0 ? `${v.daysRemaining} days remaining` : 'Expired'}
+                        </span>
                       </p>
+                      {v.transferredTo && (
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                          <Send className="w-3 h-3" />
+                          Transferred to: {v.transferredTo}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Pricing Pill */}
                     <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20 text-right shrink-0">
-                      <span className="text-[10px] font-black text-[#FF005C] uppercase tracking-wider block">Official Savings</span>
-                      <span className="font-heading font-black text-2xl text-[#FF005C] block leading-none">Save {formatPrice(v.savings)}</span>
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold block mt-1">Paid: {formatPrice(v.paidPrice)} (MRP {formatPrice(v.originalPrice)})</span>
+                      <span className="text-[10px] font-black text-[#FF005C] uppercase tracking-wider block">
+                      Official Savings
+                    </span>
+                      <span className="font-heading font-black text-2xl text-[#FF005C] block leading-none">
+                        Save {formatPrice(pricing.savings)}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold block mt-1">
+                        Paid: {formatPrice(pricing.paidPrice)}{' '}
+                        {pricing.originalPrice > 0 ? `(MRP ${formatPrice(pricing.originalPrice)})` : ''}
+                      </span>
                     </div>
-
                   </div>
 
-                  {/* Code Reveal Box & Action Controls */}
                   <div className="pt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                    
                     <div className="md:col-span-7">
                       <div className="bg-neutral-50 dark:bg-[#0A0A0A] p-4 rounded-2xl border border-[#EAEAEA] dark:border-[#292929] flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -143,7 +195,11 @@ export const Dashboard = () => {
                               onClick={() => handleCopyCode(v.id, v.code)}
                               className="px-3.5 py-2 rounded-xl bg-[#FF005C] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:bg-[#E00052] transition-colors"
                             >
-                              {copiedId === v.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              {copiedId === v.id ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
                               <span>{copiedId === v.id ? 'Copied!' : 'Copy'}</span>
                             </button>
                           )}
@@ -152,7 +208,7 @@ export const Dashboard = () => {
                     </div>
 
                     <div className="md:col-span-5 flex flex-wrap items-center justify-end gap-3">
-                      {!isRefunded && !isExpired && (
+                      {!isRefunded && !isExpired && !isUsed && !transferred && (
                         <>
                           <button
                             onClick={() => setTransferModalId(v.id)}
@@ -173,13 +229,7 @@ export const Dashboard = () => {
                       )}
 
                       <a
-                        href={
-                          v.productName.toLowerCase().includes('pte')
-                            ? 'https://mypte.pearsonpte.com/'
-                            : v.productName.toLowerCase().includes('gre') || v.productName.toLowerCase().includes('toefl')
-                            ? 'https://www.ets.org/'
-                            : 'https://englishtest.duolingo.com/'
-                        }
+                        href={redeemUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="px-4 py-2.5 rounded-xl btn-pink text-xs font-extrabold flex items-center gap-1.5 shadow-sm"
@@ -188,9 +238,7 @@ export const Dashboard = () => {
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     </div>
-
                   </div>
-
                 </div>
               );
             })}
@@ -200,22 +248,20 @@ export const Dashboard = () => {
             <div className="w-20 h-20 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] flex items-center justify-center mx-auto">
               <Ticket className="w-10 h-10" />
             </div>
-            <h3 className="font-heading font-black text-xl text-neutral-900 dark:text-white">No Exam Vouchers Found</h3>
+            <h3 className="font-heading font-black text-xl text-neutral-900 dark:text-white">
+              No Exam Vouchers Found
+            </h3>
             <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] max-w-sm mx-auto font-medium">
               You don't have any active exam vouchers in your vault yet. Explore our discounted PTE, GRE, and TOEFL vouchers to get started.
             </p>
             <button
-              onClick={() => setActiveTab('shop')}
-              className="btn-pink !py-3.5 !px-8 !text-xs"
-            >
+              onClick={() => setActiveTab('shop')} className="btn-pink !py-3.5 !px-8 !text-xs">
               Browse Discount Vouchers
             </button>
           </div>
         )}
-
       </div>
 
-      {/* Transfer Modal */}
       {transferModalId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-[#161616] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#EAEAEA] dark:border-[#292929] text-neutral-900 dark:text-white space-y-4">
@@ -240,10 +286,7 @@ export const Dashboard = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 btn-pink !py-3 !text-xs font-extrabold"
-                >
+                <button type="submit" className="flex-1 btn-pink !py-3 !text-xs font-extrabold">
                   Confirm Transfer
                 </button>
               </div>
@@ -252,7 +295,6 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Refund Confirm Modal */}
       {refundConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-[#161616] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#EAEAEA] dark:border-[#292929] text-neutral-900 dark:text-white space-y-4 text-center">
@@ -280,7 +322,6 @@ export const Dashboard = () => {
           </div>
         </div>
       )}
-
     </section>
   );
 };

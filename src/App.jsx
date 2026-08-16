@@ -1,35 +1,72 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { VoucherProvider, useVoucher } from './context/VoucherContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { Hero3D } from './components/Hero3D';
 import { TrustStrip } from './components/TrustStrip';
-import { ExamCategorySection } from './components/ExamCategorySection';
-import { BestSellingVouchers } from './components/BestSellingVouchers';
-import { SavingsCalculator } from './components/SavingsCalculator';
-import { HowItWorks } from './components/HowItWorks';
-import { WhyApexVoucher } from './components/WhyApexVoucher';
-import { VisualExplainerSection } from './components/VisualExplainerSection';
-import { VideoReelsCarousel } from './components/VideoReelsCarousel';
-import { RedemptionAndSecurity } from './components/RedemptionAndSecurity';
-import { Testimonials } from './components/Testimonials';
-import { FAQSection } from './components/FAQSection';
-import { ExamGuides } from './components/ExamGuides';
-import { AboutApexVouchers } from './components/AboutApexVouchers';
-import { FinalCTASection } from './components/FinalCTASection';
 import { LegalTrustFooter } from './components/LegalTrustFooter';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
-import { ProductCatalog } from './components/ProductCatalog';
-import { ProductDetailModal } from './components/ProductDetailModal';
-import { CheckoutModal } from './components/CheckoutModal';
-import { Dashboard } from './components/Dashboard';
-import { LiveChatWidget } from './components/LiveChatWidget';
 import { SocialProofToast } from './components/SocialProofToast';
-import { AdminControlDrawer } from './components/AdminControlDrawer';
 import { ExamLogoMarquee } from './components/ExamLogoMarquee';
-import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { ShoppingBag, X, Trash2, ArrowRight, Lock, Ticket } from 'lucide-react';
-import { ApexLogo } from './components/ApexLogo';
+
+const lazyNamed = (loader, exportName) =>
+  lazy(() => loader().then((module) => ({ default: module[exportName] })));
+
+const ExamCategorySection = lazyNamed(() => import('./components/ExamCategorySection'), 'ExamCategorySection');
+const BestSellingVouchers = lazyNamed(() => import('./components/BestSellingVouchers'), 'BestSellingVouchers');
+const SavingsCalculator = lazyNamed(() => import('./components/SavingsCalculator'), 'SavingsCalculator');
+const HowItWorks = lazyNamed(() => import('./components/HowItWorks'), 'HowItWorks');
+const WhyApexVoucher = lazyNamed(() => import('./components/WhyApexVoucher'), 'WhyApexVoucher');
+const VisualExplainerSection = lazyNamed(() => import('./components/VisualExplainerSection'), 'VisualExplainerSection');
+const VideoReelsCarousel = lazyNamed(() => import('./components/VideoReelsCarousel'), 'VideoReelsCarousel');
+const RedemptionAndSecurity = lazyNamed(() => import('./components/RedemptionAndSecurity'), 'RedemptionAndSecurity');
+const Testimonials = lazyNamed(() => import('./components/Testimonials'), 'Testimonials');
+const FAQSection = lazyNamed(() => import('./components/FAQSection'), 'FAQSection');
+const ExamGuides = lazyNamed(() => import('./components/ExamGuides'), 'ExamGuides');
+const AboutApexVouchers = lazyNamed(() => import('./components/AboutApexVouchers'), 'AboutApexVouchers');
+const FinalCTASection = lazyNamed(() => import('./components/FinalCTASection'), 'FinalCTASection');
+const ProductCatalog = lazyNamed(() => import('./components/ProductCatalog'), 'ProductCatalog');
+const ProductDetailModal = lazyNamed(() => import('./components/ProductDetailModal'), 'ProductDetailModal');
+const CheckoutModal = lazyNamed(() => import('./components/CheckoutModal'), 'CheckoutModal');
+const Dashboard = lazyNamed(() => import('./components/Dashboard'), 'Dashboard');
+const LiveChatWidget = lazyNamed(() => import('./components/LiveChatWidget'), 'LiveChatWidget');
+const FloatingSupportWidget = lazyNamed(() => import('./components/FloatingSupportWidget'), 'FloatingSupportWidget');
+const AdminControlDrawer = lazyNamed(() => import('./components/AdminControlDrawer'), 'AdminControlDrawer');
+const LoginPage = lazyNamed(() => import('./components/AuthPages'), 'LoginPage');
+const AdminLoginPage = lazyNamed(() => import('./components/AuthPages'), 'AdminLoginPage');
+const RegisterPage = lazyNamed(() => import('./components/AuthPages'), 'RegisterPage');
+const ForgotPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'ForgotPasswordPage');
+const ResetPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'ResetPasswordPage');
+const AccountHome = lazy(() => import('./components/AccountPages'));
+const AdminConsole = lazy(() => import('./components/AdminConsole'));
+
+const PageFallback = ({ minHeight = 'min-h-[320px]' }) => (
+  <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500 dark:text-neutral-400`}>
+    <div className="animate-pulse text-sm font-bold">Loading...</div>
+  </div>
+);
+
+const ModalSuspense = ({ children }) => (
+  <Suspense fallback={null}>
+    {children}
+  </Suspense>
+);
+
+const SectionSuspense = ({ children }) => (
+  <Suspense fallback={null}>
+    {children}
+  </Suspense>
+);
+
+const LazyPage = ({ children, minHeight }) => (
+  <Suspense fallback={<PageFallback minHeight={minHeight} />}>
+    {children}
+  </Suspense>
+);
 
 const CartDrawer = () => {
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, formatPrice, startCheckout } = useVoucher();
@@ -181,58 +218,166 @@ const HomePage = () => (
     <Hero3D />
     <TrustStrip />
     <ExamLogoMarquee />
-    <ExamCategorySection />
-    <BestSellingVouchers />
-    <SavingsCalculator />
-    <HowItWorks />
-    <WhyApexVoucher />
-    <VisualExplainerSection />
-    <VideoReelsCarousel />
-    <RedemptionAndSecurity />
-    <Testimonials />
-    <FAQSection />
-    <ExamGuides />
-    <AboutApexVouchers />
-    <FinalCTASection />
+    <SectionSuspense><ExamCategorySection /></SectionSuspense>
+    <SectionSuspense><BestSellingVouchers /></SectionSuspense>
+    <SectionSuspense><SavingsCalculator /></SectionSuspense>
+    <SectionSuspense><HowItWorks /></SectionSuspense>
+    <SectionSuspense><WhyApexVoucher /></SectionSuspense>
+    <SectionSuspense><VisualExplainerSection /></SectionSuspense>
+    <SectionSuspense><VideoReelsCarousel /></SectionSuspense>
+    <SectionSuspense><RedemptionAndSecurity /></SectionSuspense>
+    <SectionSuspense><Testimonials /></SectionSuspense>
+    <SectionSuspense><FAQSection /></SectionSuspense>
+    <SectionSuspense><ExamGuides /></SectionSuspense>
+    <SectionSuspense><AboutApexVouchers /></SectionSuspense>
+    <SectionSuspense><FinalCTASection /></SectionSuspense>
   </>
 );
 
 const MainContent = () => {
   const { activeTab } = useVoucher();
 
-  if (activeTab === 'dashboard') return <Dashboard />;
-  if (activeTab === 'shop') return <><ProductCatalog /><TrustStrip /></>;
-  if (activeTab === 'calculator') return <><SavingsCalculator /><TrustStrip /></>;
-  if (activeTab === 'how-it-works') return <><HowItWorks /><FAQSection /></>;
-  if (activeTab === 'exam-guides') return <><ExamGuides /><FinalCTASection /></>;
-  if (activeTab === 'testimonials') return <><Testimonials /><FinalCTASection /></>;
-  if (activeTab === 'faq') return <><FAQSection /><FinalCTASection /></>;
+  if (activeTab === 'dashboard') return <LazyPage><Dashboard /></LazyPage>;
+  if (activeTab === 'shop') return <><LazyPage><ProductCatalog /></LazyPage><TrustStrip /></>;
+  if (activeTab === 'calculator') return <><LazyPage><SavingsCalculator /></LazyPage><TrustStrip /></>;
+  if (activeTab === 'how-it-works') return <LazyPage><HowItWorks /><FAQSection /></LazyPage>;
+  if (activeTab === 'exam-guides') return <LazyPage><ExamGuides /><FinalCTASection /></LazyPage>;
+  if (activeTab === 'testimonials') return <LazyPage><Testimonials /><FinalCTASection /></LazyPage>;
+  if (activeTab === 'faq') return <LazyPage><FAQSection /><FinalCTASection /></LazyPage>;
 
   return <HomePage />;
 };
 
+const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer = true }) => {
+  const {
+    selectedProductDetail,
+    isCheckoutOpen,
+    checkoutProduct,
+    isAdminOpen,
+  } = useVoucher();
+
+  return (
+    <>
+    {selectedProductDetail && (
+      <ModalSuspense>
+        <ProductDetailModal />
+      </ModalSuspense>
+    )}
+    {isCheckoutOpen && checkoutProduct && (
+      <ModalSuspense>
+        <CheckoutModal />
+      </ModalSuspense>
+    )}
+    <CartDrawer />
+    {!minimal && (
+      <>
+        <SocialProofToast />
+        <ModalSuspense>
+          <LiveChatWidget />
+        </ModalSuspense>
+        <FloatingSupportWidget />
+      </>
+    )}
+    {floating && <FloatingWhatsApp />}
+    {adminDrawer && isAdminOpen && (
+      <ModalSuspense>
+        <AdminControlDrawer />
+      </ModalSuspense>
+    )}
+  </>
+  );
+};
+
+const MarketingLayout = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+    <Navbar />
+    <ToastContainer />
+    <main className="flex-1">
+      <MainContent />
+    </main>
+    <LegalTrustFooter />
+    <SharedModalsAndWidgets />
+  </div>
+);
+
+const AccountLayout = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+    <Navbar />
+    <ToastContainer />
+    <main className="flex-1">
+      <LazyPage><AccountHome /></LazyPage>
+    </main>
+    <LegalTrustFooter />
+    <SharedModalsAndWidgets />
+  </div>
+);
+
+const AdminLayout = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
+    <ToastContainer />
+    <main className="flex-1">
+      <LazyPage><AdminConsole /></LazyPage>
+    </main>
+    <SharedModalsAndWidgets minimal floating={false} adminDrawer={false} />
+  </div>
+);
+
+const AuthLayout = ({ children }) => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
+    <ToastContainer />
+    <LazyPage minHeight="min-h-screen">{children}</LazyPage>
+    <SharedModalsAndWidgets minimal />
+  </div>
+);
+
+function RouterContent() {
+  return (
+    <Routes>
+      <Route path="/" element={<MarketingLayout />} />
+      <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
+      <Route path="/admin/login" element={<AuthLayout><AdminLoginPage /></AuthLayout>} />
+      <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
+      <Route path="/forgot-password" element={<AuthLayout><ForgotPasswordPage /></AuthLayout>} />
+      <Route path="/reset-password" element={<AuthLayout><ResetPasswordPage /></AuthLayout>} />
+      <Route
+        path="/account"
+        element={
+          <ProtectedRoute>
+            <AccountLayout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 export function App() {
   return (
     <ThemeProvider>
-      <VoucherProvider>
-        <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
-          <Navbar />
-          <ToastContainer />
-          <main className="flex-1">
-            <MainContent />
-          </main>
-          <LegalTrustFooter />
-
-          <ProductDetailModal />
-          <CheckoutModal />
-          <CartDrawer />
-          <SocialProofToast />
-          <LiveChatWidget />
-          <FloatingSupportWidget />
-          <FloatingWhatsApp />
-          <AdminControlDrawer />
-        </div>
-      </VoucherProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <VoucherProvider>
+            <RouterContent />
+          </VoucherProvider>
+        </BrowserRouter>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

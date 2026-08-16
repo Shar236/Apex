@@ -25,7 +25,20 @@ export const ThemeProvider = ({ children }) => {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      document.startViewTransition(() => {
+        setTheme(nextTheme);
+      });
+    } else {
+      const root = document.documentElement;
+      root.classList.add('theme-transition');
+      setTheme(nextTheme);
+      setTimeout(() => {
+        root.classList.remove('theme-transition');
+      }, 300);
+    }
   };
 
   return (

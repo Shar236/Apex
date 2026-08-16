@@ -9,10 +9,16 @@ export const SavingsCalculator = () => {
   const [displayedSavings, setDisplayedSavings] = useState(0);
   const savingsRef = useRef(0);
 
-  const selectedProduct = products.find(p => p.id === selectedExamId) || products[0];
-  const totalOriginal = selectedProduct.originalPrice * quantity;
-  const totalDiscounted = selectedProduct.discountedPrice * quantity;
-  const totalSavings = selectedProduct.savings * quantity;
+  const selectedProduct = products.find(p => p.id === selectedExamId || p._id === selectedExamId) || products[0] || {};
+  const totalOriginal = (selectedProduct.originalPrice || 0) * quantity;
+  const totalDiscounted = (selectedProduct.discountedPrice || 0) * quantity;
+  const totalSavings = (selectedProduct.savings || 0) * quantity;
+
+  useEffect(() => {
+    if (products.length > 0 && (!selectedExamId || !products.some(p => p.id === selectedExamId || p._id === selectedExamId))) {
+      setSelectedExamId(products[0].id || products[0]._id);
+    }
+  }, [products, selectedExamId]);
 
   useEffect(() => {
     const startValue = savingsRef.current;

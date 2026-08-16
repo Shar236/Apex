@@ -1,6 +1,6 @@
 import React from 'react';
 
-// Official Brand Logos with precise SVG graphics & typography matching official guidelines
+// Individual Brand Logo Components for Marquee & Category Sections
 
 export const PearsonPTELogo = ({ className = "h-8" }) => (
   <div className={`flex items-center gap-2.5 font-sans ${className}`}>
@@ -60,18 +60,87 @@ export const DuolingoTestLogo = ({ className = "h-8" }) => (
   </div>
 );
 
-export const BrandLogoContainer = ({ brand }) => {
-  const brandLower = (brand || '').toLowerCase();
+// Brand Header Rectangular Banners matching user's reference screenshot
 
-  let LogoComponent = PearsonPTELogo;
-  if (brandLower.includes('ielts')) LogoComponent = IELTSLogo;
-  else if (brandLower.includes('toefl')) LogoComponent = ETSToeflLogo;
-  else if (brandLower.includes('gre')) LogoComponent = ETSGreLogo;
-  else if (brandLower.includes('duolingo')) LogoComponent = DuolingoTestLogo;
-
-  return (
-    <div className="w-full bg-[#F0F7FF] dark:bg-[#1E293B] py-3.5 px-4 rounded-2xl border border-slate-200/80 dark:border-[#292929] flex items-center justify-center shadow-inner">
-      <LogoComponent />
+export const PearsonPTEBanner = ({ title = "PTE Academic", subtitle = "PTE Academic Test" }) => (
+  <div className="w-full bg-[#121A2D] p-4 rounded-2xl border border-slate-800/80 flex items-center gap-3.5 shadow-sm">
+    <div className="w-12 h-12 rounded-full bg-[#005A9C] text-white flex items-center justify-center font-heading font-black text-2xl shrink-0 shadow-md">
+      P
     </div>
-  );
+    <div className="flex flex-col text-left leading-tight">
+      <span className="text-xl font-heading font-black text-white tracking-tight">
+        {title}
+      </span>
+      <span className="text-xs font-bold text-slate-400">
+        {subtitle}
+      </span>
+    </div>
+  </div>
+);
+
+export const ETSGREBanner = ({ title = "GRE®", subtitle = "General Test" }) => (
+  <div className="w-full bg-[#1A162B] p-4 rounded-2xl border border-slate-800/80 flex items-center gap-3.5 shadow-sm">
+    <div className="w-12 h-12 rounded-2xl bg-white text-slate-950 flex items-center justify-center font-heading font-black text-xs tracking-wider shrink-0 shadow-md">
+      ETS
+    </div>
+    <div className="flex flex-col text-left leading-tight">
+      <span className="text-xl font-heading font-black text-white tracking-wider">
+        {title}
+      </span>
+      <span className="text-xs font-bold text-slate-400">
+        {subtitle}
+      </span>
+    </div>
+  </div>
+);
+
+export const ETSTOEFLBanner = ({ title = "TOEFL iBT®", subtitle = "English Proficiency Test" }) => (
+  <div className="w-full bg-[#0F1B2D] p-4 rounded-2xl border border-slate-800/80 flex items-center gap-3.5 shadow-sm">
+    <div className="w-12 h-12 rounded-2xl bg-[#004B87] text-white flex items-center justify-center font-heading font-black text-xs tracking-wider shrink-0 shadow-md">
+      ETS
+    </div>
+    <div className="flex flex-col text-left leading-tight">
+      <span className="text-xl font-heading font-black text-white tracking-tight">
+        {title}
+      </span>
+      <span className="text-xs font-bold text-slate-400">
+        {subtitle}
+      </span>
+    </div>
+  </div>
+);
+
+export const DuolingoBanner = ({ title = "Duolingo DET", subtitle = "English Test" }) => (
+  <div className="w-full bg-[#12241A] p-4 rounded-2xl border border-slate-800/80 flex items-center gap-3.5 shadow-sm">
+    <div className="w-12 h-12 rounded-full bg-[#58CC02] text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md">
+      🦉
+    </div>
+    <div className="flex flex-col text-left leading-tight">
+      <span className="text-xl font-heading font-black text-[#58CC02] tracking-tight">
+        {title}
+      </span>
+      <span className="text-xs font-bold text-slate-400">
+        {subtitle}
+      </span>
+    </div>
+  </div>
+);
+
+export const BrandLogoContainer = ({ brand, name }) => {
+  const brandLower = (brand || '').toLowerCase();
+  const nameLower = (name || '').toLowerCase();
+
+  if (brandLower.includes('gre') || nameLower.includes('gre')) {
+    return <ETSGREBanner title="GRE®" subtitle="General Test" />;
+  }
+  if (brandLower.includes('toefl') || nameLower.includes('toefl')) {
+    return <ETSTOEFLBanner title="TOEFL iBT®" subtitle="English Proficiency" />;
+  }
+  if (brandLower.includes('duolingo') || nameLower.includes('duolingo')) {
+    return <DuolingoBanner title="Duolingo DET" subtitle="English Test" />;
+  }
+  
+  // Default Pearson PTE
+  const subtitle = nameLower.includes('core') ? 'PTE Core' : 'PTE Academic Test';
+  return <PearsonPTEBanner title="PTE Academic" subtitle={subtitle} />;
 };

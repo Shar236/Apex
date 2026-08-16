@@ -4,8 +4,15 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', sans-serif;
-  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --font-heading: 'Outfit', 'Sora', 'Plus Jakarta Sans', sans-serif;
+  --font-hero: 'Outfit', 'Urbanist', 'Plus Jakarta Sans', sans-serif;
   --color-brand-pink: #FF005C;
+}
+
+.text-gradient-pink {
+  background: linear-gradient(135deg, #FF005C 0%, #FF2A7B 50%, #D9004C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 :root {
@@ -35,7 +42,32 @@
 
 * {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* Snappy 250ms Theme Transition */
+.theme-transition body,
+.theme-transition section,
+.theme-transition div,
+.theme-transition header,
+.theme-transition nav,
+.theme-transition button,
+.theme-transition p,
+.theme-transition h1,
+.theme-transition h2,
+.theme-transition h3,
+.theme-transition span {
+  transition: background-color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+              color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+              fill 250ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 250ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 250ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html, body {

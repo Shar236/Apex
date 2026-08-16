@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, X, ChevronLeft, ChevronRight, Film, Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
+import { videoApi } from '../lib/api';
 
 export const REEL_VIDEOS = [
   {
@@ -67,49 +68,13 @@ export const REEL_VIDEOS = [
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🇬🇧",
     views: "11.7K views"
-  },
-  {
-    id: 6,
-    title: "TOEFL Voucher Explained",
-    category: "TOEFL iBT",
-    duration: "17s",
-    desc: "Save up to ₹4,001 on ETS TOEFL iBT exam vouchers accepted by 12,000+ global universities.",
-    poster: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
-    badgeColor: "bg-amber-400 text-slate-950",
-    icon: "🇺🇸",
-    views: "19.3K views"
-  },
-  {
-    id: 7,
-    title: "Duolingo Voucher Explained",
-    category: "Duolingo",
-    duration: "15s",
-    desc: "Save 18% on Duolingo English Test coupons with fast 48-hour certified score reports.",
-    poster: "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=600&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutback2015.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
-    badgeColor: "bg-emerald-500 text-white",
-    icon: "🦉",
-    views: "25.1K views"
-  },
-  {
-    id: 8,
-    title: "Voucher FAQs in 60s",
-    category: "Voucher FAQs",
-    duration: "19s",
-    desc: "Quick answers to validity, refunds, test center choice, and instant code delivery questions.",
-    poster: "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=600&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
-    badgeColor: "bg-amber-400 text-slate-950",
-    icon: "❓",
-    views: "16.4K views"
   }
 ];
 
 export const VideoReelsCarousel = () => {
+  const [videoList, setVideoList] = useState(REEL_VIDEOS);
+  const [videoSectionEnabled, setVideoSectionEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -117,11 +82,66 @@ export const VideoReelsCarousel = () => {
   const [useIframeFallback, setUseIframeFallback] = useState(false);
   const [activeModalVideo, setActiveModalVideo] = useState(null);
   const [userInitiatedPlay, setUserInitiatedPlay] = useState(false);
-  
+
   const desktopVideoRef = useRef(null);
   const mobileVideoRef = useRef(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const playedVideoIds = useRef(new Set());
+
+  useEffect(() => {
+    let isMounted = true;
+    videoApi.list().then((res) => {
+      if (!isMounted) return;
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const formatted = res.data.map((v, i) => ({
+          _id: v._id,
+          id: v._id || i + 1,
+          title: v.title,
+          category: v.category || 'Step-By-Step Guide',
+          duration: v.duration || '15s',
+          desc: v.description || v.desc || '',
+          poster: v.thumbnail || v.poster || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80',
+          videoStream: v.videoUrl,
+          youtubeEmbed: v.youtubeEmbed || v.videoUrl,
+          badgeColor: v.badgeColor || 'bg-amber-400 text-slate-950',
+          icon: v.icon || '🎬',
+          viewsCount: v.viewsCount || 0,
+          views: v.viewsCount >= 1000 ? `${(v.viewsCount / 1000).toFixed(1)}K views` : `${v.viewsCount || 0} views`,
+          featured: !!v.featured,
+        }));
+        setVideoList(formatted);
+        const featIdx = formatted.findIndex((x) => x.featured);
+        if (featIdx !== -1) setActiveIndex(featIdx);
+      }
+      if (res.settings) {
+        if (res.settings.videoSectionEnabled !== undefined) setVideoSectionEnabled(res.settings.videoSectionEnabled);
+        if (res.settings.movieReelModeEnabled !== undefined) setIsMovieMode(res.settings.movieReelModeEnabled);
+      }
+      setLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const recordView = (vid) => {
+    if (!vid || !vid._id || playedVideoIds.current.has(vid._id)) return;
+    playedVideoIds.current.add(vid._id);
+    videoApi.incrementView(vid._id).then((res) => {
+      if (res.success && res.viewsCount != null) {
+        setVideoList((prev) =>
+          prev.map((item) =>
+            item._id === vid._id
+              ? {
+                  ...item,
+                  viewsCount: res.viewsCount,
+                  views: res.viewsCount >= 1000 ? `${(res.viewsCount / 1000).toFixed(1)}K views` : `${res.viewsCount} views`,
+                }
+              : item
+          )
+        );
+      }
+    });
+  };
 
   const getCurrentVideoElement = () => {
     if (typeof window === 'undefined') {
@@ -130,8 +150,8 @@ export const VideoReelsCarousel = () => {
     return window.innerWidth >= 768 ? desktopVideoRef.current : mobileVideoRef.current;
   };
 
-  const total = REEL_VIDEOS.length;
-  const currentVideo = REEL_VIDEOS[activeIndex];
+  const total = videoList.length;
+  const currentVideo = videoList[activeIndex] || videoList[0];
 
   const pauseVisibleVideo = () => {
     const currentVideoEl = getCurrentVideoElement();
@@ -213,6 +233,7 @@ export const VideoReelsCarousel = () => {
   }, [activeModalVideo, isPlaying]);
 
   const togglePlay = () => {
+    if (currentVideo) recordView(currentVideo);
     if (useIframeFallback) {
       setActiveModalVideo(currentVideo);
       return;
@@ -269,8 +290,11 @@ export const VideoReelsCarousel = () => {
 
   const getVideoAt = (offset) => {
     const idx = (activeIndex + offset + total) % total;
-    return REEL_VIDEOS[idx];
+    return videoList[idx] || videoList[0];
   };
+
+  if (!videoSectionEnabled) return null;
+  if (!currentVideo) return null;
 
   return (
     <section 

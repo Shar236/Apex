@@ -9,12 +9,10 @@ export const ExamCategorySection = () => {
   const categories = [
     {
       id: 'pte',
+      searchKey: 'pte',
       name: 'PTE Voucher',
       fullName: 'Pearson PTE Academic & Core',
       desc: 'Save more on your PTE Academic & PTE Core exam booking.',
-      startingPrice: 15499,
-      regularPrice: 18900,
-      savings: 'Save ₹3,401',
       validity: 'Valid for 6 Months',
       badge: 'MOST POPULAR',
       featured: true,
@@ -22,12 +20,10 @@ export const ExamCategorySection = () => {
     },
     {
       id: 'ielts',
+      searchKey: 'ielts',
       name: 'IELTS Voucher',
       fullName: 'IELTS Academic & General',
       desc: 'Get exclusive discount codes for official IELTS test registration.',
-      startingPrice: 16500,
-      regularPrice: 17200,
-      savings: 'Save ₹700',
       validity: 'Valid for 12 Months',
       badge: 'BEST VALUE',
       featured: false,
@@ -35,12 +31,10 @@ export const ExamCategorySection = () => {
     },
     {
       id: 'toefl',
+      searchKey: 'toefl',
       name: 'TOEFL Voucher',
       fullName: 'ETS TOEFL iBT Test',
       desc: 'Save more on TOEFL iBT accepted by universities worldwide.',
-      startingPrice: 13999,
-      regularPrice: 18000,
-      savings: 'Save ₹4,001',
       validity: 'Valid for 12 Months',
       badge: 'MAX DISCOUNT',
       featured: false,
@@ -48,12 +42,10 @@ export const ExamCategorySection = () => {
     },
     {
       id: 'duolingo',
+      searchKey: 'duolingo',
       name: 'Duolingo English Test Voucher',
       fullName: 'Duolingo English Test Coupon',
       desc: 'Fast digital delivery with instant coupon savings.',
-      startingPrice: 4999,
-      regularPrice: 6112,
-      savings: 'Save ₹1,113',
       validity: 'Valid for 90 Days',
       badge: 'FAST RESULTS',
       featured: false,
@@ -81,7 +73,17 @@ export const ExamCategorySection = () => {
         {/* 4 Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((cat) => {
-            const product = products.find(p => p.name.toLowerCase().includes(cat.name.split(' ')[0].toLowerCase())) || products[0];
+            const matchedProduct = products.find(p => {
+              const key = cat.searchKey;
+              const name = (p.name || '').toLowerCase();
+              const brand = (p.brand || '').toLowerCase();
+              const slug = (p.slug || '').toLowerCase();
+              return name.includes(key) || brand.includes(key) || slug.includes(key);
+            });
+
+            const displayPrice = matchedProduct ? matchedProduct.discountedPrice : 15499;
+            const displaySavings = matchedProduct ? matchedProduct.savings : 3401;
+            const productToCheckout = matchedProduct || products[0];
 
             return (
               <div
@@ -131,19 +133,19 @@ export const ExamCategorySection = () => {
                         Starting From
                       </span>
                       <span className={`font-heading font-black text-2xl ${cat.featured ? 'text-white' : 'text-[#0F172A] dark:text-white'}`}>
-                        {formatPrice(cat.startingPrice)}
+                        {formatPrice(displayPrice)}
                       </span>
                     </div>
 
                     <span className="px-2.5 py-1 rounded-md bg-[#10B981] text-white font-extrabold text-xs shadow-sm">
-                      {cat.savings}
+                      Save {formatPrice(displaySavings)}
                     </span>
                   </div>
 
                   <button
                     onClick={() => {
-                      if (cat.featured) {
-                        startCheckout(product);
+                      if (cat.featured && productToCheckout) {
+                        startCheckout(productToCheckout);
                       } else {
                         setActiveTab('shop');
                       }

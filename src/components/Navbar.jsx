@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Sparkles, Menu, X, Shield, BookOpen, Calculator, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
+import { useAuth } from '../context/AuthContext';
 import { ApexLogo } from './ApexLogo';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -8,7 +10,9 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [vouchersDropdownOpen, setVouchersDropdownOpen] = useState(false);
-  const { cart, activeTab, setActiveTab, toggleCart } = useVoucher();
+  const { cart, activeTab, setActiveTab, setIsCartOpen } = useVoucher();
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -46,13 +50,23 @@ export const Navbar = () => {
             <span className="hidden md:inline-flex px-2.5 py-0.5 rounded-full bg-[#FF005C]/10 text-[#FF005C] font-bold text-[10px] border border-[#FF005C]/20">
               ⚡ Instant Voucher Delivery in 10s
             </span>
-            <button 
-              onClick={() => setActiveTab('dashboard')} 
-              className="flex items-center gap-1 hover:text-white font-medium text-xs transition-colors"
-            >
-              <User className="w-3.5 h-3.5 text-[#FF005C]" />
-              <span>User Dashboard</span>
-            </button>
+            {isAuthenticated ? (
+              <button 
+                onClick={() => navigate('/account')} 
+                className="flex items-center gap-1 hover:text-white font-medium text-xs transition-colors"
+              >
+                <User className="w-3.5 h-3.5 text-[#FF005C]" />
+                <span>My Account ({user?.name?.split(' ')[0] || 'Dashboard'})</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigate('/login')} 
+                className="flex items-center gap-1 hover:text-white font-medium text-xs transition-colors"
+              >
+                <User className="w-3.5 h-3.5 text-[#FF005C]" />
+                <span>Login / Register</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -169,7 +183,7 @@ export const Navbar = () => {
 
               {/* Cart Button */}
               <button
-                onClick={() => toggleCart()}
+                onClick={() => setIsCartOpen(true)}
                 className="relative p-2.5 rounded-xl bg-neutral-100 dark:bg-[#161616] hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] text-neutral-800 dark:text-neutral-200 hover:text-[#FF005C] transition-all border border-[#EAEAEA] dark:border-[#292929]"
                 aria-label="Shopping Cart"
               >

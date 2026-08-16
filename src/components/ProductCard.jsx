@@ -1,58 +1,82 @@
 import React from 'react';
 import { useVoucher } from '../context/VoucherContext';
-import { Check, ArrowRight, Eye, ShoppingCart, ShieldCheck } from 'lucide-react';
+import { Check, ArrowRight, Eye, ShoppingCart, Zap, Star, Flame } from 'lucide-react';
 import { BrandLogoContainer } from './OfficialBrandLogos';
 
 export const ProductCard = ({ product }) => {
   const { formatPrice, startCheckout, addToCart, setSelectedProductDetail } = useVoucher();
 
-  const isPearson = product.brand.includes('Pearson') || product.name.toLowerCase().includes('pte');
-  const isETS = product.brand.includes('ETS') || product.name.toLowerCase().includes('gre') || product.name.toLowerCase().includes('toefl');
-  const isDuolingo = product.brand.includes('Duolingo') || product.name.toLowerCase().includes('duolingo');
+  const brandLower = (product.brand || product.provider || product.name || '').toLowerCase();
+  const nameLower = (product.name || '').toLowerCase();
 
-  const partnerLabel = isPearson 
-    ? 'AUTHORISED PEARSON PARTNER' 
-    : isETS 
-    ? 'AUTHORISED ETS PARTNER' 
-    : isDuolingo 
-    ? 'OFFICIAL DUOLINGO PARTNER' 
-    : 'AUTHORISED EXAM PARTNER';
+  const isGRE = brandLower.includes('gre') || nameLower.includes('gre');
+  const isPTE = brandLower.includes('pearson') || nameLower.includes('pte');
+  const isPTECore = nameLower.includes('core');
+
+  const providerName = (product.provider || product.brand || '').toUpperCase();
+  const partnerLabel = providerName.includes('PEARSON')
+    ? 'AUTHORISED PEARSON PARTNER'
+    : providerName.includes('ETS')
+    ? 'AUTHORISED ETS PARTNER'
+    : `AUTHORISED ${providerName || 'EXAM'} PARTNER`;
+
+  // Render Left Pill Badge matching reference image
+  const renderBadge = () => {
+    if (isGRE) {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#2A0A17] text-[#FF005C] border border-[#FF005C]/30 text-[10px] font-black uppercase tracking-wider">
+          <Star className="w-3 h-3 fill-[#FF005C]" />
+          <span>GRAD SCHOOL TOP PICK</span>
+        </span>
+      );
+    }
+    if (isPTECore) {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#0C2A4A] text-[#38BDF8] border border-[#38BDF8]/30 text-[10px] font-black uppercase tracking-wider">
+          <span>🇨🇦 CANADA PR APPROVED</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#3B2206] text-[#F59E0B] border border-[#F59E0B]/30 text-[10px] font-black uppercase tracking-wider">
+        <Flame className="w-3 h-3 fill-[#F59E0B]" />
+        <span>BEST SELLER</span>
+      </span>
+    );
+  };
 
   return (
-    <div className={`relative bg-white dark:bg-[#161616] rounded-3xl border border-slate-200/80 dark:border-[#292929] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col justify-between ${
-      !product.inStock ? 'opacity-80' : ''
+    <div className={`group relative bg-[#0B0F19] rounded-3xl border border-[#1E293B] hover:border-[#FF005C]/50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col justify-between ${
+      !product.inStock ? 'opacity-75' : ''
     }`}>
       
       {/* Top Section */}
-      <div className="p-5 space-y-3">
+      <div className="p-5 space-y-4">
         
-        {/* Category Badge & Partner Claim */}
+        {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-[#262626] text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider">
-            EXAM VOUCHER
-          </span>
-
-          <span className="text-[9px] font-extrabold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
+          {renderBadge()}
+          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
             {partnerLabel}
           </span>
         </div>
 
-        {/* Dedicated Logo Container Area */}
-        <div className="pt-1">
-          <BrandLogoContainer brand={product.brand || product.name} />
-        </div>
+        {/* Brand Banner Box (ETS / Pearson Logo Header) */}
+        <BrandLogoContainer brand={product.brand || product.provider} name={product.name} />
 
-        {/* Discount Design Box */}
-        <div className="bg-[#F0F7FF] dark:bg-[#0A0A0A] p-3.5 rounded-2xl border border-slate-200/80 dark:border-[#292929] flex items-center justify-between">
+        {/* Discount Box */}
+        <div className="bg-[#090D16] p-4 rounded-2xl border border-[#1E293B] flex items-center justify-between">
           <div>
-            <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">WE OFFER</span>
-            <span className="font-heading font-black text-2xl text-[#FF005C] leading-none block">
-              {product.discountPercent || 18}% DISCOUNT
+            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
+              {product.discountPercent || 18}% OFF
+            </span>
+            <span className="font-heading font-black text-2xl text-[#FF005C] leading-none block tracking-tight">
+              DISCOUNT
             </span>
           </div>
 
-          <div className="text-right">
-            <span className="text-xs font-black text-[#10B981] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/40 inline-block shadow-sm">
+          <div>
+            <span className="text-xs font-black text-[#10B981] bg-[#052E16] px-3.5 py-1.5 rounded-lg border border-[#10B981]/30 inline-block shadow-sm">
               SAVE {formatPrice(product.savings)}
             </span>
           </div>
@@ -60,86 +84,76 @@ export const ProductCard = ({ product }) => {
 
       </div>
 
-      {/* Dark Navy Horizontal Strip */}
-      <div className="bg-[#0F172A] dark:bg-[#0A0A0A] py-1.5 px-4 text-center border-y border-slate-800 dark:border-[#292929]">
-        <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center justify-center gap-1.5">
-          <span>⚡ INSTANT DIGITAL DELIVERY</span>
+      {/* Yellow Middle Delivery Strip */}
+      <div className="bg-[#0B0F19] py-2 px-4 text-center border-y border-[#1E293B]">
+        <span className="text-[11px] font-extrabold tracking-wide text-[#F59E0B] flex items-center justify-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 fill-[#F59E0B]" />
+          <span>Instant Delivery</span>
           <span>•</span>
-          <span>VALID 6–12 MONTHS</span>
+          <span>Valid {product.validityMonths || 6} Months</span>
         </span>
       </div>
 
-      {/* Card Content & Features */}
-      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+      {/* Bottom Section: 2 Columns Pricing & Features */}
+      <div className="p-5 space-y-5">
         
-        {/* Product Title */}
-        <h3 className="font-heading font-black text-lg text-[#0F172A] dark:text-white leading-snug">
-          {product.name}
-        </h3>
-
-        {/* Pricing Details */}
-        <div className="space-y-1 bg-slate-50 dark:bg-[#1E293B]/50 p-3 rounded-2xl border border-slate-100 dark:border-[#292929]">
-          <div className="flex items-baseline gap-2">
-            <span className="font-heading font-black text-2xl text-[#0F172A] dark:text-white">
-              {formatPrice(product.discountedPrice)}
-            </span>
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 line-through">
+        <div className="grid grid-cols-12 gap-3 items-center">
+          
+          {/* Left Column: Pricing */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-xs font-bold text-slate-400 line-through block">
               {formatPrice(product.originalPrice)}
             </span>
-          </div>
-          <p className="text-xs font-extrabold text-[#10B981] dark:text-emerald-400">
-            You Save: {formatPrice(product.savings)}
-          </p>
-        </div>
-
-        {/* Benefits Checklist */}
-        <div className="space-y-2 py-1">
-          <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
-            <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3 text-[#10B981] dark:text-emerald-400" strokeWidth={3} />
-            </div>
-            <span>Emailed in 10 seconds to your inbox</span>
+            <span className="font-heading font-black text-3xl text-white block tracking-tight">
+              {formatPrice(product.discountedPrice)}
+            </span>
+            <span className="text-xs font-bold text-[#10B981] block">
+              You Save: {formatPrice(product.savings)}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
-            <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3 text-[#10B981] dark:text-emerald-400" strokeWidth={3} />
-            </div>
-            <span>100% Genuine official exam voucher</span>
+          {/* Right Column: Feature Checklist */}
+          <div className="col-span-6 space-y-2 text-left pl-2">
+            {[
+              'Emailed in 10 seconds',
+              '100% Genuine Voucher',
+              'Free booking guidance'
+            ].map((feat, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                <div className="w-4 h-4 rounded-full bg-[#10B981] text-black font-black text-[10px] flex items-center justify-center shrink-0">
+                  ✓
+                </div>
+                <span className="leading-tight">{feat}</span>
+              </div>
+            ))}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
-            <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3 text-[#10B981] dark:text-emerald-400" strokeWidth={3} />
-            </div>
-            <span>Free booking & rescheduling guidance</span>
-          </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-[#292929]">
+        <div className="space-y-2.5 pt-2">
           {product.inStock ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => setSelectedProductDetail(product)}
-                className="btn-secondary !py-2.5 !px-3 !text-xs !rounded-xl font-bold flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full bg-[#131B2E] hover:bg-[#1E293B] text-white rounded-full py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border border-[#1E293B] cursor-pointer transition-colors"
               >
-                <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <Eye className="w-4 h-4 text-slate-400" />
                 <span>Quick View</span>
               </button>
 
               <button
                 onClick={() => startCheckout(product)}
-                className="btn-pink !py-2.5 !px-3 !text-xs !rounded-xl font-black flex items-center justify-center gap-1 shadow-md cursor-pointer"
+                className="w-full bg-[#FF005C] hover:bg-[#D9004C] text-white rounded-full py-3 px-3 text-xs font-black flex items-center justify-center gap-1.5 shadow-lg shadow-[#FF005C]/20 cursor-pointer hover:scale-[1.02] transition-all"
               >
                 <span>Buy Now</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           ) : (
             <button
               disabled
-              className="w-full py-3 rounded-xl bg-slate-100 dark:bg-[#111111] text-slate-400 font-bold text-xs cursor-not-allowed text-center border border-slate-200 dark:border-[#292929]"
+              className="w-full py-3 rounded-full bg-[#111625] text-slate-500 font-bold text-xs cursor-not-allowed text-center border border-[#1E293B]"
             >
               Sold Out
             </button>
@@ -148,10 +162,10 @@ export const ProductCard = ({ product }) => {
           <button
             onClick={() => addToCart(product)}
             disabled={!product.inStock}
-            className="w-full py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-[#FF005C] hover:bg-slate-100 dark:hover:bg-[#262626] transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200/70 dark:border-[#292929]"
+            className="w-full bg-transparent hover:bg-[#161D2F] text-slate-300 hover:text-white rounded-full py-3 text-xs font-bold flex items-center justify-center gap-2 border border-[#1E293B] transition-colors cursor-pointer"
           >
-            <ShoppingCart className="w-3.5 h-3.5 text-[#FF005C]" />
-            <span>Add to Shopping Cart</span>
+            <ShoppingCart className="w-4 h-4 text-[#FF005C]" />
+            <span>Add to Cart</span>
           </button>
         </div>
 
