@@ -24,3 +24,5 @@ export const safeUser = (user) => {
   delete u.__v;
   return u;
 };
+
+export { analyzeSEO, sanitizeRichText, slugify, detectDuplicates, countWords, stripHtml } from './seo.js';

@@ -1,5 +1,28 @@
 import mongoose from 'mongoose';
 
+const seoSchema = new mongoose.Schema({
+  title: { type: String, trim: true, default: '' },
+  description: { type: String, trim: true, default: '' },
+  slug: { type: String, trim: true, lowercase: true, default: '' },
+  focusKeyword: { type: String, trim: true, default: '' },
+  secondaryKeywords: [{ type: String, trim: true }],
+  canonicalUrl: { type: String, trim: true, default: '' },
+  ogTitle: { type: String, trim: true, default: '' },
+  ogDescription: { type: String, trim: true, default: '' },
+  ogImage: { type: String, trim: true, default: '' },
+  twitterTitle: { type: String, trim: true, default: '' },
+  twitterDescription: { type: String, trim: true, default: '' },
+  twitterImage: { type: String, trim: true, default: '' },
+  noindex: { type: Boolean, default: false },
+  nofollow: { type: Boolean, default: false },
+}, { _id: false });
+
+const imageSeoSchema = new mongoose.Schema({
+  altText: { type: String, trim: true, default: '' },
+  imageTitle: { type: String, trim: true, default: '' },
+  caption: { type: String, trim: true, default: '' },
+}, { _id: false });
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -44,8 +67,10 @@ const productSchema = new mongoose.Schema(
     },
     shortDescription: { type: String, trim: true, default: '' },
     description: { type: String, trim: true, default: '' },
+    richDescription: { type: String, trim: true, default: '' },
     logo: { type: String, default: '' },
     image: { type: String, default: '' },
+    imageSeo: imageSeoSchema,
     originalPrice: {
       type: Number,
       required: true,
@@ -79,8 +104,16 @@ const productSchema = new mongoose.Schema(
     cta: { type: String, default: 'Buy Now' },
     seoTitle: { type: String, trim: true, default: '' },
     seoDescription: { type: String, trim: true, default: '' },
+    seo: seoSchema,
     inclusions: [{ type: String }],
     redemptionSteps: [{ type: String }],
+    faqs: [
+      {
+        question: { type: String, trim: true },
+        answer: { type: String, trim: true },
+      },
+    ],
+    relatedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   },
   { timestamps: true }
 );
@@ -101,6 +134,15 @@ productSchema.pre('save', function (next) {
   if (!this.slug && this.name) {
     this.slug = slugify(this.name);
   }
+  if (!this.seo) {
+    this.seo = {};
+  }
+  if (!this.seo.slug && this.slug) {
+    this.seo.slug = this.slug;
+  }
+  if (!this.imageSeo) {
+    this.imageSeo = { altText: '', imageTitle: '', caption: '' };
+  }
   if (this.originalPrice > 0 && this.sellingPrice >= 0) {
     const disc = Math.round(((this.originalPrice - this.sellingPrice) / this.originalPrice) * 100);
     this.discountPercent = Math.max(0, Math.min(100, disc));
@@ -111,5 +153,6 @@ productSchema.pre('save', function (next) {
 productSchema.index({ category: 1, active: 1 });
 productSchema.index({ brand: 1, active: 1 });
 productSchema.index({ provider: 1, active: 1 });
+productSchema.index({ 'seo.noindex': 1, active: 1 });
 
 export const Product = mongoose.model('Product', productSchema);

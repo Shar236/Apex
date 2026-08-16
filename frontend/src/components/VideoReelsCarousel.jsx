@@ -1,17 +1,57 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, X, ChevronLeft, ChevronRight, Film, Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
+import { Play, Pause, X, ChevronLeft, ChevronRight, Film, Volume2, VolumeX, Sparkles, Instagram, ExternalLink } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
 import { videoApi } from '../lib/api';
 
-export const sanitizeEmbedUrl = (rawUrl, autoplay = false, mute = true) => {
+export const isInstagramUrl = (url = '') => {
+  if (!url) return false;
+  return /instagram\.com|instagr\.am/i.test(url);
+};
+
+export const isYouTubeUrl = (url = '') => {
+  if (!url) return false;
+  return /youtube\.com|youtu\.be/i.test(url);
+};
+
+export const isDirectVideoFile = (url = '') => {
+  if (!url) return false;
+  if (isInstagramUrl(url) || isYouTubeUrl(url)) return false;
+  return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) || /commondatastorage\.googleapis\.com|cloudinary|s3|blob:/i.test(url);
+};
+
+export const formatYouTubeEmbedUrl = (rawUrl, autoplay = false, mute = true) => {
   if (!rawUrl) return '';
+  if (isInstagramUrl(rawUrl)) return '';
+  
+  let videoId = '';
+  if (rawUrl.includes('youtube.com/embed/')) {
+    videoId = rawUrl.split('youtube.com/embed/')[1]?.split('?')[0];
+  } else if (rawUrl.includes('youtube.com/watch')) {
+    try {
+      const u = new URL(rawUrl);
+      videoId = u.searchParams.get('v');
+    } catch {}
+  } else if (rawUrl.includes('youtu.be/')) {
+    videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0];
+  }
+
+  if (videoId) {
+    const params = new URLSearchParams();
+    params.set('autoplay', autoplay ? '1' : '0');
+    params.set('mute', mute ? '1' : '0');
+    params.set('enablejsapi', '1');
+    params.set('rel', '0');
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  }
+
   const base = rawUrl.split('?')[0];
   const params = new URLSearchParams();
   params.set('autoplay', autoplay ? '1' : '0');
   params.set('mute', mute ? '1' : '0');
-  params.set('enablejsapi', '1');
   return `${base}?${params.toString()}`;
 };
+
+export const sanitizeEmbedUrl = formatYouTubeEmbedUrl;
 
 export const REEL_VIDEOS = [
   {
@@ -20,9 +60,10 @@ export const REEL_VIDEOS = [
     category: "Step-By-Step Guide",
     duration: "15s",
     desc: "Watch how to select your exam, apply discount promo codes, and receive your voucher code in 10 seconds.",
-    poster: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80",
+    poster: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🛒",
     views: "14.2K views"
@@ -33,9 +74,10 @@ export const REEL_VIDEOS = [
     category: "PTE Voucher",
     duration: "18s",
     desc: "Official Pearson PTE Academic & Core vouchers waive off registration fees instantly at checkout.",
-    poster: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&auto=format&fit=crop&q=80",
+    poster: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🎓",
     views: "22.8K views"
@@ -46,9 +88,10 @@ export const REEL_VIDEOS = [
     category: "Redemption Guide",
     duration: "14s",
     desc: "Paste your unique voucher code in the Promo Code field on Pearson, ETS, or Duolingo portals.",
-    poster: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80",
+    poster: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
     youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🔑",
     views: "18.5K views"
@@ -59,9 +102,10 @@ export const REEL_VIDEOS = [
     category: "Save Money",
     duration: "16s",
     desc: "Compare regular official exam prices vs Apex bulk discounted prices for PTE, GRE, TOEFL, and Duolingo.",
-    poster: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80",
+    poster: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoypasses.mp4",
     youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "💰",
     views: "31.9K views"
@@ -72,9 +116,10 @@ export const REEL_VIDEOS = [
     category: "IELTS",
     duration: "20s",
     desc: "Everything about IELTS Academic & General discount codes for IDP registration across India.",
-    poster: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80",
+    poster: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🇬🇧",
     views: "11.7K views"
@@ -95,6 +140,8 @@ export const VideoReelsCarousel = () => {
 
   const desktopVideoRef = useRef(null);
   const mobileVideoRef = useRef(null);
+  const modalVideoRef = useRef(null);
+
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
   const playedVideoIds = useRef(new Set());
@@ -111,9 +158,10 @@ export const VideoReelsCarousel = () => {
           category: v.category || 'Step-By-Step Guide',
           duration: v.duration || '15s',
           desc: v.description || v.desc || '',
-          poster: v.thumbnail || v.poster || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80',
+          poster: v.thumbnail || v.poster || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80',
           videoStream: v.videoUrl,
           youtubeEmbed: v.youtubeEmbed || v.videoUrl,
+          instagramUrl: v.instagramUrl || (isInstagramUrl(v.videoUrl) ? v.videoUrl : ''),
           badgeColor: v.badgeColor || 'bg-amber-400 text-slate-950',
           icon: v.icon || '🎬',
           viewsCount: v.viewsCount || 0,
@@ -244,6 +292,13 @@ export const VideoReelsCarousel = () => {
 
   const togglePlay = () => {
     if (currentVideo) recordView(currentVideo);
+    
+    // If video is Instagram URL, open modal with Instagram button
+    if (isInstagramUrl(currentVideo.videoStream) || isInstagramUrl(currentVideo.instagramUrl) || isInstagramUrl(currentVideo.youtubeEmbed)) {
+      setActiveModalVideo(currentVideo);
+      return;
+    }
+
     if (useIframeFallback) {
       setActiveModalVideo(currentVideo);
       return;
@@ -305,6 +360,10 @@ export const VideoReelsCarousel = () => {
 
   if (!videoSectionEnabled) return null;
   if (!currentVideo) return null;
+
+  const currentIsInsta = isInstagramUrl(currentVideo.videoStream) || isInstagramUrl(currentVideo.instagramUrl) || isInstagramUrl(currentVideo.youtubeEmbed);
+  const currentIsYouTube = isYouTubeUrl(currentVideo.youtubeEmbed) || isYouTubeUrl(currentVideo.videoStream);
+  const currentInstaLink = currentVideo.instagramUrl || (isInstagramUrl(currentVideo.videoStream) ? currentVideo.videoStream : '');
 
   return (
     <section 
@@ -429,8 +488,30 @@ export const VideoReelsCarousel = () => {
           {/* CENTER FEATURED INLINE VIDEO PLAYER CARD (9:16 Aspect Ratio) */}
           <div className="w-[300px] lg:w-[320px] h-[530px] lg:h-[560px] rounded-[24px] bg-[#161616] border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative overflow-hidden shrink-0 transition-all duration-500 flex flex-col justify-between p-6 z-20 group">
             
-            {/* Inline Video Player / Fallback Embed */}
-            {!useIframeFallback ? (
+            {/* Poster Thumbnail Background */}
+            <img src={currentVideo.poster} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
+
+            {/* Video Stream Render Logic */}
+            {currentIsInsta ? (
+              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 flex items-center justify-center text-white shadow-xl animate-pulse">
+                  <Instagram className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-sm text-white">{currentVideo.title}</h4>
+                  <p className="text-xs text-slate-300 font-medium mt-1">This video tutorial is hosted on Instagram.</p>
+                </div>
+                <a
+                  href={currentInstaLink || 'https://instagram.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"
+                >
+                  <Instagram className="w-4 h-4" />
+                  <span>Watch on Instagram ↗</span>
+                </a>
+              </div>
+            ) : !useIframeFallback && isDirectVideoFile(currentVideo.videoStream) ? (
               <video
                 ref={desktopVideoRef}
                 src={currentVideo.videoStream}
@@ -444,14 +525,24 @@ export const VideoReelsCarousel = () => {
                 onPause={() => setIsPlaying(false)}
                 className="absolute inset-0 w-full h-full object-cover"
               />
-            ) : (
+            ) : currentIsYouTube ? (
               <iframe
                 className="absolute inset-0 w-full h-full object-cover"
-                src={sanitizeEmbedUrl(currentVideo.youtubeEmbed, userInitiatedPlay && isPlaying, isMuted)}
+                src={formatYouTubeEmbedUrl(currentVideo.youtubeEmbed || currentVideo.videoStream, userInitiatedPlay && isPlaying, isMuted)}
                 title={currentVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
+            ) : (
+              /* Safe Poster Fallback (Never Iframe Instagram) */
+              <div className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center p-6 text-center">
+                <button
+                  onClick={() => setActiveModalVideo(currentVideo)}
+                  className="w-16 h-16 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-110 transition-transform cursor-pointer"
+                >
+                  <Play className="w-7 h-7 fill-slate-950 ml-1" />
+                </button>
+              </div>
             )}
 
             {/* Gradient Dark Overlay */}
@@ -464,13 +555,15 @@ export const VideoReelsCarousel = () => {
               </span>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleMute}
-                  className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-amber-400 border border-white/10 transition-colors cursor-pointer"
-                  title={isMuted ? 'Unmute sound' : 'Mute sound'}
-                >
-                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                </button>
+                {!currentIsInsta && (
+                  <button
+                    onClick={toggleMute}
+                    className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-amber-400 border border-white/10 transition-colors cursor-pointer"
+                    title={isMuted ? 'Unmute sound' : 'Mute sound'}
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                )}
                 <div className="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
                   <ApexLogo className="h-4" whiteText={true} />
                 </div>
@@ -478,23 +571,25 @@ export const VideoReelsCarousel = () => {
             </div>
 
             {/* Center Controls (Play/Pause Button Overlay) */}
-            <div className="relative z-10 text-center my-auto">
-              <button
-                onClick={togglePlay}
-                className="w-16 h-16 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-2xl transition-all transform group-hover:scale-110 border-2 border-white cursor-pointer"
-                aria-label={isPlaying ? 'Pause video' : 'Play video'}
-              >
-                {isPlaying ? (
-                  <Pause className="w-7 h-7 fill-slate-950" />
-                ) : (
-                  <Play className="w-7 h-7 fill-slate-950 ml-1" />
-                )}
-              </button>
-              
-              <span className="inline-block mt-3 text-[11px] font-extrabold text-amber-400 uppercase tracking-widest bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/30">
-                {isPlaying ? '⚡ Playing Reel Stream' : `${currentVideo.duration} • Click to Play`}
-              </span>
-            </div>
+            {!currentIsInsta && (
+              <div className="relative z-10 text-center my-auto">
+                <button
+                  onClick={togglePlay}
+                  className="w-16 h-16 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-2xl transition-all transform group-hover:scale-110 border-2 border-white cursor-pointer"
+                  aria-label={isPlaying ? 'Pause video' : 'Play video'}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-7 h-7 fill-slate-950" />
+                  ) : (
+                    <Play className="w-7 h-7 fill-slate-950 ml-1" />
+                  )}
+                </button>
+                
+                <span className="inline-block mt-3 text-[11px] font-extrabold text-amber-400 uppercase tracking-widest bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/30">
+                  {isPlaying ? '⚡ Playing Reel Stream' : `${currentVideo.duration} • Click to Play`}
+                </span>
+              </div>
+            )}
 
             {/* Bottom Card Title & Controls */}
             <div className="relative z-10 text-left space-y-2 bg-slate-950/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg">
@@ -510,18 +605,30 @@ export const VideoReelsCarousel = () => {
               </p>
 
               <div className="flex gap-2 pt-1">
-                <button
-                  onClick={togglePlay}
-                  className="flex-1 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  {isPlaying ? <Pause className="w-3.5 h-3.5 fill-slate-950" /> : <Play className="w-3.5 h-3.5 fill-slate-950" />}
-                  <span>{isPlaying ? 'Pause Reel' : 'Play Inline Reel'}</span>
-                </button>
+                {currentIsInsta ? (
+                  <a
+                    href={currentInstaLink || 'https://instagram.com'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Instagram className="w-3.5 h-3.5" />
+                    <span>Watch Reel ↗</span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={togglePlay}
+                    className="flex-1 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5 fill-slate-950" /> : <Play className="w-3.5 h-3.5 fill-slate-950" />}
+                    <span>{isPlaying ? 'Pause Reel' : 'Play Inline Reel'}</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => setActiveModalVideo(currentVideo)}
                   className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/10 cursor-pointer"
-                  title="Expand to Full Modal"
+                  title="Expand Video Details"
                 >
                   <Film className="w-3.5 h-3.5" />
                 </button>
@@ -601,7 +708,23 @@ export const VideoReelsCarousel = () => {
         {/* Mobile Viewport Reel Card */}
         <div className="md:hidden space-y-6">
           <div className="w-full max-w-xs mx-auto aspect-[9/16] rounded-[22px] bg-[#161616] border-2 border-amber-400 shadow-xl relative overflow-hidden flex flex-col justify-between p-5">
-            {!useIframeFallback ? (
+            <img src={currentVideo.poster} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
+            
+            {currentIsInsta ? (
+              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <Instagram className="w-10 h-10 text-amber-400" />
+                <p className="text-xs text-slate-300 font-medium">This video tutorial is hosted on Instagram.</p>
+                <a
+                  href={currentInstaLink || 'https://instagram.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-1.5"
+                >
+                  <Instagram className="w-4 h-4" />
+                  <span>Watch on Instagram ↗</span>
+                </a>
+              </div>
+            ) : !useIframeFallback && isDirectVideoFile(currentVideo.videoStream) ? (
               <video
                 ref={mobileVideoRef}
                 src={currentVideo.videoStream}
@@ -613,15 +736,16 @@ export const VideoReelsCarousel = () => {
                 onPause={() => setIsPlaying(false)}
                 className="absolute inset-0 w-full h-full object-cover"
               />
-            ) : (
+            ) : currentIsYouTube ? (
               <iframe
                 className="absolute inset-0 w-full h-full object-cover"
-                src={sanitizeEmbedUrl(currentVideo.youtubeEmbed, userInitiatedPlay && isPlaying, isMuted)}
+                src={formatYouTubeEmbedUrl(currentVideo.youtubeEmbed || currentVideo.videoStream, userInitiatedPlay && isPlaying, isMuted)}
                 title={currentVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
-            )}
+            ) : null}
+
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/70 pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-center">
@@ -631,25 +755,39 @@ export const VideoReelsCarousel = () => {
               <ApexLogo className="h-4" whiteText={true} />
             </div>
 
-            <div className="relative z-10 text-center my-auto">
-              <button
-                onClick={togglePlay}
-                className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center mx-auto shadow-xl border-2 border-white cursor-pointer"
-                aria-label="Play video"
-              >
-                {isPlaying ? <Pause className="w-6 h-6 fill-slate-950" /> : <Play className="w-6 h-6 fill-slate-950 ml-1" />}
-              </button>
-            </div>
+            {!currentIsInsta && (
+              <div className="relative z-10 text-center my-auto">
+                <button
+                  onClick={togglePlay}
+                  className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center mx-auto shadow-xl border-2 border-white cursor-pointer"
+                  aria-label="Play video"
+                >
+                  {isPlaying ? <Pause className="w-6 h-6 fill-slate-950" /> : <Play className="w-6 h-6 fill-slate-950 ml-1" />}
+                </button>
+              </div>
+            )}
 
             <div className="relative z-10 text-left space-y-1.5 bg-slate-950/80 p-3.5 rounded-xl border border-white/10">
               <h3 className="font-heading font-black text-sm text-white leading-tight">{currentVideo.title}</h3>
-              <button
-                onClick={togglePlay}
-                className="w-full py-2 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-3 h-3 fill-slate-950" /> : <Play className="w-3 h-3 fill-slate-950" />}
-                <span>{isPlaying ? 'Pause' : 'Play Stream'}</span>
-              </button>
+              {currentIsInsta ? (
+                <a
+                  href={currentInstaLink || 'https://instagram.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Instagram className="w-3.5 h-3.5" />
+                  <span>Watch on Instagram ↗</span>
+                </a>
+              ) : (
+                <button
+                  onClick={togglePlay}
+                  className="w-full py-2 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  {isPlaying ? <Pause className="w-3 h-3 fill-slate-950" /> : <Play className="w-3 h-3 fill-slate-950" />}
+                  <span>{isPlaying ? 'Pause' : 'Play Stream'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -699,56 +837,127 @@ export const VideoReelsCarousel = () => {
 
       </div>
 
-      {/* Expanded Modal Video Player */}
-      {activeModalVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="relative w-full max-w-2xl bg-[#161616] rounded-3xl p-6 border border-amber-500/30 shadow-2xl text-white space-y-4">
-            
-            <button
-              onClick={() => setActiveModalVideo(null)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white transition-colors cursor-pointer"
-              aria-label="Close modal video player"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* Expanded Modal Video Player (Safe Fallback — NEVER Iframe Instagram) */}
+      {activeModalVideo && (() => {
+        const modalIsInsta = isInstagramUrl(activeModalVideo.videoStream) || isInstagramUrl(activeModalVideo.instagramUrl) || isInstagramUrl(activeModalVideo.youtubeEmbed);
+        const modalIsYouTube = isYouTubeUrl(activeModalVideo.youtubeEmbed) || isYouTubeUrl(activeModalVideo.videoStream);
+        const modalIsFile = !modalIsInsta && !modalIsYouTube;
+        const modalInstaLink = activeModalVideo.instagramUrl || (isInstagramUrl(activeModalVideo.videoStream) ? activeModalVideo.videoStream : '');
 
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black uppercase">
-                {activeModalVideo.category}
-              </span>
-              <ApexLogo className="h-5" whiteText={true} />
-            </div>
-
-            <h3 className="font-heading font-black text-2xl text-white">
-              {activeModalVideo.title}
-            </h3>
-
-            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-xl relative">
-              <iframe
-                className="w-full h-full object-cover"
-                src={sanitizeEmbedUrl(activeModalVideo.youtubeEmbed, true, false)}
-                title={activeModalVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-
-            <p className="text-xs text-slate-300 font-medium leading-relaxed">
-              {activeModalVideo.desc}
-            </p>
-
-            <div className="pt-2 flex justify-end">
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+            <div className="relative w-full max-w-2xl bg-[#161616] rounded-3xl p-6 border border-amber-500/30 shadow-2xl text-white space-y-4">
+              
               <button
                 onClick={() => setActiveModalVideo(null)}
-                className="px-5 py-2.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+                className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white transition-colors cursor-pointer"
+                aria-label="Close modal video player"
               >
-                Close Video Player
+                <X className="w-5 h-5" />
               </button>
-            </div>
 
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black uppercase">
+                  {activeModalVideo.category}
+                </span>
+                <ApexLogo className="h-5" whiteText={true} />
+              </div>
+
+              <h3 className="font-heading font-black text-2xl text-white">
+                {activeModalVideo.title}
+              </h3>
+
+              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-950 border border-white/10 shadow-xl relative flex items-center justify-center">
+                {modalIsInsta ? (
+                  <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                    <img src={activeModalVideo.poster} alt={activeModalVideo.title} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                    <div className="absolute inset-0 bg-slate-950/70" />
+                    
+                    <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-2xl animate-pulse">
+                      <Instagram className="w-8 h-8" />
+                    </div>
+                    
+                    <div className="relative z-10 space-y-1">
+                      <h4 className="font-heading font-black text-base text-white">{activeModalVideo.title}</h4>
+                      <p className="text-xs text-slate-300 font-medium">This video tutorial is hosted on Instagram.</p>
+                    </div>
+
+                    <a
+                      href={modalInstaLink || 'https://instagram.com'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="relative z-10 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"
+                    >
+                      <Instagram className="w-4 h-4" />
+                      <span>Watch on Instagram ↗</span>
+                    </a>
+                  </div>
+                ) : modalIsFile ? (
+                  <video
+                    ref={modalVideoRef}
+                    src={activeModalVideo.videoStream}
+                    poster={activeModalVideo.poster}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                ) : modalIsYouTube ? (
+                  <iframe
+                    className="w-full h-full object-cover"
+                    src={formatYouTubeEmbedUrl(activeModalVideo.youtubeEmbed || activeModalVideo.videoStream, true, false)}
+                    title={activeModalVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center p-6 text-center space-y-3">
+                    <img src={activeModalVideo.poster} alt={activeModalVideo.title} className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                    <div className="relative z-10 space-y-2">
+                      <p className="text-xs text-slate-300 font-medium">{activeModalVideo.title}</p>
+                      {activeModalVideo.videoStream && (
+                        <a
+                          href={activeModalVideo.videoStream}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-5 py-2.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Open Video ↗</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                {activeModalVideo.desc}
+              </p>
+
+              <div className="pt-2 flex justify-between items-center">
+                {modalIsInsta && (
+                  <a
+                    href={modalInstaLink || 'https://instagram.com'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-black text-rose-400 hover:text-rose-300 inline-flex items-center gap-1"
+                  >
+                    <Instagram className="w-4 h-4" /> Open Reel in New Tab ↗
+                  </a>
+                )}
+                <button
+                  onClick={() => setActiveModalVideo(null)}
+                  className="px-5 py-2.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer ml-auto"
+                >
+                  Close Video Player
+                </button>
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </section>
   );

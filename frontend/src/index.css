@@ -131,6 +131,99 @@ html, body {
   animation-play-state: paused;
 }
 
+/* ========================================================================== */
+/* Hero Floating Voucher Card Animations                                       */
+/* ========================================================================== */
+
+@keyframes floatPTE {
+  0% { transform: translate3d(0px, 0px, 0) rotate(-2.5deg) scale(1); }
+  20% { transform: translate3d(30px, -20px, 0) rotate(1.5deg) scale(1.02); }
+  40% { transform: translate3d(45px, 24px, 0) rotate(3deg) scale(0.99); }
+  65% { transform: translate3d(-18px, 36px, 0) rotate(-1.5deg) scale(1.03); }
+  85% { transform: translate3d(-26px, -14px, 0) rotate(-3deg) scale(0.98); }
+  100% { transform: translate3d(0px, 0px, 0) rotate(-2.5deg) scale(1); }
+}
+
+@keyframes floatIELTS {
+  0% { transform: translate3d(0px, 0px, 0) rotate(2deg) scale(1); }
+  25% { transform: translate3d(-32px, 26px, 0) rotate(-2.5deg) scale(0.98); }
+  50% { transform: translate3d(-48px, -20px, 0) rotate(1.8deg) scale(1.03); }
+  75% { transform: translate3d(20px, -32px, 0) rotate(3deg) scale(0.99); }
+  100% { transform: translate3d(0px, 0px, 0) rotate(2deg) scale(1); }
+}
+
+@keyframes floatTOEFL {
+  0% { transform: translate3d(0px, 0px, 0) rotate(-1.8deg) scale(1); }
+  20% { transform: translate3d(-24px, -36px, 0) rotate(2.2deg) scale(1.03); }
+  45% { transform: translate3d(-40px, 18px, 0) rotate(-3deg) scale(0.98); }
+  70% { transform: translate3d(18px, 32px, 0) rotate(1deg) scale(1.02); }
+  100% { transform: translate3d(0px, 0px, 0) rotate(-1.8deg) scale(1); }
+}
+
+@keyframes floatDuolingo {
+  0% { transform: translate3d(0px, 0px, 0) rotate(2.5deg) scale(1); }
+  22% { transform: translate3d(36px, 20px, 0) rotate(-1.5deg) scale(0.99); }
+  50% { transform: translate3d(22px, -34px, 0) rotate(-3deg) scale(1.03); }
+  78% { transform: translate3d(-32px, -16px, 0) rotate(1.8deg) scale(0.98); }
+  100% { transform: translate3d(0px, 0px, 0) rotate(2.5deg) scale(1); }
+}
+
+@keyframes orbitSpinSlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-float-pte {
+  animation: floatPTE 9.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite !important;
+}
+
+.animate-float-ielts {
+  animation: floatIELTS 11.4s cubic-bezier(0.37, 0, 0.63, 1) 0.8s infinite !important;
+}
+
+.animate-float-toefl {
+  animation: floatTOEFL 8.6s cubic-bezier(0.42, 0, 0.58, 1) 1.5s infinite !important;
+}
+
+.animate-float-duolingo {
+  animation: floatDuolingo 10.8s cubic-bezier(0.4, 0, 0.2, 1) 2.2s infinite !important;
+}
+
+.animate-orbit-spin {
+  transform-origin: 350px 260px;
+  animation: orbitSpinSlow 75s linear infinite;
+}
+
+.hero-floating-card-wrapper {
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hero-floating-card-wrapper:hover {
+  animation-play-state: paused !important;
+  z-index: 50 !important;
+}
+
+.hero-floating-card-inner {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.hero-floating-card-wrapper:hover .hero-floating-card-inner {
+  transform: scale(1.08) translateY(-8px) !important;
+  box-shadow: 0 24px 40px -10px rgba(255, 0, 92, 0.35), 0 12px 20px -5px rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(255, 0, 92, 0.6) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-pte,
+  .animate-float-ielts,
+  .animate-float-toefl,
+  .animate-float-duolingo,
+  .animate-orbit-spin {
+    animation: none !important;
+  }
+}
+
 /* Tasteful Selective Pink Highlight */
 .text-pink-highlight {
   color: #FF005C;

@@ -74,6 +74,20 @@ const orderSchema = new mongoose.Schema(
       name: String,
     },
     paymentNotes: { type: String, default: null },
+    cashfreeOrderId: { type: String, default: null, index: true },
+    paymentSessionId: { type: String, default: null },
+    paymentMethod: { type: String, default: null },
+    transactionId: { type: String, default: null },
+    webhookStatus: { type: String, default: null },
+    paidAt: { type: Date, default: null },
+    emailStatus: {
+      type: String,
+      enum: ['PENDING', 'SENT', 'FAILED'],
+      default: 'PENDING',
+      index: true,
+    },
+    emailSentAt: { type: Date, default: null },
+    emailError: { type: String, default: null },
   },
   { timestamps: true }
 );

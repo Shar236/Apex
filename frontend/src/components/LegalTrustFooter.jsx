@@ -4,33 +4,40 @@ import { Phone, Mail, Heart } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
 
 export const LegalTrustFooter = () => {
-  const { setActiveTab } = useVoucher();
+  const { setActiveTab, footerSettings } = useVoucher();
+
+  const footerDesc =
+    footerSettings?.description ||
+    'Official platform for discounted English language exam vouchers (PTE, IELTS, TOEFL, Duolingo). Test smarter, save more.';
+  const footerPhone = footerSettings?.phone || '+91 9855926113';
+  const footerEmail = footerSettings?.email || 'apexvouchers@gmail.com';
+  const footerCopyright = footerSettings?.copyright || '© 2026 Apex Vouchers. All rights reserved.';
 
   return (
     <footer className="bg-[#111111] dark:bg-[#0A0A0A] text-neutral-400 text-xs border-t border-neutral-800 dark:border-[#292929] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-        
         {/* Main Footer Grid */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pb-12 border-b border-neutral-800 dark:border-[#292929]">
-          
           {/* Column 1: APEX VOUCHERS Logo */}
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div onClick={() => setActiveTab('home')}>
               <ApexLogo showTagline={true} whiteText={true} />
             </div>
 
-            <p className="text-neutral-400 text-xs font-medium leading-relaxed">
-              Official platform for discounted English language exam vouchers (PTE, IELTS, TOEFL, Duolingo). Test smarter, save more.
-            </p>
+            <p className="text-neutral-400 text-xs font-medium leading-relaxed">{footerDesc}</p>
 
             <div className="space-y-1.5 pt-1 text-[11px]">
               <p className="text-neutral-300 font-bold flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-[#FF005C]" />
-                <span>+91 9266808333</span>
+                <a href={`tel:${footerPhone.replace(/\s+/g, '')}`} className="hover:text-[#FF005C]">
+                  {footerPhone}
+                </a>
               </p>
               <p className="text-neutral-300 font-bold flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-[#FF005C]" />
-                <span>support@apexvouchers.com</span>
+                <a href={`mailto:${footerEmail}`} className="hover:text-[#FF005C]">
+                  {footerEmail}
+                </a>
               </p>
             </div>
           </div>
@@ -101,7 +108,7 @@ export const LegalTrustFooter = () => {
 
         {/* Disclaimer & Copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-neutral-500">
-          <p>© 2026 Apex Vouchers. All rights reserved. apexvouchers.com</p>
+          <p>{footerCopyright}</p>
           <div className="flex items-center gap-1 text-neutral-400 font-semibold">
             <span>Built with</span>
             <Heart className="w-3.5 h-3.5 text-[#FF005C] fill-[#FF005C]" />

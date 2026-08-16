@@ -87,6 +87,87 @@ export const request = async (url, options = {}) => {
   return { success: true, data: data?.data ?? data, user: data?.user ?? data?.data, ...data };
 };
 
+export const setMetaTag = (name, content, attr = 'name') => {
+  if (typeof document === 'undefined' || !content) return;
+  let tag = document.querySelector(`meta[${attr}="${name}"]`);
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute(attr, name);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+};
+
+export const setLinkTag = (rel, href) => {
+  if (typeof document === 'undefined') return;
+  let tag = document.querySelector(`link[rel="${rel}"]`);
+  if (!tag) {
+    tag = document.createElement('link');
+    tag.setAttribute('rel', rel);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('href', href);
+};
+
+const jsonLdStore = { ids: new Set() };
+
+export const setStructuredData = (id, jsonLd) => {
+  if (typeof document === 'undefined') return;
+  const scriptId = `ld-json-${id}`;
+  let script = document.getElementById(scriptId);
+  if (!jsonLd) {
+    if (script) script.remove();
+    jsonLdStore.ids.delete(scriptId);
+    return;
+  }
+  if (!script) {
+    script = document.createElement('script');
+    script.setAttribute('type', 'application/ld+json');
+    script.id = scriptId;
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(jsonLd);
+  jsonLdStore.ids.add(scriptId);
+};
+
+export const applyPageMetadata = (options = {}) => {
+  if (typeof document === 'undefined') return;
+  const {
+    title,
+    description,
+    canonical,
+    ogTitle,
+    ogDescription,
+    ogImage,
+    ogUrl,
+    ogType = 'website',
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+    twitterCard = 'summary_large_image',
+    noindex = false,
+    nofollow = false,
+  } = options;
+
+  if (title) document.title = title;
+  if (description) setMetaTag('description', description);
+  if (canonical) setLinkTag('canonical', canonical);
+
+  if (ogTitle) setMetaTag('og:title', ogTitle, 'property');
+  if (ogDescription) setMetaTag('og:description', ogDescription, 'property');
+  if (ogImage) setMetaTag('og:image', ogImage, 'property');
+  if (ogUrl) setMetaTag('og:url', ogUrl, 'property');
+  setMetaTag('og:type', ogType, 'property');
+
+  if (twitterTitle) setMetaTag('twitter:title', twitterTitle);
+  if (twitterDescription) setMetaTag('twitter:description', twitterDescription);
+  if (twitterImage) setMetaTag('twitter:image', twitterImage);
+  setMetaTag('twitter:card', twitterCard);
+
+  const robots = [noindex ? 'noindex' : 'index', nofollow ? 'nofollow' : 'follow'].join(', ');
+  setMetaTag('robots', robots);
+};
+
 export const authApi = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -101,6 +182,8 @@ export const productApi = {
     return request(`/api/products${qs ? `?${qs}` : ''}`);
   },
   get: (id) => request(`/api/products/${id}`),
+  getWebsiteConfig: () => request('/api/products/website-config'),
+  getPublicSEO: () => request('/api/seo/public'),
 };
 
 export const accountApi = {
@@ -121,6 +204,39 @@ export const orderApi = {
   get: (id) => request(`/api/orders/${id}`),
   simulatePay: (id, payload = {}) =>
     request(`/api/orders/${id}/pay`, { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+export const paymentApi = {
+  createCashfreeOrder: (payload) =>
+    request('/api/payments/cashfree/create-order', { method: 'POST', body: JSON.stringify(payload) }),
+  getCashfreeStatus: (orderId, simulateSuccess = false) =>
+    request(`/api/payments/cashfree/status/${orderId}${simulateSuccess ? '?simulateSuccess=true' : ''}`),
+};
+
+export const seoApi = {
+  overview: () => request('/api/seo/overview'),
+  analyzeInline: (payload) => request('/api/seo/analyze', { method: 'POST', body: JSON.stringify(payload) }),
+  analyzeProduct: (id) => request(`/api/seo/analyze/product/${id}`),
+  updateProductSEO: (id, data) => request(`/api/seo/products/${id}/seo`, { method: 'PATCH', body: JSON.stringify(data) }),
+  pages: () => request('/api/seo/pages'),
+  getPage: (pageKey) => request(`/api/seo/pages/${pageKey}`),
+  updatePage: (pageKey, data) => request(`/api/seo/pages/${pageKey}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  redirects: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/seo/redirects${qs ? `?${qs}` : ''}`);
+  },
+  createRedirect: (data) => request('/api/seo/redirects', { method: 'POST', body: JSON.stringify(data) }),
+  updateRedirect: (id, data) => request(`/api/seo/redirects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteRedirect: (id) => request(`/api/seo/redirects/${id}`, { method: 'DELETE' }),
+  blogs: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/seo/blogs${qs ? `?${qs}` : ''}`);
+  },
+  createBlog: (data) => request('/api/seo/blogs', { method: 'POST', body: JSON.stringify(data) }),
+  updateBlog: (id, data) => request(`/api/seo/blogs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteBlog: (id) => request(`/api/seo/blogs/${id}`, { method: 'DELETE' }),
+  globalSettings: () => request('/api/seo/global-settings'),
+  updateGlobalSettings: (data) => request('/api/seo/global-settings', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 export const adminApi = {
@@ -161,10 +277,18 @@ export const adminApi = {
   order: (id) => request(`/api/admin/orders/${id}`),
   updateOrderStatus: (id, payload) =>
     request(`/api/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  resendOrderEmail: (id) => request(`/api/admin/orders/${id}/resend-email`, { method: 'POST' }),
   promotions: () => request('/api/admin/promotions'),
   createPromotion: (data) => request('/api/admin/promotions', { method: 'POST', body: JSON.stringify(data) }),
   updatePromotion: (id, data) => request(`/api/admin/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePromotion: (id) => request(`/api/admin/promotions/${id}`, { method: 'DELETE' }),
+  campaigns: () => request('/api/admin/campaigns'),
+  createCampaign: (data) => request('/api/admin/campaigns', { method: 'POST', body: JSON.stringify(data) }),
+  updateCampaign: (id, data) => request(`/api/admin/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCampaign: (id) => request(`/api/admin/campaigns/${id}`, { method: 'DELETE' }),
+  toggleCampaign: (id) => request(`/api/admin/campaigns/${id}/toggle`, { method: 'POST' }),
+  getWebsiteSettings: () => request('/api/admin/website-settings'),
+  updateWebsiteSettings: (data) => request('/api/admin/website-settings', { method: 'PATCH', body: JSON.stringify(data) }),
   auditLogs: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`);
@@ -200,6 +324,18 @@ export const adminApi = {
   quickTogglePublishVideo: (id, published) => request(`/api/admin/videos/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
   deleteVideo: (id) => request(`/api/admin/videos/${id}`, { method: 'DELETE' }),
   updateVideoSettings: (data) => request('/api/admin/videos/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  uploadMedia: async (formData) => {
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/videos/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    return await resp.json();
+  },
+  seo: seoApi,
 };
 
 export const videoApi = {

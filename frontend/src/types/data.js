@@ -240,7 +240,7 @@ export const FAQ_ITEMS = [
   },
   {
     question: "What happens if I need help?",
-    answer: "Our dedicated student support team is available 24/7 via WhatsApp (+91 9266808333) and email (support@apexvouchers.com) to assist you with booking, date selection, or code redemption."
+    answer: "Our dedicated student support team is available 24/7 via WhatsApp (+91 9855926113) and email (apexvouchers@gmail.com) to assist you with booking, date selection, or code redemption."
   }
 ];
 

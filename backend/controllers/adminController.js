@@ -1,8 +1,9 @@
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Setting } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Setting, Campaign } from '../models/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { hashPassword } from '../middleware/auth.js';
 import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
+import { sendOrderConfirmation } from '../services/email.js';
 
 const PAID_ORDER_STATUSES = ['PAID', 'FULFILLED'];
 
@@ -1289,6 +1290,254 @@ export const updateVideoSettings = async (req, res, next) => {
         movieReelModeEnabled: !!movieReelModeEnabled,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Handle Media File Upload (Video & Thumbnail)
+ * POST /api/admin/videos/upload
+ */
+export const uploadMedia = async (req, res, next) => {
+  try {
+    const files = req.files || {};
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    let videoUrl = '';
+    let thumbnailUrl = '';
+
+    if (files.video && files.video[0]) {
+      videoUrl = `${baseUrl}/uploads/videos/${files.video[0].filename}`;
+    }
+    if (files.thumbnail && files.thumbnail[0]) {
+      thumbnailUrl = `${baseUrl}/uploads/thumbnails/${files.thumbnail[0].filename}`;
+    }
+
+    if (!videoUrl && !thumbnailUrl) {
+      return next(new AppError('No valid file uploaded', 400));
+    }
+
+    res.json({
+      success: true,
+      message: 'Media uploaded successfully',
+      videoUrl,
+      thumbnailUrl,
+      fileInfo: {
+        video: files.video ? files.video[0] : null,
+        thumbnail: files.thumbnail ? files.thumbnail[0] : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resendOrderEmail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const q = isValidObjectId(id) ? { _id: id } : { orderNo: id };
+    const order = await Order.findOne(q).populate('userId');
+
+    if (!order) return next(new AppError('Order not found', 404));
+
+    if (order.paymentStatus !== 'PAID') {
+      return next(new AppError('Cannot send confirmation email for unpaid order', 400));
+    }
+
+    const vouchers = await VoucherCode.find({ orderId: order._id })
+      .populate('productId', 'name brand')
+      .lean();
+
+    if (!vouchers || vouchers.length === 0) {
+      return next(
+        new AppError(
+          'No voucher codes have been assigned to this order yet. Please allocate a voucher first.',
+          400
+        )
+      );
+    }
+
+    const enriched = vouchers.map((v) => {
+      const match = order.items.find(
+        (it) => it.productId.toString() === (v.productId?._id || v.productId).toString()
+      );
+      return {
+        code: v.code,
+        expiryDate: v.expiryDate,
+        productName: match?.productName || v.productId?.name || 'Exam Voucher',
+      };
+    });
+
+    const targetUser = order.userId || {
+      name: order.customerSnapshot?.name || order.billingDetails?.name || 'Customer',
+      email: order.customerSnapshot?.email || order.billingDetails?.email,
+    };
+
+    const mailRes = await sendOrderConfirmation(targetUser, order, enriched);
+
+    if (mailRes && mailRes.sent !== false) {
+      order.emailStatus = 'SENT';
+      order.emailSentAt = new Date();
+      order.emailError = null;
+    } else {
+      order.emailStatus = 'FAILED';
+      order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
+    }
+    await order.save();
+
+    await recordAudit(req, 'ADMIN_EMAIL_RESENT', 'Order', order._id, {
+      orderNo: order.orderNo,
+      emailStatus: order.emailStatus,
+      recipient: targetUser.email,
+    });
+
+    res.json({
+      success: true,
+      emailStatus: order.emailStatus,
+      message:
+        order.emailStatus === 'SENT'
+          ? `Confirmation email resent successfully to ${targetUser.email}.`
+          : `Attempted resend to ${targetUser.email}, status: ${order.emailStatus}.`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listCampaigns = async (req, res, next) => {
+  try {
+    const campaigns = await Campaign.find()
+      .sort({ priority: -1, createdAt: -1 })
+      .populate('applicableProducts', 'name brand sellingPrice originalPrice')
+      .lean();
+    res.json({ success: true, count: campaigns.length, data: campaigns });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createCampaign = async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    if (!body.name || !body.startDate || !body.endDate || body.discountValue === undefined) {
+      return next(new AppError('Name, start date, end date, and discount value are required', 400));
+    }
+
+    const campaign = new Campaign({
+      ...body,
+      createdBy: req.user._id,
+    });
+    await campaign.save();
+
+    await recordAudit(req, 'CAMPAIGN_CREATED', 'Campaign', campaign._id, {
+      name: campaign.name,
+      status: campaign.status,
+      discountValue: campaign.discountValue,
+    });
+
+    res.status(201).json({ success: true, data: campaign.toObject() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateCampaign = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const campaign = await Campaign.findById(id);
+    if (!campaign) return next(new AppError('Campaign not found', 404));
+
+    Object.assign(campaign, req.body);
+    await campaign.save();
+
+    await recordAudit(req, 'CAMPAIGN_UPDATED', 'Campaign', campaign._id, {
+      name: campaign.name,
+      status: campaign.status,
+    });
+
+    res.json({ success: true, data: campaign.toObject() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteCampaign = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const campaign = await Campaign.findByIdAndDelete(id);
+    if (!campaign) return next(new AppError('Campaign not found', 404));
+
+    await recordAudit(req, 'CAMPAIGN_DELETED', 'Campaign', id, { name: campaign.name });
+
+    res.json({ success: true, message: 'Campaign deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const toggleCampaignStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const campaign = await Campaign.findById(id);
+    if (!campaign) return next(new AppError('Campaign not found', 404));
+
+    campaign.status = campaign.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+    await campaign.save();
+
+    await recordAudit(req, 'CAMPAIGN_STATUS_TOGGLED', 'Campaign', campaign._id, {
+      name: campaign.name,
+      status: campaign.status,
+    });
+
+    res.json({ success: true, status: campaign.status, data: campaign.toObject() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getWebsiteSettings = async (req, res, next) => {
+  try {
+    const heroSettings = (await Setting.findOne({ key: 'heroSettings' }))?.value || null;
+    const announcementSettings = (await Setting.findOne({ key: 'announcementSettings' }))?.value || null;
+    const benefitCards = (await Setting.findOne({ key: 'benefitCards' }))?.value || null;
+    const footerSettings = (await Setting.findOne({ key: 'footerSettings' }))?.value || null;
+
+    res.json({
+      success: true,
+      data: {
+        heroSettings,
+        announcementSettings,
+        benefitCards,
+        footerSettings,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateWebsiteSettings = async (req, res, next) => {
+  try {
+    const { heroSettings, announcementSettings, benefitCards, footerSettings } = req.body;
+
+    if (heroSettings) {
+      await Setting.findOneAndUpdate({ key: 'heroSettings' }, { key: 'heroSettings', value: heroSettings }, { upsert: true });
+    }
+    if (announcementSettings) {
+      await Setting.findOneAndUpdate({ key: 'announcementSettings' }, { key: 'announcementSettings', value: announcementSettings }, { upsert: true });
+    }
+    if (benefitCards) {
+      await Setting.findOneAndUpdate({ key: 'benefitCards' }, { key: 'benefitCards', value: benefitCards }, { upsert: true });
+    }
+    if (footerSettings) {
+      await Setting.findOneAndUpdate({ key: 'footerSettings' }, { key: 'footerSettings', value: footerSettings }, { upsert: true });
+    }
+
+    await recordAudit(req, 'WEBSITE_SETTINGS_UPDATED', 'Setting', null, {
+      updatedKeys: Object.keys(req.body),
+    });
+
+    res.json({ success: true, message: 'Website settings updated successfully.' });
   } catch (err) {
     next(err);
   }

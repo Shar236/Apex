@@ -219,7 +219,23 @@ export const simulatePaymentSuccess = async (req, res, next) => {
           productName: match?.productName || '',
         };
       });
-      await sendOrderConfirmation(req.user, order, enriched).catch(() => {});
+
+      try {
+        const mailRes = await sendOrderConfirmation(req.user, order, enriched);
+        if (mailRes && mailRes.sent !== false) {
+          order.emailStatus = 'SENT';
+          order.emailSentAt = new Date();
+          order.emailError = null;
+        } else {
+          order.emailStatus = 'FAILED';
+          order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
+        }
+        await order.save();
+      } catch (mErr) {
+        order.emailStatus = 'FAILED';
+        order.emailError = mErr.message;
+        await order.save().catch(() => {});
+      }
 
       return res.json({
         success: true,

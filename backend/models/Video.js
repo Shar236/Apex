@@ -23,6 +23,11 @@ const videoSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    instagramUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     thumbnail: {
       type: String,
       trim: true,

@@ -5,8 +5,8 @@ let transporter = null;
 
 const getTransport = () => {
   if (transporter) return transporter;
-  if (!config.smtp.host) {
-    console.warn('[email] SMTP not configured. Emails will be logged instead.');
+  if (!config.smtp.host || !config.smtp.user) {
+    console.warn('[email] SMTP host/user not configured. Email will be stubbed to log.');
     return null;
   }
   transporter = nodemailer.createTransport({
@@ -20,93 +20,430 @@ const getTransport = () => {
   return transporter;
 };
 
-export const sendEmail = async ({ to, subject, html, text = '' }) => {
+export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from }) => {
   const transport = getTransport();
   const mail = {
-    from: config.smtp.from,
+    from: from || `"${config.business.name}" <${config.business.email}>`,
     to,
     subject,
     html,
     text,
   };
   if (!transport) {
-    console.log('[email:dev-send]', JSON.stringify({ to, subject }));
+    console.log(`[email:stub] Dispatching email to: ${to} | Subject: "${subject}"`);
     return { sent: false, stub: true, mail };
   }
   try {
     const info = await transport.sendMail(mail);
     return { sent: true, info };
   } catch (err) {
-    console.error('[email] failed:', err.message);
+    console.error('[email] Delivery failed:', err.message);
     return { sent: false, error: err.message };
   }
 };
 
 const htmlWrap = (title, body) => `
 <!DOCTYPE html>
-<html lang="en"><body style="font-family:system-ui,sans-serif;color:#111;max-width:620px;margin:0 auto;padding:24px">
-  <div style="background:#7B4CF0;color:#fff;padding:18px 22px;border-radius:14px;margin-bottom:18px">
-    <h1 style="margin:0;font-size:22px;letter-spacing:0.5px">APEX <span style="color:#E63946">●</span> VOUCHERS</h1>
-  </div>
-  <h2 style="color:#111;margin-top:0">${title}</h2>
-  ${body}
-  <p style="color:#777;font-size:12px;margin-top:28px">© Apex Vouchers. Reach top scores, skip the extra fee.</p>
-</body></html>`;
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0d0d0d; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0d0d0d; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #161616; border: 1px solid #262626; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          
+          <!-- Header Branding -->
+          <tr>
+            <td style="background-color: #111111; padding: 24px 32px; border-bottom: 1px solid #262626;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">
+                      APEX<span style="color: #FF005C;">●</span>VOUCHERS
+                    </span>
+                  </td>
+                  <td align="right">
+                    <span style="font-size: 11px; font-weight: 800; background-color: #220512; color: #FF005C; border: 1px solid #FF005C; padding: 4px 10px; border-radius: 8px; text-transform: uppercase;">
+                      Official Delivery
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-export const sendRegistrationWelcome = (user) =>
-  sendEmail({
-    to: user.email,
-    subject: 'Welcome to Apex Vouchers — your dashboard is ready',
-    html: htmlWrap(
-      `Hi ${user.name}, welcome aboard!`,
-      `<p>Thanks for signing up with Apex Vouchers. You can now log in, browse discounted exam vouchers, and manage all your codes in one place.</p>
-       <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/login" style="display:inline-block;background:#E63946;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Go to My Dashboard</a>`
-    ),
-  });
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px;">
+              ${body}
+            </td>
+          </tr>
 
-export const sendOrderConfirmation = (user, order, vouchers) => {
-  const rows = order.items
-    .map(
-      (it) =>
-        `<tr><td>${it.productName}</td><td style="text-align:right">${it.quantity}</td><td style="text-align:right">₹${it.unitPrice}</td></tr>`
-    )
-    .join('');
-  const codes = vouchers?.length
-    ? `<h3 style="margin-top:24px">Your Voucher Codes</h3>
-       <table style="border-collapse:collapse;width:100%"><thead><tr><th style="text-align:left;border-bottom:1px solid #eee;padding:8px">Product</th><th style="text-align:left;border-bottom:1px solid #eee;padding:8px">Code</th><th style="text-align:left;border-bottom:1px solid #eee;padding:8px">Expires</th></tr></thead>
-       <tbody>${vouchers
-         .map(
-           (v) =>
-             `<tr><td style="padding:8px">${v.productName}</td><td style="padding:8px;font-family:monospace;background:#F3EEFF">${v.code}</td><td style="padding:8px">${v.expiryDate.toISOString().slice(0, 10)}</td></tr>`
-         )
-         .join('')}</tbody></table>`
-    : '';
+          <!-- Official Customer Support Footer -->
+          <tr>
+            <td style="background-color: #111111; padding: 24px 32px; border-top: 1px solid #262626; text-align: center; font-size: 12px; color: #888888; line-height: 1.6;">
+              <p style="margin: 0 0 10px 0; font-weight: 700; color: #aaaaaa;">
+                🔒 Security Notice: For your safety, never share your voucher code or account password with anyone.
+              </p>
+              <p style="margin: 0 0 10px 0; color: #cccccc;">
+                Need help? Contact <strong>${config.business.name} Support</strong><br/>
+                Email: <a href="mailto:${config.business.supportEmail}" style="color: #FF005C; text-decoration: none; font-weight: 700;">${config.business.supportEmail}</a> | Phone: <a href="tel:${config.business.supportPhone.replace(/\s+/g, '')}" style="color: #FF005C; text-decoration: none; font-weight: 700;">${config.business.supportPhone}</a>
+              </p>
+              <p style="margin: 0; color: #666666; font-size: 11px;">
+                © ${new Date().getFullYear()} ${config.business.name}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+export const sendRegistrationWelcome = (user) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
   return sendEmail({
     to: user.email,
-    subject: `Order #${order.orderNo} confirmed — your Apex voucher codes`,
+    subject: `Welcome to ${config.business.name} — Account Ready`,
     html: htmlWrap(
-      `Order #${order.orderNo} confirmed 🎉`,
-      `<p>Payment received successfully. Your voucher codes are now available in your dashboard:</p>
-       <table style="width:100%;border-collapse:collapse;font-size:14px">
-         <thead><tr><th style="text-align:left;border-bottom:1px solid #eee;padding:6px">Item</th><th style="text-align:right;border-bottom:1px solid #eee;padding:6px">Qty</th><th style="text-align:right;border-bottom:1px solid #eee;padding:6px">Price</th></tr></thead>
-         <tbody>${rows}</tbody>
-         <tfoot><tr><td colspan="2" style="padding:6px;text-align:right;font-weight:700">Total Paid</td><td style="padding:6px;text-align:right;font-weight:700">₹${order.total}</td></tr></tfoot>
-       </table>
-       ${codes}`
+      `Welcome to ${config.business.name}`,
+      `
+      <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${user.name}, welcome aboard!</h2>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 24px 0;">
+        Thank you for creating your candidate account on ${config.business.name}. You can now log in, purchase official exam vouchers at maximum discount, and access your voucher inventory anytime.
+      </p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="${clientUrl}/login" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+          Go to My Dashboard →
+        </a>
+      </div>
+      `
     ),
   });
 };
 
+/**
+ * Customer Purchase Confirmation Email (Sent ONLY AFTER confirmed payment)
+ */
+export const sendOrderConfirmation = (user, order, vouchers = []) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerName = user.name || order.customerSnapshot?.name || order.billingDetails?.name || 'Valued Customer';
+  const targetEmail = user.email || order.customerSnapshot?.email || order.billingDetails?.email;
+  const firstProductName = order.items?.[0]?.productName || 'Exam Voucher';
+  const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const subject = `🎉 Congratulations! Your ${firstProductName} Order is Confirmed (#${order.orderNo})`;
+
+  const itemRows = (order.items || [])
+    .map(
+      (it) => `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #262626; font-size: 14px; color: #ffffff; font-weight: 600;">${it.productName}</td>
+        <td align="center" style="padding: 12px 0; border-bottom: 1px solid #262626; font-size: 14px; color: #cccccc;">${it.quantity}</td>
+        <td align="right" style="padding: 12px 0; border-bottom: 1px solid #262626; font-size: 14px; color: #ffffff; font-weight: 700;">₹${(it.unitPrice * it.quantity).toLocaleString('en-IN')}</td>
+      </tr>`
+    )
+    .join('');
+
+  const voucherCards = vouchers.length
+    ? vouchers
+        .map(
+          (v) => `
+      <div style="background-color: #240514; border: 2px dashed #FF005C; border-radius: 16px; padding: 20px; margin-top: 16px;">
+        <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #FF005C; margin-bottom: 6px;">
+          ${v.productName || firstProductName}
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 26px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 10px; word-break: break-all;">
+          ${v.code}
+        </div>
+        <div style="font-size: 12px; color: #aaaaaa;">
+          Valid Until: <strong style="color: #ffffff;">${new Date(v.expiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+        </div>
+      </div>`
+        )
+        .join('')
+    : `
+      <div style="background-color: #261f0a; border: 1px solid #7c5e10; border-radius: 14px; padding: 16px; margin-top: 16px; font-size: 13px; color: #f5c045; text-align: center;">
+        Your voucher code is active and accessible inside your Apex account dashboard.
+      </div>`;
+
+  const bodyHtml = `
+    <!-- Greeting -->
+    <h2 style="font-size: 24px; font-weight: 900; margin: 0 0 12px 0; color: #ffffff;">Hi ${customerName},</h2>
+    
+    <!-- Congratulations Message -->
+    <p style="font-size: 15px; line-height: 1.6; color: #dddddd; margin: 0 0 24px 0;">
+      🎉 <strong>Congratulations!</strong> Thank you for purchasing your exam voucher from Apex Vouchers. Your payment has been successfully confirmed and your voucher is now available in your Apex account.
+    </p>
+
+    <!-- Order Summary Card -->
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
+        <tr>
+          <td><span style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #888888; letter-spacing: 0.5px;">ORDER DETAILS</span></td>
+          <td align="right"><span style="font-size: 12px; font-weight: 800; background-color: #0f2e1b; color: #34d399; padding: 3px 8px; border-radius: 6px;">PAYMENT PAID</span></td>
+        </tr>
+      </table>
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Purchase Date:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${dateStr}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
+          <td align="right" style="font-size: 16px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${order.total?.toLocaleString('en-IN')}</td>
+        </tr>
+      </table>
+
+      <!-- Item Breakdown Table -->
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 12px; border-top: 1px solid #262626;">
+        <thead>
+          <tr>
+            <th align="left" style="padding: 10px 0 6px 0; font-size: 11px; color: #777777; text-transform: uppercase;">Item</th>
+            <th align="center" style="padding: 10px 0 6px 0; font-size: 11px; color: #777777; text-transform: uppercase;">Qty</th>
+            <th align="right" style="padding: 10px 0 6px 0; font-size: 11px; color: #777777; text-transform: uppercase;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Voucher Details Section -->
+    <h3 style="font-size: 16px; font-weight: 800; margin: 0 0 8px 0; color: #ffffff;">YOUR VOUCHER DETAILS</h3>
+    <p style="font-size: 13px; color: #aaaaaa; margin: 0 0 14px 0;">Use the voucher code below to schedule your official exam directly on the test administrator website.</p>
+    
+    ${voucherCards}
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin-top: 32px; margin-bottom: 12px;">
+      <a href="${clientUrl}/account" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 900; font-size: 15px; text-decoration: none; padding: 16px 36px; border-radius: 14px; box-shadow: 0 4px 15px rgba(255, 0, 92, 0.4);">
+        View My Voucher →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: targetEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/**
+ * Internal Admin New Order Notification Email
+ */
+export const sendAdminNewOrderNotification = (user, order, vouchers = []) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerName = user.name || order.customerSnapshot?.name || order.billingDetails?.name || 'Customer';
+  const customerEmail = user.email || order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
+  const customerPhone = user.phone || order.customerSnapshot?.phone || order.billingDetails?.phone || 'N/A';
+
+  const firstProductName = order.items?.[0]?.productName || 'Exam Voucher';
+  const quantity = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 1;
+
+  const subject = `🛒 New Voucher Purchase — Order #${order.orderNo}`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">NEW VOUCHER PURCHASE</h2>
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${customerName}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Email:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #FF005C; padding-bottom: 6px;">${customerEmail}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">WhatsApp / Phone:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${customerPhone}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Voucher Product:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${firstProductName}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Quantity:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${quantity}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
+          <td align="right" style="font-size: 16px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${order.total?.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Method:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #ffffff; padding-bottom: 6px;">${(order.paymentMethod || 'UPI/Card').toUpperCase()}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Status:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #34d399; padding-bottom: 6px;">PAID</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Voucher Assignment:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #34d399; padding-bottom: 6px;">ASSIGNED</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Open Order in Admin Dashboard →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/**
+ * Internal Admin Alert: Voucher Assignment Failure
+ */
+export const sendAdminVoucherAssignmentFailureAlert = (order, errorMsg) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerEmail = order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
+  const customerName = order.customerSnapshot?.name || order.billingDetails?.name || 'Customer';
+  const firstProductName = order.items?.[0]?.productName || 'Exam Voucher';
+
+  const subject = `🚨 Action Required — Paid Order Without Voucher Assignment (#${order.orderNo})`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #f87171;">🚨 ACTION REQUIRED: VOUCHER UNASSIGNED</h2>
+    <p style="font-size: 14px; color: #fca5a5; margin-bottom: 20px;">
+      An order was successfully paid, but voucher inventory assignment failed. Please assign a voucher manually from the admin dashboard.
+    </p>
+    <div style="background-color: #1a1a1a; border: 1px solid #991b1b; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer Name:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${customerName}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer Email:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #FF005C; padding-bottom: 6px;">${customerEmail}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Product Requested:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${firstProductName}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
+          <td align="right" style="font-size: 14px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${order.total?.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Error Details:</td>
+          <td align="right" style="font-size: 12px; font-weight: 600; color: #f87171; padding-bottom: 6px;">${errorMsg || 'Inventory empty'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #dc2626; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Assign Voucher Manually in Admin →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/**
+ * Internal Admin Alert: Customer Email Delivery Failure
+ */
+export const sendAdminEmailDeliveryFailureAlert = (order, errorMsg) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerEmail = order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
+
+  const subject = `⚠️ Voucher Email Delivery Failed — Order #${order.orderNo}`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #fbbf24;">⚠️ VOUCHER EMAIL DELIVERY FAILED</h2>
+    <p style="font-size: 14px; color: #fde68a; margin-bottom: 20px;">
+      The customer's voucher is active in their account, but automated email dispatch failed. You can click "Resend Voucher Email" in the admin console.
+    </p>
+    <div style="background-color: #1a1a1a; border: 1px solid #92400e; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer Email:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #FF005C; padding-bottom: 6px;">${customerEmail}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Error Details:</td>
+          <td align="right" style="font-size: 12px; font-weight: 600; color: #fbbf24; padding-bottom: 6px;">${errorMsg || 'SMTP dispatch error'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #d97706; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Open Admin Console to Resend →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
 export const sendPasswordReset = (user, token) => {
-  const url = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const url = `${clientUrl}/reset-password?token=${token}`;
   return sendEmail({
     to: user.email,
-    subject: 'Reset your Apex Vouchers password',
+    subject: `Reset your ${config.business.name} password`,
     html: htmlWrap(
       'Reset your password',
-      `<p>Click the link below to create a new password. This link is valid for 60 minutes.</p>
-       <a href="${url}" style="display:inline-block;background:#E63946;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Reset Password</a>
-       <p style="color:#888;font-size:12px">If you didn't request this, please ignore this email.</p>`
+      `
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Reset your password</h2>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 24px 0;">
+        We received a request to reset your password. Click the button below to choose a new password. This link is valid for 60 minutes.
+      </p>
+      <div style="text-align: center;">
+        <a href="${url}" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+          Reset Password Now
+        </a>
+      </div>
+      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't request a password reset, please ignore this message.</p>
+      `
     ),
   });
 };

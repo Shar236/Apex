@@ -4,7 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
 import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, ArrowRight, Copy, Check, AlertCircle, ExternalLink, LogIn } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
-import { orderApi, accountApi, formatPrice as fmt } from '../lib/api';
+import { orderApi, accountApi, paymentApi, formatPrice as fmt } from '../lib/api';
+
+const loadCashfreeSdk = () => {
+  return new Promise((resolve) => {
+    if (window.Cashfree) {
+      resolve(window.Cashfree);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    script.onload = () => resolve(window.Cashfree);
+    script.onerror = () => resolve(null);
+    document.body.appendChild(script);
+  });
+};
 
 export const CheckoutModal = () => {
   const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, setActiveTab } = useVoucher();
@@ -17,6 +31,7 @@ export const CheckoutModal = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingState, setProcessingState] = useState('idle');
   const [isCompleted, setIsCompleted] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
   const [completedVouchers, setCompletedVouchers] = useState([]);
@@ -110,37 +125,66 @@ export const CheckoutModal = () => {
       return;
     }
     setIsProcessing(true);
+    setProcessingState('creating');
+
     const orderPayload = {
       items: [{ productId: checkoutProduct._id || checkoutProduct.id, quantity: 1 }],
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
+      paymentMethod,
       billing: {
         ...formData,
         email: formData.email || user?.email,
       },
     };
-    const orderRes = await orderApi.create(orderPayload);
-    if (!orderRes.success) {
-      setIsProcessing(false);
-      setError(orderRes.message || 'Failed to create order');
-      return;
-    }
-    const order = orderRes.data;
-    const payRes = await orderApi.simulatePay(order._id || order.id, {
-      provider: paymentMethod,
-      reference: `SIM-${order.orderNo}`,
-    });
-    if (!payRes.success) {
-      setIsProcessing(false);
-      setError(payRes.message || 'Payment failed');
-      return;
-    }
-    setIsProcessing(false);
-    setIsCompleted(true);
-    setCompletedOrder(payRes.data || order);
-    setCompletedVouchers(payRes.vouchers || []);
 
-    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    handlePurchaseSuccess({ orderId: order.orderNo });
+    // 1. Create Cashfree Sandbox Order via Server API
+    const createRes = await paymentApi.createCashfreeOrder(orderPayload);
+    if (!createRes.success) {
+      setIsProcessing(false);
+      setProcessingState('idle');
+      setError(createRes.message || 'Failed to create payment order');
+      return;
+    }
+
+    const { paymentSessionId, orderNo, orderId } = createRes;
+
+    // 2. Open Cashfree Web SDK Checkout Modal
+    setProcessingState('opening');
+    const CashfreeSDK = await loadCashfreeSdk();
+
+    if (CashfreeSDK && paymentSessionId && !paymentSessionId.startsWith('session_sandbox_')) {
+      try {
+        const cashfree = CashfreeSDK({ mode: 'sandbox' });
+        await cashfree.checkout({
+          paymentSessionId,
+          redirectTarget: '_modal',
+        });
+      } catch (sdkErr) {
+        console.warn('[Cashfree Checkout SDK]: Modal closed or redirected:', sdkErr);
+      }
+    }
+
+    // 3. Verify Payment Status & Deliver Voucher Atomically from Backend
+    setProcessingState('verifying');
+    const statusRes = await paymentApi.getCashfreeStatus(orderId || orderNo, true);
+
+    setIsProcessing(false);
+    setProcessingState('idle');
+
+    if (
+      statusRes.success &&
+      (statusRes.paymentStatus === 'PAID' ||
+        statusRes.orderStatus === 'FULFILLED' ||
+        statusRes.data?.paymentStatus === 'PAID')
+    ) {
+      setIsCompleted(true);
+      setCompletedOrder(statusRes.data || createRes.data);
+      setCompletedVouchers(statusRes.vouchers || []);
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      handlePurchaseSuccess({ orderId: orderNo });
+    } else {
+      setError(statusRes.message || 'Payment was not completed. Please try again.');
+    }
   };
 
   const handleCopy = (idx, code) => {
@@ -348,7 +392,12 @@ export const CheckoutModal = () => {
               <div className="pt-2 space-y-2">
                 <button type="submit" disabled={isProcessing} className="w-full btn-pink !py-4 !rounded-xl !text-base font-black flex items-center justify-center gap-2 shadow-xl disabled:opacity-60">
                   {isProcessing ? (
-                    <span>Processing Payment & Assigning Voucher…</span>
+                    <span>
+                      {processingState === 'creating' && 'Creating Secure Payment…'}
+                      {processingState === 'opening' && 'Opening Cashfree Checkout…'}
+                      {processingState === 'verifying' && 'Verifying Payment & Issuing Voucher…'}
+                      {processingState === 'idle' && 'Processing Payment…'}
+                    </span>
                   ) : (
                     <>
                       <Lock className="w-5 h-5" />
@@ -375,8 +424,11 @@ export const CheckoutModal = () => {
               </span>
               <h2 className="font-heading font-black text-3xl">Voucher Code Issued!</h2>
               <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium mt-1">
-                Your voucher is now in your account dashboard and email.
+                Your voucher is now in your Apex account dashboard and email.
               </p>
+              <div className="mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-xl py-2 px-3 inline-block">
+                📧 Confirmation email sent to <span className="underline">{formData.email || user?.email}</span>
+              </div>
             </div>
 
             {completedVouchers?.length > 0 ? (

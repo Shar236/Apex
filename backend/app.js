@@ -7,6 +7,8 @@ import { config } from './config/index.js';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { seedAdmin } from './controllers/adminController.js';
+import { getSitemapXML, getRobotsTxt, getPublicSEOData, ensureDefaultPages } from './controllers/seoController.js';
+import { Redirect } from './models/index.js';
 
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
@@ -14,6 +16,8 @@ import accountRoutes from './routes/accountRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import seoRoutes from './routes/seoRoutes.js';
 
 const app = express();
 
@@ -22,7 +26,6 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin/proxy)
       if (!origin) return callback(null, true);
       if (
         origin === config.clientUrl ||
@@ -30,13 +33,29 @@ app.use(
       ) {
         return callback(null, true);
       }
-      callback(null, true); // Permissive in dev to prevent CORS blockage
+      callback(null, true);
     },
     credentials: true,
   })
 );
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'public/uploads'), {
+    setHeaders: (res) => {
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    },
+  })
+);
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('tiny'));
 
 const authLimiter = rateLimit({
@@ -47,16 +66,40 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth', authLimiter);
 
+app.get('/sitemap.xml', getSitemapXML);
+app.get('/robots.txt', getRobotsTxt);
+
+app.use(async (req, res, next) => {
+  try {
+    const path = req.path.toLowerCase();
+    if (path.startsWith('/api/') || path === '/sitemap.xml' || path === '/robots.txt') {
+      return next();
+    }
+    const redirect = await Redirect.findOne({ sourcePath: path, enabled: true }).lean();
+    if (redirect) {
+      await Redirect.findByIdAndUpdate(redirect._id, { $inc: { hits: 1 }, $set: { lastHitAt: new Date() } }).catch(() => {});
+      return res.redirect(redirect.type || 301, redirect.targetPath);
+    }
+    next();
+  } catch {
+    next();
+  }
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.get('/api/seo/public', getPublicSEOData);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/seo', seoRoutes);
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
@@ -67,6 +110,7 @@ app.use(errorHandler);
 export const startServer = async () => {
   await connectDB();
   await seedAdmin();
+  await ensureDefaultPages();
   const port = config.port;
   app.listen(port, () => {
     console.log(`[server] Apex Vouchers API listening on http://localhost:${port}`);

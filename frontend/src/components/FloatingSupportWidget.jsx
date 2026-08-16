@@ -73,7 +73,7 @@ export const FloatingSupportWidget = () => {
 
           <div className="space-y-2 pt-1">
             <a
-              href="https://wa.me/919266808333"
+              href="https://wa.me/919855926113"
               target="_blank"
               rel="noreferrer"
               className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-colors"

@@ -18,6 +18,14 @@ import {
   updateVoucher,
   listOrdersAdmin,
   updateOrderStatus,
+  resendOrderEmail,
+  listCampaigns,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  toggleCampaignStatus,
+  getWebsiteSettings,
+  updateWebsiteSettings,
   listPromotions,
   createPromotion,
   updatePromotion,
@@ -31,9 +39,11 @@ import {
   quickTogglePublishVideo,
   deleteVideo,
   updateVideoSettings,
+  uploadMedia,
 } from '../controllers/adminController.js';
 import { getOrderByIdAdmin } from '../controllers/orderController.js';
 import { protectAdmin } from '../middleware/auth.js';
+import { mediaUpload } from '../middleware/upload.js';
 
 const r = Router();
 
@@ -63,14 +73,25 @@ r.patch('/vouchers/:id', updateVoucher);
 r.get('/orders', listOrdersAdmin);
 r.get('/orders/:id', getOrderByIdAdmin);
 r.patch('/orders/:id/status', updateOrderStatus);
+r.post('/orders/:id/resend-email', resendOrderEmail);
 
 r.get('/promotions', listPromotions);
 r.post('/promotions', createPromotion);
 r.patch('/promotions/:id', updatePromotion);
 r.delete('/promotions/:id', deletePromotion);
 
+r.get('/campaigns', listCampaigns);
+r.post('/campaigns', createCampaign);
+r.patch('/campaigns/:id', updateCampaign);
+r.delete('/campaigns/:id', deleteCampaign);
+r.post('/campaigns/:id/toggle', toggleCampaignStatus);
+
+r.get('/website-settings', getWebsiteSettings);
+r.patch('/website-settings', updateWebsiteSettings);
+
 r.get('/videos', listAdminVideos);
 r.post('/videos', createVideo);
+r.post('/videos/upload', mediaUpload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), uploadMedia);
 r.patch('/videos/settings', updateVideoSettings);
 r.patch('/videos/:id', updateVideo);
 r.patch('/videos/:id/featured', quickToggleFeaturedVideo);

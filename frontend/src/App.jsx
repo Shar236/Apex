@@ -41,6 +41,7 @@ const AdminLoginPage = lazyNamed(() => import('./components/AuthPages'), 'AdminL
 const RegisterPage = lazyNamed(() => import('./components/AuthPages'), 'RegisterPage');
 const ForgotPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'ForgotPasswordPage');
 const ResetPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'ResetPasswordPage');
+const PaymentReturnPage = lazyNamed(() => import('./components/PaymentReturnPage'), 'PaymentReturnPage');
 const AccountHome = lazy(() => import('./components/AccountPages'));
 const AdminConsole = lazy(() => import('./components/AdminConsole'));
 
@@ -339,6 +340,7 @@ function RouterContent() {
       <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPasswordPage /></AuthLayout>} />
       <Route path="/reset-password" element={<AuthLayout><ResetPasswordPage /></AuthLayout>} />
+      <Route path="/payment/cashfree/return" element={<PaymentReturnPage />} />
       <Route
         path="/account"
         element={

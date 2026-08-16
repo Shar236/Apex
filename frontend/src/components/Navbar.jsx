@@ -10,7 +10,7 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [vouchersDropdownOpen, setVouchersDropdownOpen] = useState(false);
-  const { cart, activeTab, setActiveTab, setIsCartOpen } = useVoucher();
+  const { cart, activeTab, setActiveTab, setIsCartOpen, activeCampaign, announcementSettings, footerSettings } = useVoucher();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
@@ -22,6 +22,12 @@ export const Navbar = () => {
 
   const cartCount = cart?.reduce((s, i) => s + (i.quantity || 1), 0) || 0;
 
+  const handleNav = (tabName) => {
+    setActiveTab(tabName);
+    navigate('/');
+    setIsMenuOpen(false);
+  };
+
   const examCategories = [
     { name: 'PTE Academic Voucher', desc: 'Save up to ₹3,401 on official PTE Academic test', tag: 'PTE', tab: 'shop' },
     { name: 'PTE Core Voucher', desc: 'IRCC accepted for Canada PR & Work Permits', tag: 'PTE Core', tab: 'shop' },
@@ -30,26 +36,35 @@ export const Navbar = () => {
     { name: 'Duolingo English Test Voucher', desc: 'Fast 48-hour results & 18% instant discount', tag: 'Duolingo', tab: 'shop' },
   ];
 
+  const supportPhone = footerSettings?.phone || '+91 9855926113';
+  const supportEmail = footerSettings?.email || 'apexvouchers@gmail.com';
+
+  const announcementText = activeCampaign && announcementSettings?.overrideWithCampaign !== false
+    ? `${activeCampaign.badgeText || '🔥 Special Offer'} — ${activeCampaign.title || 'Up to 50% OFF Exam Vouchers'}`
+    : announcementSettings?.text || '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers';
+
   return (
     <header className="sticky top-0 z-40 w-full transition-colors duration-300">
       {/* Top Announcement Bar */}
       <div className="bg-[#111111] dark:bg-[#0A0A0A] text-neutral-300 dark:text-neutral-400 text-xs py-2 px-4 sm:px-8 border-b border-neutral-800 dark:border-[#292929]">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-6">
-            <a href="tel:+919266808333" className="flex items-center gap-1.5 hover:text-[#FF005C] transition-colors">
+            <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="flex items-center gap-1.5 hover:text-[#FF005C] transition-colors">
               <Phone className="w-3.5 h-3.5 text-[#FF005C]" />
-              <span>Support: <strong className="text-white font-semibold">+91 9266808333</strong></span>
+              <span>Support: <strong className="text-white font-semibold">{supportPhone}</strong></span>
             </a>
-            <a href="mailto:support@apexvouchers.com" className="hidden sm:flex items-center gap-1.5 hover:text-[#FF005C] transition-colors">
+            <a href={`mailto:${supportEmail}`} className="hidden sm:flex items-center gap-1.5 hover:text-[#FF005C] transition-colors">
               <Mail className="w-3.5 h-3.5 text-[#FF005C]" />
-              <span>Email: <strong className="text-white font-semibold">support@apexvouchers.com</strong></span>
+              <span>Email: <strong className="text-white font-semibold">{supportEmail}</strong></span>
             </a>
           </div>
 
           <div className="flex items-center gap-4 ml-auto sm:ml-0">
-            <span className="hidden md:inline-flex px-2.5 py-0.5 rounded-full bg-[#FF005C]/10 text-[#FF005C] font-bold text-[10px] border border-[#FF005C]/20">
-              ⚡ Instant Voucher Delivery in 10s
-            </span>
+            {announcementSettings?.enabled !== false && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FF005C]/15 text-[#FF005C] font-black text-[11px] border border-[#FF005C]/30 shadow-sm animate-pulse-subtle">
+                {announcementText}
+              </span>
+            )}
             {isAuthenticated ? (
               <button 
                 onClick={() => navigate('/account')} 
@@ -81,15 +96,19 @@ export const Navbar = () => {
           <div className="flex items-center justify-between">
             
             {/* Official Logo Everywhere */}
-            <div onClick={() => setActiveTab('home')}>
+            <button 
+              onClick={() => handleNav('home')}
+              className="flex items-center text-left focus:outline-none cursor-pointer group"
+              aria-label="Go to Apex Vouchers Home"
+            >
               <ApexLogo showTagline={false} />
-            </div>
+            </button>
 
             {/* Navigation Links */}
             <div className="hidden lg:flex items-center gap-1 font-semibold text-sm text-neutral-700 dark:text-neutral-300">
               
               <button 
-                onClick={() => setActiveTab('home')}
+                onClick={() => handleNav('home')}
                 className={`px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                   activeTab === 'home' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                 }`}
@@ -104,7 +123,7 @@ export const Navbar = () => {
                 onMouseLeave={() => setVouchersDropdownOpen(false)}
               >
                 <button 
-                  onClick={() => setActiveTab('shop')}
+                  onClick={() => handleNav('shop')}
                   className={`flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                     activeTab === 'shop' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                   }`}
@@ -121,7 +140,7 @@ export const Navbar = () => {
                         <button
                           key={idx}
                           onClick={() => {
-                            setActiveTab(exam.tab);
+                            handleNav(exam.tab);
                             setVouchersDropdownOpen(false);
                           }}
                           className="w-full text-left p-2.5 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] transition-colors group flex items-start justify-between"
@@ -139,7 +158,7 @@ export const Navbar = () => {
               </div>
 
               <button 
-                onClick={() => setActiveTab('how-it-works')}
+                onClick={() => handleNav('how-it-works')}
                 className={`px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                   activeTab === 'how-it-works' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                 }`}
@@ -148,7 +167,7 @@ export const Navbar = () => {
               </button>
 
               <button 
-                onClick={() => setActiveTab('calculator')}
+                onClick={() => handleNav('calculator')}
                 className={`px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                   activeTab === 'calculator' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                 }`}
@@ -157,7 +176,7 @@ export const Navbar = () => {
               </button>
 
               <button 
-                onClick={() => setActiveTab('exam-guides')}
+                onClick={() => handleNav('exam-guides')}
                 className={`px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                   activeTab === 'exam-guides' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                 }`}
@@ -166,7 +185,7 @@ export const Navbar = () => {
               </button>
 
               <button 
-                onClick={() => setActiveTab('faq')}
+                onClick={() => handleNav('faq')}
                 className={`px-3 py-2 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-[#FF005C] transition-colors ${
                   activeTab === 'faq' ? 'text-[#FF005C] font-bold bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''
                 }`}
@@ -178,7 +197,7 @@ export const Navbar = () => {
             {/* Right Action Buttons with Day/Night Theme Toggle */}
             <div className="flex items-center gap-3">
               
-              {/* Day / Night Mode Toggle Switch (Header Top Right specified in prompt) */}
+              {/* Day / Night Mode Toggle Switch */}
               <ThemeToggle compact={false} showLabel={false} />
 
               {/* Cart Button */}
@@ -197,7 +216,7 @@ export const Navbar = () => {
 
               {/* Primary Action Button */}
               <button
-                onClick={() => setActiveTab('shop')}
+                onClick={() => handleNav('shop')}
                 className="hidden sm:inline-flex btn-pink !py-2.5 !px-5 !text-sm"
               >
                 <Ticket className="w-4 h-4" />
@@ -220,14 +239,14 @@ export const Navbar = () => {
         {isMenuOpen && (
           <div className="lg:hidden bg-white dark:bg-[#161616] border-b border-[#EAEAEA] dark:border-[#292929] px-4 pt-3 pb-6 space-y-3 mt-2">
             
-            {/* Mobile Day/Night Theme Toggle specified in prompt */}
+            {/* Mobile Day/Night Theme Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929]">
               <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Theme Mode</span>
               <ThemeToggle compact={false} showLabel={true} />
             </div>
 
             <button
-              onClick={() => { setActiveTab('shop'); setIsMenuOpen(false); }}
+              onClick={() => handleNav('shop')}
               className="w-full text-left px-4 py-3 rounded-xl font-bold text-neutral-900 dark:text-white bg-[#FFF0F5] dark:bg-[#2A0A17] flex items-center justify-between"
             >
               <span>🎟️ Browse All Vouchers</span>
@@ -235,7 +254,7 @@ export const Navbar = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('how-it-works'); setIsMenuOpen(false); }}
+              onClick={() => handleNav('how-it-works')}
               className="w-full text-left px-4 py-3 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
             >
               <Sparkles className="w-4 h-4 text-[#FF005C]" />
@@ -243,7 +262,7 @@ export const Navbar = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('calculator'); setIsMenuOpen(false); }}
+              onClick={() => handleNav('calculator')}
               className="w-full text-left px-4 py-3 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
             >
               <Calculator className="w-4 h-4 text-[#FF005C]" />
@@ -251,7 +270,7 @@ export const Navbar = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('exam-guides'); setIsMenuOpen(false); }}
+              onClick={() => handleNav('exam-guides')}
               className="w-full text-left px-4 py-3 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
             >
               <BookOpen className="w-4 h-4 text-[#FF005C]" />
@@ -259,7 +278,7 @@ export const Navbar = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('faq'); setIsMenuOpen(false); }}
+              onClick={() => handleNav('faq')}
               className="w-full text-left px-4 py-3 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
             >
               <HelpCircle className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
@@ -268,7 +287,7 @@ export const Navbar = () => {
 
             <div className="pt-2">
               <button 
-                onClick={() => { setActiveTab('shop'); setIsMenuOpen(false); }} 
+                onClick={() => handleNav('shop')} 
                 className="w-full btn-pink !py-3 !text-sm"
               >
                 Buy Voucher Now

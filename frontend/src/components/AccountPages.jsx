@@ -18,6 +18,9 @@ import {
   Clock,
   ExternalLink,
   RefreshCw,
+  ShoppingBag,
+  CheckCircle2,
+  TrendingUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -102,11 +105,56 @@ export default function AccountHome({ initialTab = 'overview' }) {
   };
 
   const stats = [
-    { label: 'Total Orders', value: accountStats?.totalOrders || 0, tint: 'bg-[#FF005C]' },
-    { label: 'Active Vouchers', value: accountStats?.activeVouchers || 0, tint: 'bg-emerald-500' },
-    { label: 'Used Vouchers', value: accountStats?.usedVouchers || 0, tint: 'bg-sky-500' },
-    { label: 'Expiring Soon', value: accountStats?.expiringSoon || 0, tint: 'bg-amber-500' },
-    { label: 'Total Saved', value: formatPrice(accountStats?.totalSaved || 0), tint: 'bg-indigo-500' },
+    {
+      label: 'Total Orders',
+      value: accountStats?.totalOrders || 0,
+      icon: <ShoppingBag className="w-5 h-5 text-[#FF005C]" strokeWidth={2.3} />,
+      bgLight: 'bg-[#FF005C]/10',
+      borderLight: 'border-[#FF005C]/20',
+      badge: 'Orders',
+      glow: 'group-hover:shadow-[#FF005C]/10',
+      accentColor: 'text-[#FF005C]',
+    },
+    {
+      label: 'Active Vouchers',
+      value: accountStats?.activeVouchers || 0,
+      icon: <Ticket className="w-5 h-5 text-emerald-500" strokeWidth={2.3} />,
+      bgLight: 'bg-emerald-500/10',
+      borderLight: 'border-emerald-500/20',
+      badge: 'Ready to use',
+      glow: 'group-hover:shadow-emerald-500/10',
+      accentColor: 'text-emerald-500',
+    },
+    {
+      label: 'Used Vouchers',
+      value: accountStats?.usedVouchers || 0,
+      icon: <CheckCircle2 className="w-5 h-5 text-sky-500" strokeWidth={2.3} />,
+      bgLight: 'bg-sky-500/10',
+      borderLight: 'border-sky-500/20',
+      badge: 'Redeemed',
+      glow: 'group-hover:shadow-sky-500/10',
+      accentColor: 'text-sky-500',
+    },
+    {
+      label: 'Expiring Soon',
+      value: accountStats?.expiringSoon || 0,
+      icon: <Clock className="w-5 h-5 text-amber-500" strokeWidth={2.3} />,
+      bgLight: 'bg-amber-500/10',
+      borderLight: 'border-amber-500/20',
+      badge: (accountStats?.expiringSoon || 0) > 0 ? 'Urgent' : 'All valid',
+      glow: 'group-hover:shadow-amber-500/10',
+      accentColor: 'text-amber-500',
+    },
+    {
+      label: 'Total Saved',
+      value: formatPrice(accountStats?.totalSaved || 0),
+      icon: <TrendingUp className="w-5 h-5 text-indigo-500" strokeWidth={2.3} />,
+      bgLight: 'bg-indigo-500/10',
+      borderLight: 'border-indigo-500/20',
+      badge: 'Saved',
+      glow: 'group-hover:shadow-indigo-500/10',
+      accentColor: 'text-indigo-500',
+    },
   ];
 
   return (
@@ -114,13 +162,20 @@ export default function AccountHome({ initialTab = 'overview' }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => {
+                setActiveTab('home');
+                navigate('/');
+              }}
+              className="flex items-center gap-2 mb-3 text-left focus:outline-none cursor-pointer group"
+              aria-label="Go to Apex Vouchers Home"
+            >
               <ApexLogo className="h-7" />
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[11px] font-black text-[#FF005C] border border-[#FF005C]/20">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[11px] font-black text-[#FF005C] border border-[#FF005C]/20 group-hover:border-[#FF005C]/50 transition-colors">
                 <Ticket className="w-3.5 h-3.5" />
                 SELF-SERVE CANDIDATE VAULT
               </span>
-            </div>
+            </button>
             <h1 className="font-heading font-black text-3xl tracking-tight text-neutral-900 dark:text-white">
               Hi, {user?.name?.split(' ')[0] || 'Apex User'} 👋
             </h1>
@@ -166,10 +221,25 @@ export default function AccountHome({ initialTab = 'overview' }) {
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                  <div className={`w-9 h-9 rounded-xl ${s.tint} opacity-90 mb-3`} />
-                  <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">{s.label}</div>
-                  <div className="font-heading font-black text-2xl mt-1 tabular-nums text-neutral-900 dark:text-white">{s.value}</div>
+                <div
+                  key={s.label}
+                  className={`group relative rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-sm hover:shadow-xl ${s.glow} transition-all duration-300 flex flex-col justify-between overflow-hidden`}
+                >
+                  <div className={`absolute -right-6 -top-6 w-20 h-20 rounded-full ${s.bgLight} blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500`} />
+                  <div>
+                    <div className="flex items-center justify-between mb-3.5">
+                      <div className={`w-10 h-10 rounded-2xl ${s.bgLight} border ${s.borderLight} flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-sm`}>
+                        {s.icon}
+                      </div>
+                      <span className={`text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full ${s.bgLight} ${s.accentColor} border ${s.borderLight}`}>
+                        {s.badge}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] tracking-tight">{s.label}</div>
+                  </div>
+                  <div className="font-heading font-black text-2xl lg:text-3xl mt-2 tabular-nums text-neutral-900 dark:text-white tracking-tight">
+                    {s.value}
+                  </div>
                 </div>
               ))}
             </div>
