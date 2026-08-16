@@ -1186,34 +1186,36 @@ Apex Vouchers is a production-ready, full-stack e-commerce marketplace for disco
 Apex/
 ├── .env                       # Environment variables
 ├── .env.example               # Example environment configuration
-├── package.json               # Root dependencies & scripts
-├── vite.config.js             # Vite configuration
-├── public/                    # Static assets
-├── dist/                      # Production build output
-├── src/                       # Frontend application
-│   ├── components/            # React UI components (ProductCatalog, CheckoutModal, Dashboard, AdminConsole, etc.)
-│   ├── context/               # AuthContext, VoucherContext, ThemeContext
-│   ├── lib/                   # API client (api.js)
-│   ├── types/                 # Fallback data definitions
-│   └── App.jsx                # Main router & layout structure
-└── server/                    # Node.js Express backend
-    ├── config/                # Environment & Database connection (db.js, index.js)
-    ├── controllers/           # Auth, Product, Order, Account, Admin controllers
-    ├── middleware/            # JWT Auth, Admin protect, Error Handler
-    ├── models/                # User, Product, VoucherCode, Order, Promotion models
-    ├── routes/                # Auth, Product, Order, Account, Admin routes
-    ├── services/              # Email stub, Promotion validation
-    ├── utils/                 # Token generator & helper functions
-    ├── app.js                 # Express application setup
-    └── server.js              # Server entry point
+├── package.json               # Root workspace orchestrator package
+├── backend/                   # Node.js Express backend
+│   ├── config/                # Environment & Database connection (db.js, index.js)
+│   ├── controllers/           # Auth, Product, Order, Account, Admin controllers
+│   ├── middleware/            # JWT Auth, Admin protect, Error Handler
+│   ├── models/                # User, Product, VoucherCode, Order, Promotion models
+│   ├── routes/                # Auth, Product, Order, Account, Admin routes
+│   ├── services/              # Email stub, Promotion validation
+│   ├── utils/                 # Token generator & helper functions
+│   ├── app.js                 # Express application setup
+│   ├── package.json           # Backend package dependencies
+│   └── server.js              # Server entry point
+└── frontend/                  # React Vite frontend
+    ├── public/                # Static assets
+    ├── src/                   # React application components & logic
+    │   ├── components/        # React UI components
+    │   ├── context/           # AuthContext, VoucherContext, ThemeContext
+    │   ├── lib/               # API client (api.js)
+    │   ├── types/             # Fallback data definitions
+    │   └── App.jsx            # Main router & layout structure
+    ├── index.html             # HTML entry point
+    ├── package.json           # Frontend package dependencies
+    └── vite.config.js         # Vite configuration
 ```
 
 ### Quickstart & Setup Guide
 
 1. **Install Dependencies**:
    ```bash
-   npm install
-   cd server && npm install && cd ..
+   npm run install:all
    ```
 
 2. **Environment Configuration**:
@@ -1231,11 +1233,12 @@ Apex/
 
 3. **Start Development Backend & Frontend**:
    ```bash
-   # Start Backend (Port 5000)
-   node server/server.js
-
-   # Start Frontend (Port 5173)
+   # Run both frontend & backend concurrently
    npm run dev
+
+   # Or run individually:
+   npm run dev:backend
+   npm run dev:frontend
    ```
 
 4. **Production Build**:

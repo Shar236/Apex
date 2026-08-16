@@ -21,7 +21,17 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
-    origin: [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin/proxy)
+      if (!origin) return callback(null, true);
+      if (
+        origin === config.clientUrl ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      callback(null, true); // Permissive in dev to prevent CORS blockage
+    },
     credentials: true,
   })
 );

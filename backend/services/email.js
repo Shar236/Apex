@@ -60,7 +60,7 @@ export const sendRegistrationWelcome = (user) =>
     html: htmlWrap(
       `Hi ${user.name}, welcome aboard!`,
       `<p>Thanks for signing up with Apex Vouchers. You can now log in, browse discounted exam vouchers, and manage all your codes in one place.</p>
-       <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" style="display:inline-block;background:#E63946;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Go to My Dashboard</a>`
+       <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/login" style="display:inline-block;background:#E63946;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Go to My Dashboard</a>`
     ),
   });
 
@@ -98,7 +98,7 @@ export const sendOrderConfirmation = (user, order, vouchers) => {
 };
 
 export const sendPasswordReset = (user, token) => {
-  const url = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+  const url = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
   return sendEmail({
     to: user.email,
     subject: 'Reset your Apex Vouchers password',

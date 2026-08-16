@@ -1,35 +1,25 @@
 {
-  "name": "apex-voucher",
+  "name": "apex-voucher-workspace",
   "private": true,
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "npm --prefix server run dev",
-    "dev:all": "concurrently -n server,client -c magenta,cyan \"npm:dev:server\" \"npm:dev\"",
-    "seed": "npm --prefix server run seed",
-    "install:server": "npm --prefix server install",
-    "build": "vite build",
-    "build:server": "npm --prefix server install",
-    "mcp": "node mcp-server.js",
-    "preview": "vite preview"
+    "dev": "concurrently -n backend,frontend -c magenta,cyan \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "seed": "npm --prefix backend run seed",
+    "build": "npm --prefix frontend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "install:all": "npm --prefix frontend install && npm --prefix backend install",
+    "mcp": "node mcp-server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "canvas-confetti": "^1.9.4",
     "dotenv": "^17.4.2",
-    "lucide-react": "^0.475.0",
     "mongodb": "^7.5.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^6.26.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.7",
-    "@vitejs/plugin-react": "^4.3.4",
-    "concurrently": "^8.2.2",
-    "tailwindcss": "^4.0.7",
-    "vite": "^6.1.0"
+    "concurrently": "^8.2.2"
   }
 }

@@ -3,6 +3,16 @@ import { Play, Pause, X, ChevronLeft, ChevronRight, Film, Volume2, VolumeX, Spar
 import { ApexLogo } from './ApexLogo';
 import { videoApi } from '../lib/api';
 
+export const sanitizeEmbedUrl = (rawUrl, autoplay = false, mute = true) => {
+  if (!rawUrl) return '';
+  const base = rawUrl.split('?')[0];
+  const params = new URLSearchParams();
+  params.set('autoplay', autoplay ? '1' : '0');
+  params.set('mute', mute ? '1' : '0');
+  params.set('enablejsapi', '1');
+  return `${base}?${params.toString()}`;
+};
+
 export const REEL_VIDEOS = [
   {
     id: 1,
@@ -12,7 +22,7 @@ export const REEL_VIDEOS = [
     desc: "Watch how to select your exam, apply discount promo codes, and receive your voucher code in 10 seconds.",
     poster: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
+    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🛒",
     views: "14.2K views"
@@ -25,7 +35,7 @@ export const REEL_VIDEOS = [
     desc: "Official Pearson PTE Academic & Core vouchers waive off registration fees instantly at checkout.",
     poster: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
+    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🎓",
     views: "22.8K views"
@@ -38,7 +48,7 @@ export const REEL_VIDEOS = [
     desc: "Paste your unique voucher code in the Promo Code field on Pearson, ETS, or Duolingo portals.",
     poster: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
+    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🔑",
     views: "18.5K views"
@@ -51,7 +61,7 @@ export const REEL_VIDEOS = [
     desc: "Compare regular official exam prices vs Apex bulk discounted prices for PTE, GRE, TOEFL, and Duolingo.",
     poster: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoypasses.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
+    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "💰",
     views: "31.9K views"
@@ -64,7 +74,7 @@ export const REEL_VIDEOS = [
     desc: "Everything about IELTS Academic & General discount codes for IDP registration across India.",
     poster: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80",
     videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0",
+    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🇬🇧",
     views: "11.7K views"
@@ -437,7 +447,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <iframe
                 className="absolute inset-0 w-full h-full object-cover"
-                src={currentVideo.youtubeEmbed}
+                src={sanitizeEmbedUrl(currentVideo.youtubeEmbed, userInitiatedPlay && isPlaying, isMuted)}
                 title={currentVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -606,7 +616,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <iframe
                 className="absolute inset-0 w-full h-full object-cover"
-                src={currentVideo.youtubeEmbed}
+                src={sanitizeEmbedUrl(currentVideo.youtubeEmbed, userInitiatedPlay && isPlaying, isMuted)}
                 title={currentVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -716,7 +726,7 @@ export const VideoReelsCarousel = () => {
             <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-xl relative">
               <iframe
                 className="w-full h-full object-cover"
-                src={activeModalVideo.youtubeEmbed}
+                src={sanitizeEmbedUrl(activeModalVideo.youtubeEmbed, true, false)}
                 title={activeModalVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

@@ -1,5 +1,5 @@
 {
-  "name": "apex-vouchers-server",
+  "name": "apex-vouchers-backend",
   "version": "1.0.0",
   "description": "Apex Vouchers backend — Express, MongoDB, JWT auth, payment orchestration, email service",
   "type": "module",

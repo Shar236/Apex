@@ -8,7 +8,7 @@ export const config = {
     'mongodb+srv://sharvandev28_db_user:Fjq9DDde0TfrkZME@apexcluster.adxjwp2.mongodb.net/apex_vouchers?retryWrites=true&w=majority&appName=apexcluster',
   jwtSecret: process.env.JWT_SECRET || 'dev-only-change-me-in-production-super-secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
 
   admin: {
     email: process.env.ADMIN_EMAIL || 'admin@apexvouchers.in',
