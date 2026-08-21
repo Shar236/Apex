@@ -25,10 +25,10 @@ export const ExamLogoMarquee = () => {
       <div className="relative w-full overflow-hidden">
         
         {/* Left Fade Gradient Mask */}
-        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-linear-to-r from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
 
         {/* Right Fade Gradient Mask */}
-        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-linear-to-l from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
 
         {/* Infinite Continuous Marquee Track */}
         <div className="flex w-max animate-marquee hover:[animation-play-state:paused] items-center space-x-8 sm:space-x-12 py-2">
@@ -39,7 +39,7 @@ export const ExamLogoMarquee = () => {
               const LogoComp = item.component;
               return (
                 <React.Fragment key={`g1-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-[#FF005C] transition-colors">
+                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
                     <LogoComp />
                   </div>
                   <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
@@ -54,7 +54,7 @@ export const ExamLogoMarquee = () => {
               const LogoComp = item.component;
               return (
                 <React.Fragment key={`g2-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-[#FF005C] transition-colors">
+                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
                     <LogoComp />
                   </div>
                   <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
@@ -69,7 +69,7 @@ export const ExamLogoMarquee = () => {
               const LogoComp = item.component;
               return (
                 <React.Fragment key={`g3-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-[#FF005C] transition-colors">
+                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
                     <LogoComp />
                   </div>
                   <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>

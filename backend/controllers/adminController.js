@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest } from '../models/index.js';
 import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { hashPassword } from '../middleware/auth.js';
@@ -12,6 +12,7 @@ import {
   extractPublicId,
   uploadBufferToCloudinary,
   deleteCloudinaryAsset,
+  buildOptimizedImageUrl,
 } from '../services/cloudinaryService.js';
 
 
@@ -61,6 +62,36 @@ const aggregateVoucherStatsByProduct = async (productIds = []) => {
 
 const getVoucherStats = (statsByProduct, productId) =>
   statsByProduct.get(toId(productId)) || emptyVoucherStats();
+
+const isValidHttpUrl = (value) => {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const normalizeProductPayload = (body) => {
+  const payload = { ...body };
+  if (typeof payload.badges === 'string') {
+    payload.badges = payload.badges.split(',').map((b) => b.trim()).filter(Boolean);
+  }
+  if (payload.displayOrder !== undefined && payload.displayOrder !== null && payload.displayOrder !== '') {
+    if (Number.isNaN(Number(payload.displayOrder))) {
+      throw new AppError('Display order must be numeric', 400, 'VALIDATION_ERROR');
+    }
+    payload.displayOrder = Number(payload.displayOrder);
+  }
+  if (!isValidHttpUrl(payload.officialWebsiteUrl)) {
+    throw new AppError('Official website URL is not a valid URL', 400, 'VALIDATION_ERROR');
+  }
+  if (!isValidHttpUrl(payload.officialProductUrl)) {
+    throw new AppError('Official product URL is not a valid URL', 400, 'VALIDATION_ERROR');
+  }
+  return payload;
+};
 
 const recordAudit = async (req, action, resourceType, resourceId, details) => {
   try {
@@ -319,6 +350,12 @@ export const dashboardOverview = async (req, res, next) => {
       $or: [{ orderStatus: 'REFUNDED' }, { paymentStatus: 'REFUNDED' }],
     });
 
+    const newPTEBookingRequestsCount = await PTEBookingRequest.countDocuments({ status: 'New' });
+    const recentPTEBookingRequests = await PTEBookingRequest.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
     res.json({
       success: true,
       data: {
@@ -340,6 +377,7 @@ export const dashboardOverview = async (req, res, next) => {
           pendingOrders: pendingOrdersCount,
           refunds: refundsCount,
           failedPayments: failedPaymentsCount,
+          newPTEBookingRequests: newPTEBookingRequestsCount,
         },
         charts: {
           dailyRevenue: timeSeriesAgg,
@@ -351,12 +389,14 @@ export const dashboardOverview = async (req, res, next) => {
           lowStockProducts,
           recentOrders,
           activePromotions: activePromotionsList,
+          recentPTEBookingRequests,
         },
         alerts: {
           lowStockCount: lowStockProducts.length,
           failedPaymentsCount,
           pendingOrdersCount,
           expiringPromosCount: expiringSoonPromos.length,
+          newPTEBookingRequestsCount,
         },
       },
     });
@@ -454,11 +494,13 @@ export const setUserStatus = async (req, res, next) => {
 
 export const listAdminProducts = async (req, res, next) => {
   try {
-    const { search, status, category, provider, sort } = req.query;
+    const { search, status, category, provider, sort, page = 1, limit = 50 } = req.query;
     const filter = {};
     if (status === 'active') filter.active = true;
     if (status === 'inactive') filter.active = false;
     if (status === 'featured') filter.featured = true;
+    if (status === 'archived') filter.archived = true;
+    if (status !== 'archived') filter.archived = { $ne: true };
     if (category) filter.category = category;
     if (provider) filter.provider = provider;
 
@@ -475,12 +517,24 @@ export const listAdminProducts = async (req, res, next) => {
       const stock = getVoucherStats(stockByProduct, p._id);
       const { available, reserved, sold, total } = stock;
       const threshold = p.lowStockThreshold || 10;
-      const stockStatus = available > threshold ? 'IN STOCK' : available > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
-      const inStock = available > 0;
+      const isUnlimited = p.stockType === 'UNLIMITED';
+
+      let stockStatus;
+      let inStock;
+      if (p.comingSoon) {
+        stockStatus = 'COMING SOON';
+        inStock = false;
+      } else if (isUnlimited) {
+        stockStatus = 'IN STOCK';
+        inStock = true;
+      } else {
+        stockStatus = available > threshold ? 'IN STOCK' : available > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
+        inStock = available > 0;
+      }
 
       return {
         ...p,
-        availableVouchers: available,
+        availableVouchers: isUnlimited ? null : available,
         reservedVouchers: reserved,
         soldVouchers: sold,
         totalVouchers: total,
@@ -496,36 +550,49 @@ export const listAdminProducts = async (req, res, next) => {
       filtered = products.filter((p) => p.availableVouchers > 0 && p.availableVouchers <= (p.lowStockThreshold || 10));
     }
 
-    const allProducts = await Product.find().select('_id active featured lowStockThreshold').lean();
+    const allProducts = await Product.find().select('_id active archived featured lowStockThreshold stockType').lean();
     const allStockByProduct = await aggregateVoucherStatsByProduct(allProducts.map((p) => p._id));
     let totalCount = allProducts.length;
     let activeCount = 0;
     let inactiveCount = 0;
+    let archivedCount = 0;
     let outOfStockCount = 0;
     let lowStockCount = 0;
     let featuredCount = 0;
 
     for (const p of allProducts) {
+      if (p.archived) archivedCount++;
       if (p.active) activeCount++;
       else inactiveCount++;
       if (p.featured) featuredCount++;
+      if (p.stockType === 'UNLIMITED') continue;
       const avail = getVoucherStats(allStockByProduct, p._id).available;
       if (avail === 0) outOfStockCount++;
       else if (avail <= (p.lowStockThreshold || 10)) lowStockCount++;
     }
 
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const l = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+    const totalFiltered = filtered.length;
+    const pages = Math.max(1, Math.ceil(totalFiltered / l));
+    const paginated = filtered.slice((p - 1) * l, (p - 1) * l + l);
+
     res.json({
       success: true,
-      count: filtered.length,
+      count: paginated.length,
+      total: totalFiltered,
+      page: p,
+      pages,
       kpis: {
         totalProducts: totalCount,
         activeProducts: activeCount,
         inactiveProducts: inactiveCount,
+        archivedProducts: archivedCount,
         outOfStockProducts: outOfStockCount,
         lowStockProducts: lowStockCount,
         featuredProducts: featuredCount,
       },
-      data: filtered,
+      data: paginated,
     });
   } catch (err) {
     next(err);
@@ -567,7 +634,7 @@ export const createProduct = async (req, res, next) => {
       return next(new AppError('Selling price cannot be greater than original price', 400));
     }
     const payload = {
-      ...req.body,
+      ...normalizeProductPayload(req.body),
       provider: provider || brand || 'Pearson',
       brand: brand || provider || 'Pearson PTE',
     };
@@ -599,7 +666,8 @@ export const updateProduct = async (req, res, next) => {
       return next(new AppError('Selling price cannot exceed original price', 400));
     }
 
-    const product = await Product.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const updatePayload = normalizeProductPayload(req.body);
+    const product = await Product.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
 
     const diffs = {};
     if (oldProduct.sellingPrice !== product.sellingPrice) {
@@ -706,6 +774,7 @@ export const deleteProduct = async (req, res, next) => {
 
     if (hasOrders || hasVouchers) {
       product.active = false;
+      product.archived = true;
       await product.save();
 
       await recordAudit(req, 'PRODUCT_DEACTIVATED', 'Product', product._id, {
@@ -717,7 +786,7 @@ export const deleteProduct = async (req, res, next) => {
         success: true,
         deactivated: true,
         deleted: false,
-        message: 'Product has historical orders/vouchers. Soft deactivated to preserve historical purchase data.',
+        message: 'Product has historical orders/vouchers. Archived to preserve historical purchase data.',
         data: product,
       });
     }
@@ -727,6 +796,125 @@ export const deleteProduct = async (req, res, next) => {
     await recordAudit(req, 'PRODUCT_DELETED', 'Product', id, { name: product.name });
 
     res.json({ success: true, deleted: true, message: 'Product permanently deleted.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const duplicateProduct = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const source = await Product.findById(id).lean();
+    if (!source) return next(new AppError('Product not found', 404));
+
+    const clone = { ...source };
+    delete clone._id;
+    delete clone.createdAt;
+    delete clone.updatedAt;
+    delete clone.__v;
+    clone.name = `${source.name} (Copy)`;
+    clone.slug = `${source.slug || 'product'}-copy-${Date.now().toString(36)}`;
+    clone.active = false;
+    clone.featured = false;
+    clone.archived = false;
+    if (clone.seo) clone.seo = { ...clone.seo, slug: clone.slug };
+
+    const duplicate = new Product(clone);
+    await duplicate.save();
+
+    await recordAudit(req, 'PRODUCT_DUPLICATED', 'Product', duplicate._id, {
+      name: duplicate.name,
+      sourceProductId: id,
+    });
+
+    res.status(201).json({ success: true, data: duplicate });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const archiveProduct = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { archived: true, active: false },
+      { new: true }
+    );
+    if (!product) return next(new AppError('Product not found', 404));
+
+    await recordAudit(req, 'PRODUCT_ARCHIVED', 'Product', product._id, { name: product.name });
+
+    res.json({ success: true, data: product });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const restoreProduct = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { archived: false, active: true },
+      { new: true }
+    );
+    if (!product) return next(new AppError('Product not found', 404));
+
+    await recordAudit(req, 'PRODUCT_RESTORED', 'Product', product._id, { name: product.name });
+
+    res.json({ success: true, data: product });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const uploadProductLogo = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) return next(new AppError('No logo file uploaded', 400));
+
+    let url = '';
+    try {
+      const buffer = fs.readFileSync(file.path);
+      const cloudRes = await uploadBufferToCloudinary(buffer, {
+        resource_type: 'image',
+        folder: 'apex_products/logos',
+      });
+      if (cloudRes && cloudRes.secure_url) {
+        url = buildOptimizedImageUrl(cloudRes.secure_url);
+        try { fs.unlinkSync(file.path); } catch {}
+      }
+    } catch (cloudErr) {
+      console.warn('[Upload] Product logo Cloudinary fallback to local storage:', cloudErr.message);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      url = `${baseUrl}/uploads/product-logos/${file.filename}`;
+    }
+
+    if (!url) return next(new AppError('Logo upload failed', 500));
+
+    res.json({ success: true, url });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const reorderProducts = async (req, res, next) => {
+  try {
+    const { items } = req.body; // Array of { id, order }
+    if (!Array.isArray(items)) {
+      return next(new AppError('Items array is required for bulk reordering', 400));
+    }
+
+    const updates = items.map((item, index) => {
+      const orderNum = Number(item.order) || index + 1;
+      return Product.findByIdAndUpdate(item.id || item._id, { displayOrder: orderNum });
+    });
+    await Promise.all(updates);
+
+    await recordAudit(req, 'PRODUCTS_REORDERED', 'Product', null, { count: items.length });
+
+    res.json({ success: true, message: 'Product order updated successfully.' });
   } catch (err) {
     next(err);
   }
@@ -1243,6 +1431,58 @@ export const exportCSV = async (req, res, next) => {
       ]);
       const headers = ['Date', 'Orders Count', 'Gross Subtotal', 'Total Discounts', 'Net Revenue'];
       const rows = sales.map((s) => [s._id, s.ordersCount, s.grossSales, s.discounts, s.netTotal]);
+      csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    } else if (resource === 'pte-bookings') {
+      const { status, examType, search, dateFrom, dateTo } = req.query;
+      const filter = {};
+      if (status && status !== 'All') filter.status = status;
+      if (examType && examType !== 'All') filter.examType = examType;
+      if (search) {
+        const s = searchRegex(search);
+        filter.$or = [{ fullName: s }, { email: s }, { phone: s }, { requestId: s }, { preferredCity: s }];
+      }
+      if (dateFrom || dateTo) {
+        filter.createdAt = {};
+        if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+      }
+      const bookings = await PTEBookingRequest.find(filter).sort({ createdAt: -1 }).lean();
+      const headers = [
+        'Request ID',
+        'Customer Name',
+        'Email',
+        'Phone',
+        'Exam Type',
+        'City',
+        'Test Centre',
+        'Preferred Date',
+        'Preferred Time',
+        'Status',
+        'Admin Notes',
+        'Confirmed Booking Ref',
+        'Confirmed Centre',
+        'Confirmed Date',
+        'Confirmed Time',
+        'Created At'
+      ];
+      const rows = bookings.map((b) => [
+        b.requestId,
+        `"${(b.fullName || '').replace(/"/g, '""')}"`,
+        `"${(b.email || '').replace(/"/g, '""')}"`,
+        `"${(b.phone || '').replace(/"/g, '""')}"`,
+        `"${(b.examType || '').replace(/"/g, '""')}"`,
+        `"${(b.preferredCity || '').replace(/"/g, '""')}"`,
+        `"${(b.preferredTestCentre || '').replace(/"/g, '""')}"`,
+        b.preferredDate ? new Date(b.preferredDate).toISOString().slice(0, 10) : '',
+        `"${(b.preferredTime || 'Any Time').replace(/"/g, '""')}"`,
+        b.status,
+        `"${(b.adminNotes || '').replace(/"/g, '""')}"`,
+        `"${(b.confirmationDetails?.bookingReference || '').replace(/"/g, '""')}"`,
+        `"${(b.confirmationDetails?.confirmedCentre || '').replace(/"/g, '""')}"`,
+        b.confirmationDetails?.confirmedDate ? new Date(b.confirmationDetails.confirmedDate).toISOString().slice(0, 10) : '',
+        `"${(b.confirmationDetails?.confirmedTime || '').replace(/"/g, '""')}"`,
+        new Date(b.createdAt).toISOString(),
+      ]);
       csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     } else {
       return next(new AppError('Invalid export resource type', 400));

@@ -14,10 +14,10 @@ export const RedemptionAndSecurity = () => {
   return (
     <>
       {/* Dynamic Express Car Transport Delivery Section */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-slate-100 via-white to-slate-50 dark:from-slate-900 dark:via-[#0F172A] dark:to-slate-950 text-slate-900 dark:text-white border-b border-slate-200/80 dark:border-slate-800 relative overflow-hidden transition-colors duration-300">
+      <section className="py-16 sm:py-24 bg-linear-to-b from-slate-100 via-white to-slate-50 dark:from-slate-900 dark:via-[#0F172A] dark:to-slate-950 text-slate-900 dark:text-white border-b border-slate-200/80 dark:border-slate-800 relative overflow-hidden transition-colors duration-300">
         
         {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-sky-200/40 dark:bg-[#FF005C]/10 blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-sky-200/40 dark:bg-brand-pink/10 blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
@@ -25,14 +25,14 @@ export const RedemptionAndSecurity = () => {
             
             {/* Left Copy Column */}
             <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF0F5] dark:bg-[#FF005C]/20 border border-[#FF005C]/30 text-xs font-black text-[#FF005C] uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF0F5] dark:bg-brand-pink/20 border border-brand-pink/30 text-xs font-black text-brand-pink uppercase tracking-wider">
                 <Zap className="w-4 h-4 fill-[#FF005C]" />
                 <span>EXPRESS SPEED DELIVERY</span>
               </div>
 
               <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-slate-900 dark:text-white">
                 Delivered Faster Than <br />
-                <span className="text-[#FF005C]">Your OTP.</span>
+                <span className="text-brand-pink">Your OTP.</span>
               </h2>
 
               <p className="text-slate-600 dark:text-slate-300 font-medium text-base leading-relaxed max-w-lg">
@@ -47,7 +47,7 @@ export const RedemptionAndSecurity = () => {
                   'Up to 11 months validity with zero hassle',
                 ].map((feat, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-white/5 p-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
-                    <div className="w-6 h-6 rounded-full bg-[#FF005C] text-white flex items-center justify-center font-black text-xs shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-brand-pink text-white flex items-center justify-center font-black text-xs shrink-0">
                       ✓
                     </div>
                     <span>{feat}</span>
@@ -78,7 +78,7 @@ export const RedemptionAndSecurity = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
               STEP-BY-STEP REDEMPTION
             </span>
             <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
@@ -91,9 +91,9 @@ export const RedemptionAndSecurity = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {redemptionSteps.map((s) => (
-              <div key={s.num} className="p-6 rounded-3xl bg-slate-50 dark:bg-[#161616] border border-slate-200/80 dark:border-[#292929] space-y-3 flex flex-col justify-between hover:border-[#FF005C] hover:-translate-y-1 transition-all duration-300">
+              <div key={s.num} className="p-6 rounded-3xl bg-slate-50 dark:bg-[#161616] border border-slate-200/80 dark:border-[#292929] space-y-3 flex flex-col justify-between hover:border-brand-pink hover:-translate-y-1 transition-all duration-300">
                 <div>
-                  <div className="w-9 h-9 rounded-2xl bg-[#FF005C] text-white font-black text-xs flex items-center justify-center mb-3 shadow-md">
+                  <div className="w-9 h-9 rounded-2xl bg-brand-pink text-white font-black text-xs flex items-center justify-center mb-3 shadow-md">
                     0{s.num}
                   </div>
                   <h3 className="font-heading font-black text-sm text-slate-900 dark:text-white leading-snug">
@@ -109,7 +109,7 @@ export const RedemptionAndSecurity = () => {
 
           {/* Legal Disclaimer */}
           <div className="mt-10 p-5 rounded-2xl bg-slate-50 dark:bg-[#161616] border border-slate-200/80 dark:border-[#292929] text-xs text-slate-600 dark:text-slate-400 font-medium flex items-start gap-3 max-w-3xl mx-auto">
-            <Info className="w-5 h-5 text-[#FF005C] shrink-0 mt-0.5" />
+            <Info className="w-5 h-5 text-brand-pink shrink-0 mt-0.5" />
             <p>
               <strong className="text-slate-900 dark:text-white font-bold">Official Acceptance Notice:</strong> Apex Vouchers provides authorized bulk reseller voucher codes. All vouchers are redeemed directly on official test provider portals (Pearson, ETS, Duolingo). Zero hassle & guaranteed acceptance.
             </p>
@@ -123,12 +123,12 @@ export const RedemptionAndSecurity = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FF005C]/10 px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-brand-pink/10 px-3.5 py-1.5 rounded-full border border-brand-pink/20">
               100% SECURITY & TRUST
             </span>
             <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-3">
               Your Payment. Your Voucher. <br />
-              <span className="text-[#FF005C]">Your Peace of Mind.</span>
+              <span className="text-brand-pink">Your Peace of Mind.</span>
             </h2>
             <p className="text-slate-400 font-medium text-base mt-3">
               Bank-grade security protocols so you can buy your voucher with 100% confidence.
@@ -145,8 +145,8 @@ export const RedemptionAndSecurity = () => {
             ].map((item, idx) => {
               const IconComp = item.icon;
               return (
-                <div key={idx} className="p-6 rounded-3xl bg-slate-900 dark:bg-[#161616] border border-slate-800 dark:border-[#292929] space-y-3 hover:border-[#FF005C] hover:-translate-y-1 transition-all duration-300">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 text-[#FF005C] border border-white/10 flex items-center justify-center mx-auto shadow-sm">
+                <div key={idx} className="p-6 rounded-3xl bg-slate-900 dark:bg-[#161616] border border-slate-800 dark:border-[#292929] space-y-3 hover:border-brand-pink hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 text-brand-pink border border-white/10 flex items-center justify-center mx-auto shadow-sm">
                     <IconComp className="w-6 h-6" />
                   </div>
                   <h3 className="font-heading font-black text-sm text-white">{item.title}</h3>

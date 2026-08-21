@@ -152,13 +152,13 @@ export function PhoneInput({
 
   return (
     <div className="relative" id={id}>
-      <div className={`flex items-stretch rounded-2xl border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[#EAEAEA] dark:border-[#292929]'} bg-neutral-50 dark:bg-[#0E0E0E] overflow-hidden focus-within:border-[#FF005C] focus-within:ring-2 focus-within:ring-[#FF005C]/20 transition-all ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className={`flex items-stretch rounded-2xl border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[#EAEAEA] dark:border-[#292929]'} bg-neutral-50 dark:bg-[#0E0E0E] overflow-hidden focus-within:border-brand-pink focus-within:ring-2 focus-within:ring-brand-pink/20 transition-all ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
         {/* Country selector */}
         <button
           ref={triggerRef}
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 px-3 py-3 bg-neutral-100 dark:bg-[#1A1A1A] border-r border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-200 dark:hover:bg-[#222] transition-colors flex-shrink-0 min-w-[100px]"
+          className="flex items-center gap-1.5 px-3 py-3 bg-neutral-100 dark:bg-[#1A1A1A] border-r border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-200 dark:hover:bg-[#222] transition-colors shrink-0 min-w-25"
           aria-label="Select country"
           aria-expanded={isOpen}
         >
@@ -187,12 +187,12 @@ export function PhoneInput({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute top-full left-0 mt-2 w-full max-h-[300px] z-50 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-2xl overflow-hidden flex flex-col"
+          className="absolute top-full left-0 mt-2 w-full max-h-75 z-50 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Search */}
-          <div className="p-2.5 border-b border-[#EAEAEA] dark:border-[#292929] flex-shrink-0">
+          <div className="p-2.5 border-b border-[#EAEAEA] dark:border-[#292929] shrink-0">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-              <Search className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
               <input
                 ref={searchRef}
                 type="text"
@@ -230,10 +230,10 @@ export function PhoneInput({
                     onClick={() => handleCountrySelect(c)}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-[#1A1A1A] transition-colors ${isSelected ? 'bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''}`}
                   >
-                    <span className="text-base leading-none flex-shrink-0">{c.flag}</span>
+                    <span className="text-base leading-none shrink-0">{c.flag}</span>
                     <span className="text-xs font-bold text-neutral-900 dark:text-white flex-1 truncate">{c.name}</span>
-                    <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 tabular-nums flex-shrink-0">+{c.callingCode}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-[#FF005C] flex-shrink-0" />}
+                    <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 tabular-nums shrink-0">+{c.callingCode}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-brand-pink shrink-0" />}
                   </button>
                 </React.Fragment>
               );

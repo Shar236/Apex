@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { paymentApi, formatPrice } from '../lib/api';
+import { useVoucher } from '../context/VoucherContext';
 import { ApexLogo } from './ApexLogo';
 import { CheckCircle2, AlertCircle, ArrowRight, Ticket, ShieldCheck, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -9,6 +10,7 @@ export const PaymentReturnPage = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('orderId') || '';
   const navigate = useNavigate();
+  const { clearCart, handlePurchaseSuccess } = useVoucher();
 
   const [loading, setLoading] = useState(true);
   const [statusData, setStatusData] = useState(null);
@@ -29,8 +31,14 @@ export const PaymentReturnPage = () => {
         setLoading(false);
         if (res.success) {
           setStatusData(res);
-          if (res.paymentStatus === 'PAID' || res.orderStatus === 'FULFILLED') {
+          if (
+            res.paymentStatus === 'PAID' ||
+            res.orderStatus === 'FULFILLED' ||
+            res.data?.paymentStatus === 'PAID'
+          ) {
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            clearCart();
+            handlePurchaseSuccess({ orderId: res.data?.orderNo || orderId });
           }
         } else {
           setError(res.message || 'Payment status verification failed.');
@@ -44,7 +52,7 @@ export const PaymentReturnPage = () => {
 
     checkStatus();
     return () => { isMounted = false; };
-  }, [orderId]);
+  }, [orderId, clearCart, handlePurchaseSuccess]);
 
   const isPaid = statusData?.paymentStatus === 'PAID' || statusData?.orderStatus === 'FULFILLED' || statusData?.data?.paymentStatus === 'PAID';
   const order = statusData?.data;
@@ -59,7 +67,7 @@ export const PaymentReturnPage = () => {
 
         {loading ? (
           <div className="py-12 space-y-4">
-            <RefreshCw className="w-10 h-10 text-[#FF005C] animate-spin mx-auto" />
+            <RefreshCw className="w-10 h-10 text-brand-pink animate-spin mx-auto" />
             <h2 className="font-heading font-black text-xl">Verifying Payment with Cashfree…</h2>
             <p className="text-xs text-neutral-500 font-medium">Please wait while we confirm your payment status and issue your exam voucher.</p>
           </div>
@@ -92,7 +100,7 @@ export const PaymentReturnPage = () => {
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-[#FF005C] block mb-1">
+              <span className="text-xs font-black uppercase tracking-widest text-brand-pink block mb-1">
                 ORDER # {order?.orderNo || orderId}
               </span>
               <h2 className="font-heading font-black text-3xl">Payment Confirmed!</h2>
@@ -104,8 +112,8 @@ export const PaymentReturnPage = () => {
             {vouchers.length > 0 ? (
               <div className="space-y-3 text-left">
                 {vouchers.map((v, i) => (
-                  <div key={i} className="p-5 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border-2 border-dashed border-[#FF005C]/40 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-black text-[#FF005C]">
+                  <div key={i} className="p-5 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border-2 border-dashed border-brand-pink/40 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-black text-brand-pink">
                       <span>{v.productName || 'Voucher Code'}</span>
                       <span>Exp: {new Date(v.expiryDate).toLocaleDateString()}</span>
                     </div>

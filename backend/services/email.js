@@ -518,6 +518,195 @@ export const sendPasswordReset = (user, token) => {
   });
 };
 
+/**
+ * Customer Confirmation: PTE Booking Assistance Request Received
+ */
+export const sendPTEBookingConfirmationToCustomer = (booking) => {
+  const subject = 'PTE Booking Assistance Request Received';
+  const dateStr = booking.preferredDate
+    ? new Date(booking.preferredDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Flexible';
+
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${booking.fullName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 24px 0;">
+      Thank you for requesting PTE booking assistance from ${config.business.name}. We've received your request and our team will contact you shortly using the details you provided to help you book your exam slot.
+    </p>
+
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Request ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.requestId}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Exam Type:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.examType}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred City:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${booking.preferredCity}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred Date:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${dateStr}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Status:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #f5c045; padding-bottom: 6px;">${booking.status}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background-color: #261f0a; border: 1px solid #7c5e10; border-radius: 14px; padding: 16px; font-size: 13px; color: #f5c045; text-align: center;">
+      This is a booking assistance request, not a guarantee of an exam slot. Our team will confirm actual availability directly with you.
+    </div>
+  `;
+
+  return sendEmail({
+    to: booking.email,
+    subject: `PTE Booking Assistance Request Received — ${booking.requestId}`,
+    html: htmlWrap(`PTE Booking Request ${booking.requestId}`, bodyHtml),
+  });
+};
+
+/**
+ * Customer Notification: Status Changed for PTE Booking Request
+ */
+export const sendPTEBookingStatusUpdateToCustomer = (booking, newStatus, note = '', confirmationDetails = null) => {
+  const subject = `PTE Booking Status Update: ${newStatus} — ${booking.requestId}`;
+  const dateStr = booking.preferredDate
+    ? new Date(booking.preferredDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Flexible';
+
+  let statusColor = '#38bdf8';
+  if (newStatus === 'Booking Confirmed' || newStatus === 'Completed') statusColor = '#10b981';
+  if (newStatus === 'Cancelled' || newStatus === 'Rejected') statusColor = '#ef4444';
+  if (newStatus === 'Waiting for Customer') statusColor = '#f59e0b';
+
+  let confirmationBlock = '';
+  if (newStatus === 'Booking Confirmed' && confirmationDetails && (confirmationDetails.bookingReference || confirmationDetails.confirmedCentre)) {
+    confirmationBlock = `
+      <div style="background-color: #062419; border: 1px solid #059669; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 12px 0; color: #34d399; font-size: 16px; font-weight: 800;">OFFICIAL APPOINTMENT CONFIRMATION DETAILS</h3>
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          ${confirmationDetails.bookingReference ? `<tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Booking Reference:</td><td align="right" style="font-size: 13px; font-weight: 800; color: #ffffff; padding-bottom: 6px;">${confirmationDetails.bookingReference}</td></tr>` : ''}
+          ${confirmationDetails.confirmedCentre ? `<tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Test Centre:</td><td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${confirmationDetails.confirmedCentre}</td></tr>` : ''}
+          ${confirmationDetails.confirmedCity ? `<tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">City:</td><td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${confirmationDetails.confirmedCity}</td></tr>` : ''}
+          ${confirmationDetails.confirmedDate ? `<tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Confirmed Date:</td><td align="right" style="font-size: 13px; font-weight: 700; color: #34d399; padding-bottom: 6px;">${new Date(confirmationDetails.confirmedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>` : ''}
+          ${confirmationDetails.confirmedTime ? `<tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Confirmed Time:</td><td align="right" style="font-size: 13px; font-weight: 700; color: #34d399; padding-bottom: 6px;">${confirmationDetails.confirmedTime}</td></tr>` : ''}
+          ${confirmationDetails.importantInstructions ? `<tr><td colspan="2" style="font-size: 12px; color: #cccccc; padding-top: 10px; border-top: 1px solid #065f46;"><strong>Instructions:</strong> ${confirmationDetails.importantInstructions}</td></tr>` : ''}
+        </table>
+      </div>
+    `;
+  }
+
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${booking.fullName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 20px 0;">
+      Your PTE exam booking assistance request has been updated to: <strong style="color: ${statusColor};">${newStatus}</strong>.
+    </p>
+
+    ${confirmationBlock}
+
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Request ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.requestId}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Exam Type:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.examType}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred City:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${booking.preferredCity}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Status:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: ${statusColor}; padding-bottom: 6px;">${newStatus}</td>
+        </tr>
+      </table>
+    </div>
+
+    ${note ? `<div style="background-color: #141414; border-left: 4px solid ${statusColor}; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: #dddddd;"><strong>Update Note:</strong> ${note}</div>` : ''}
+
+    <p style="font-size: 13px; color: #888888; line-height: 1.5;">
+      If you have questions or need to make adjustments to your preferences, reply directly to this email or contact Apex Vouchers support.
+    </p>
+  `;
+
+  return sendEmail({
+    to: booking.email,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/**
+ * Internal Admin Notification: New PTE Booking Assistance Request
+ */
+export const sendPTEBookingAdminNotification = (booking) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const subject = `New PTE Booking Assistance Request — ${booking.requestId}`;
+  const dateStr = booking.preferredDate
+    ? new Date(booking.preferredDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Flexible';
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">NEW PTE BOOKING ASSISTANCE REQUEST</h2>
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.fullName}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Email:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #FF005C; padding-bottom: 6px;">${booking.email}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Phone:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${booking.phone}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Exam Type:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.examType}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred City:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.preferredCity}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred Date:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${dateStr}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Preferred Time:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${booking.preferredTime || 'Any Time'}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Request ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${booking.requestId}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Open Request in Admin Panel →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
 export const sendEmailChangeVerification = (user, newEmail, token) => {
   const serverUrl = config.serverUrl || 'http://localhost:5000';
   const url = `${serverUrl}/api/account/verify-email-change?token=${token}`;

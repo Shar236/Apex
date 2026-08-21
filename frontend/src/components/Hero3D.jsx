@@ -27,16 +27,16 @@ const CampaignCountdownTimer = ({ endDate }) => {
   }, [endDate]);
 
   return (
-    <div className="inline-flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white bg-white/95 dark:bg-[#1A1A1A] px-3.5 py-1.5 rounded-full border border-[#FF005C]/30 shadow-md">
-      <span className="text-[#FF005C] animate-pulse">🔥 Offer Ends In:</span>
+    <div className="inline-flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white bg-white/95 dark:bg-[#1A1A1A] px-3.5 py-1.5 rounded-full border border-brand-pink/30 shadow-md">
+      <span className="text-brand-pink animate-pulse">🔥 Offer Ends In:</span>
       <div className="flex items-center gap-1 font-mono text-xs">
-        <span className="bg-[#FF005C] text-white px-1.5 py-0.5 rounded">{String(timeLeft.days).padStart(2, '0')}d</span>
+        <span className="bg-brand-pink text-white px-1.5 py-0.5 rounded">{String(timeLeft.days).padStart(2, '0')}d</span>
         <span>:</span>
         <span className="bg-slate-900 text-white dark:bg-slate-800 px-1.5 py-0.5 rounded">{String(timeLeft.hours).padStart(2, '0')}h</span>
         <span>:</span>
         <span className="bg-slate-900 text-white dark:bg-slate-800 px-1.5 py-0.5 rounded">{String(timeLeft.minutes).padStart(2, '0')}m</span>
         <span>:</span>
-        <span className="bg-[#FF005C] text-white px-1.5 py-0.5 rounded">{String(timeLeft.seconds).padStart(2, '0')}s</span>
+        <span className="bg-brand-pink text-white px-1.5 py-0.5 rounded">{String(timeLeft.seconds).padStart(2, '0')}s</span>
       </div>
     </div>
   );
@@ -71,9 +71,9 @@ export const Hero3D = () => {
       : defaultBenefits;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-slate-50 dark:from-[#0A0A0A] dark:via-[#0A0A0A] dark:to-[#111111] pt-8 lg:pt-14 pb-16 border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
+    <section className="relative overflow-hidden bg-linear-to-b from-slate-50/80 via-white to-slate-50 dark:from-[#0A0A0A] dark:via-[#0A0A0A] dark:to-[#111111] pt-8 lg:pt-14 pb-16 border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
       {/* Background Subtle Soft Glows */}
-      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-[#FF005C]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-brand-pink/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center">
@@ -81,9 +81,9 @@ export const Hero3D = () => {
           <div className="lg:col-span-7 space-y-6">
             {/* Active Promotional Campaign Banner Card */}
             {activeCampaign ? (
-              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#FFF0F5] via-rose-50 to-pink-50 dark:from-[#2A0A17] dark:via-[#1F0811] dark:to-[#16050B] border border-[#FF005C]/30 shadow-lg space-y-3">
+              <div className="p-4 sm:p-5 rounded-3xl bg-linear-to-r from-[#FFF0F5] via-rose-50 to-pink-50 dark:from-[#2A0A17] dark:via-[#1F0811] dark:to-[#16050B] border border-brand-pink/30 shadow-lg space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF005C] text-white font-black text-xs uppercase tracking-wider shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink text-white font-black text-xs uppercase tracking-wider shadow-sm">
                     {activeCampaign.badgeText || '🇮🇳 SPECIAL CAMPAIGN'}
                   </span>
                   {activeCampaign.showCountdown !== false && (
@@ -95,14 +95,14 @@ export const Hero3D = () => {
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                     {activeCampaign.title || '50% OFF EXAM VOUCHERS'}
                   </h2>
-                  <p className="text-sm font-semibold text-[#FF005C] dark:text-rose-400 mt-0.5">
+                  <p className="text-sm font-semibold text-brand-pink dark:text-rose-400 mt-0.5">
                     {activeCampaign.subtitle || 'Limited period promotional offer'}
                   </p>
                 </div>
               </div>
             ) : (
               /* Normal Pill Badge */
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 text-xs font-black text-[#FF005C]">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 text-xs font-black text-brand-pink">
                 <span>🎟️</span>
                 <span>Save on Exam Fees with Apex Vouchers</span>
               </div>
@@ -111,7 +111,7 @@ export const Hero3D = () => {
             {/* Headline */}
             <h1 className="font-heading font-black text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-slate-900 dark:text-white tracking-tight">
               {heading1} <br />
-              <span className="text-[#FF005C]">{headingHighlight}</span> <br />
+              <span className="text-brand-pink">{headingHighlight}</span> <br />
               {heading3}
             </h1>
 
@@ -144,7 +144,7 @@ export const Hero3D = () => {
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={() => setActiveTab('shop')}
-                className="bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-base py-4 px-8 rounded-full shadow-lg shadow-[#FF005C]/25 flex items-center gap-2 hover:scale-105 transition-all cursor-pointer"
+                className="bg-brand-pink hover:bg-[#E00052] text-white font-black text-base py-4 px-8 rounded-full shadow-lg shadow-brand-pink/25 flex items-center gap-2 hover:scale-105 transition-all cursor-pointer"
               >
                 <span>{mainCtaText}</span>
                 <ArrowRight className="w-5 h-5" />
@@ -152,7 +152,7 @@ export const Hero3D = () => {
 
               <button
                 onClick={() => setActiveTab('how-it-works')}
-                className="bg-white dark:bg-[#161616] hover:bg-slate-50 dark:hover:bg-[#222222] text-slate-800 dark:text-white font-bold text-base py-4 px-7 rounded-full border border-slate-200 dark:border-[#292929] shadow-sm flex items-center gap-2 hover:border-[#FF005C] transition-all cursor-pointer"
+                className="bg-white dark:bg-[#161616] hover:bg-slate-50 dark:hover:bg-[#222222] text-slate-800 dark:text-white font-bold text-base py-4 px-7 rounded-full border border-slate-200 dark:border-[#292929] shadow-sm flex items-center gap-2 hover:border-brand-pink transition-all cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-slate-800 dark:fill-white text-slate-800 dark:text-white" />
                 <span>How It Works</span>

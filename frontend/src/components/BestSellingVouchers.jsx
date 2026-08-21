@@ -1,17 +1,27 @@
 import React from 'react';
 import { useVoucher } from '../context/VoucherContext';
-import { ProductCard } from './ProductCard';
+import { HomepageVoucherCard } from './HomepageVoucherCard';
 import { ArrowRight, ShieldCheck, Zap, Tag, Headphones, LayoutGrid } from 'lucide-react';
+
+const isPTE = (p) => {
+  const haystack = `${p.name || ''} ${p.brand || ''} ${p.provider || ''} ${p.category || ''}`.toLowerCase();
+  return haystack.includes('pte') && !haystack.includes('gre') && !haystack.includes('toefl');
+};
 
 export const BestSellingVouchers = () => {
   const { products, setActiveTab } = useVoucher();
 
-  const bestSellers = products.slice(0, 3);
+  const activeProducts = products.filter((p) => p.active !== false && !p.archived);
+  const pteProducts = activeProducts
+    .filter(isPTE)
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+  if (pteProducts.length === 0) return null;
 
   const features = [
     {
       icon: Zap,
-      iconBg: 'bg-[#FF005C]/20 text-[#FF005C]',
+      iconBg: 'bg-brand-pink/20 text-brand-pink',
       title: 'Instant Digital Delivery',
       subtitle: 'Get voucher in 10 seconds'
     },
@@ -44,18 +54,18 @@ export const BestSellingVouchers = () => {
           
           {/* Top Pill Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D1322] border border-slate-800 shadow-sm text-xs font-bold text-slate-200">
-            <ShieldCheck className="w-4 h-4 text-[#FF005C]" />
+            <ShieldCheck className="w-4 h-4 text-brand-pink" />
             <span>TRUSTED BY 15,000+ STUDENTS</span>
           </div>
 
           {/* Main Title */}
           <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight">
-            Choose Your <span className="text-[#FF005C]">Exam Voucher</span>
+            PTE <span className="text-brand-pink">Vouchers</span>
           </h2>
 
           {/* Subtitle */}
           <p className="text-slate-400 font-medium text-base sm:text-lg">
-            Instant delivery • Genuine vouchers • Secure & safe payments
+            Choose the right PTE option for your test preparation, study or eligible pathway.
           </p>
 
         </div>
@@ -81,21 +91,21 @@ export const BestSellingVouchers = () => {
           })}
         </div>
 
-        {/* 3 Voucher Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {bestSellers.map((product) => (
-            <ProductCard key={product.id} product={product} />
+        {/* PTE Voucher Cards Grid — white cards on dark bg */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 items-start">
+          {pteProducts.map((product) => (
+            <HomepageVoucherCard key={product.id || product._id} product={product} />
           ))}
         </div>
 
-        {/* Bottom Centered "View All Vouchers" Pill Button */}
+        {/* Bottom Centered "Explore All Vouchers" Pill Button */}
         <div className="text-center">
           <button
             onClick={() => setActiveTab('shop')}
             className="inline-flex items-center gap-2 bg-[#0D1322] hover:bg-[#1A2338] text-white font-bold text-xs px-7 py-3.5 rounded-full border border-slate-800 transition-all cursor-pointer shadow-lg hover:scale-[1.02]"
           >
-            <LayoutGrid className="w-4 h-4 text-[#FF005C]" />
-            <span>View All Vouchers</span>
+            <LayoutGrid className="w-4 h-4 text-brand-pink" />
+            <span>Explore All Vouchers</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

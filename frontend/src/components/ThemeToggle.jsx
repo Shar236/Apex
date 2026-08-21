@@ -11,7 +11,7 @@ export const ThemeToggle = ({ compact = false, showLabel = false }) => {
     return (
       <button
         onClick={toggleTheme}
-        className="relative group p-2 rounded-xl bg-neutral-100 dark:bg-[#161616] text-neutral-800 dark:text-neutral-100 border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] transition-all duration-300 cursor-pointer overflow-hidden"
+        className="relative group p-2 rounded-xl bg-neutral-100 dark:bg-[#161616] text-neutral-800 dark:text-neutral-100 border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition-all duration-300 cursor-pointer overflow-hidden"
         aria-label={tooltipText}
         title={tooltipText}
       >
@@ -35,12 +35,12 @@ export const ThemeToggle = ({ compact = false, showLabel = false }) => {
   return (
     <button
       onClick={toggleTheme}
-      className="relative flex items-center gap-2 p-1.5 px-3 rounded-full bg-neutral-100 dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] transition-all duration-300 cursor-pointer group"
+      className="relative flex items-center gap-2 p-1.5 px-3 rounded-full bg-neutral-100 dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition-all duration-300 cursor-pointer group"
       aria-label={tooltipText}
       title={tooltipText}
     >
       <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-500 transform ${
-        isDark ? 'bg-amber-400/20 text-amber-400 rotate-180' : 'bg-[#FF005C]/10 text-[#FF005C] rotate-0'
+        isDark ? 'bg-amber-400/20 text-amber-400 rotate-180' : 'bg-brand-pink/10 text-brand-pink rotate-0'
       }`}>
         {isDark ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
       </div>

@@ -70,7 +70,7 @@ export const SavingsCalculator = () => {
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200 dark:border-[#292929] text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:border-[#FF005C] transition-all cursor-pointer shadow-sm"
+                  className="w-full px-4 py-3.5 rounded-xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200 dark:border-[#292929] text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:border-brand-pink transition-all cursor-pointer shadow-sm"
                 >
                   {examOptions.map(p => (
                     <option key={p.id} value={p.id}>
@@ -85,7 +85,7 @@ export const SavingsCalculator = () => {
                   <label className="block text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
                     Number of Vouchers
                   </label>
-                  <span className="px-3 py-1 rounded-lg bg-[#FF005C] text-white text-xs font-extrabold">
+                  <span className="px-3 py-1 rounded-lg bg-brand-pink text-white text-xs font-extrabold">
                     {quantity} {quantity === 1 ? 'Voucher' : 'Vouchers'}
                   </span>
                 </div>
@@ -95,7 +95,7 @@ export const SavingsCalculator = () => {
                   max="10"
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value))}
-                  className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 appearance-none cursor-pointer accent-[#FF005C]"
+                  className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 appearance-none cursor-pointer accent-brand-pink"
                 />
                 <div className="flex justify-between text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">
                   <span>1</span>
@@ -130,7 +130,7 @@ export const SavingsCalculator = () => {
                 </div>
 
                 <div>
-                  <span className="text-[11px] font-extrabold text-[#FF005C] uppercase tracking-wider block mb-1">Apex Voucher Price</span>
+                  <span className="text-[11px] font-extrabold text-brand-pink uppercase tracking-wider block mb-1">Apex Voucher Price</span>
                   <p className="font-heading font-black text-4xl sm:text-5xl text-white leading-none">
                     {formatPrice(totalDiscounted)}
                   </p>
@@ -138,8 +138,8 @@ export const SavingsCalculator = () => {
 
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-extrabold text-[#FF005C] uppercase tracking-wider block">You Save</span>
-                    <span className="font-heading font-black text-2xl text-[#FF005C]">
+                    <span className="text-[10px] font-extrabold text-brand-pink uppercase tracking-wider block">You Save</span>
+                    <span className="font-heading font-black text-2xl text-brand-pink">
                       {formatPrice(displayedSavings)}
                     </span>
                   </div>

@@ -37,9 +37,9 @@ export const SocialProofToast = () => {
   const currentEvent = SOCIAL_PROOF_EVENTS[currentIndex];
 
   return (
-    <div className="fixed bottom-6 left-6 z-40 max-w-xs bg-white dark:bg-[#161616] border border-[#FF005C]/30 text-neutral-900 dark:text-white p-3.5 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 flex items-center justify-between gap-3">
+    <div className="fixed bottom-6 left-6 z-40 max-w-xs bg-white dark:bg-[#161616] border border-brand-pink/30 text-neutral-900 dark:text-white p-3.5 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] flex items-center justify-center shrink-0 border border-[#FF005C]/20">
+        <div className="w-9 h-9 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center shrink-0 border border-brand-pink/20">
           <ShoppingBag className="w-4.5 h-4.5" />
         </div>
         <div className="text-xs">
@@ -47,7 +47,7 @@ export const SocialProofToast = () => {
             <strong className="text-neutral-900 dark:text-white font-black">{currentEvent.name}</strong> ({currentEvent.city})
           </p>
           <p className="text-neutral-500 dark:text-[#B5B5B5] text-[11px]">
-            Purchased <span className="font-extrabold text-[#FF005C]">{currentEvent.exam}</span> ({currentEvent.time})
+            Purchased <span className="font-extrabold text-brand-pink">{currentEvent.exam}</span> ({currentEvent.time})
           </p>
         </div>
       </div>

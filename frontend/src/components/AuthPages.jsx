@@ -11,7 +11,7 @@ const PageShell = ({ title, subtitle, children, badge = null }) => (
       <div className="flex flex-col items-center justify-center mb-6">
         <ApexLogo />
         {badge && (
-          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF005C]/10 text-[#FF005C] border border-[#FF005C]/20 text-[11px] font-black uppercase tracking-wider">
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/20 text-[11px] font-black uppercase tracking-wider">
             {badge}
           </div>
         )}
@@ -83,15 +83,15 @@ export const LoginPage = () => {
           {!loading && <ArrowRight className="w-4 h-4" />}
         </button>
         <div className="flex justify-between text-xs font-semibold text-neutral-500 dark:text-[#B5B5B5] pt-1">
-          <Link className="hover:text-[#FF005C] transition-colors" to="/forgot-password">Forgot password?</Link>
-          <Link className="hover:text-[#FF005C] transition-colors" to="/register">Create Account →</Link>
+          <Link className="hover:text-brand-pink transition-colors" to="/forgot-password">Forgot password?</Link>
+          <Link className="hover:text-brand-pink transition-colors" to="/register">Create Account →</Link>
         </div>
         <div className="mt-4 pt-4 border-t border-[#EAEAEA] dark:border-[#292929] flex items-center justify-between text-[11px] font-bold text-neutral-400">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> 256-bit Encrypted
           </span>
-          <Link to="/admin/login" className="text-neutral-500 hover:text-[#FF005C] transition-colors flex items-center gap-1 font-extrabold">
-            <Crown className="w-3 h-3 text-[#FF005C]" /> Admin Login
+          <Link to="/admin/login" className="text-neutral-500 hover:text-brand-pink transition-colors flex items-center gap-1 font-extrabold">
+            <Crown className="w-3 h-3 text-brand-pink" /> Admin Login
           </Link>
         </div>
       </form>
@@ -153,20 +153,20 @@ export const AdminLoginPage = () => {
         />
         {error && (
           <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-4 py-3 flex items-start gap-2">
-            <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
         <button
           disabled={loading}
-          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-[#FF005C] dark:hover:bg-[#FF005C] dark:hover:text-white transition-all disabled:opacity-60"
+          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-brand-pink dark:hover:bg-brand-pink dark:hover:text-white transition-all disabled:opacity-60"
         >
-          <Crown className="w-4 h-4 text-[#FF005C]" />
+          <Crown className="w-4 h-4 text-brand-pink" />
           <span>{loading ? 'Authenticating…' : 'Secure Admin Login'}</span>
         </button>
 
         <div className="pt-2 text-center">
-          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-[#FF005C] transition-colors">
+          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-brand-pink transition-colors">
             ← Return to Candidate Login
           </Link>
         </div>
@@ -245,7 +245,7 @@ export const RegisterPage = () => {
         </button>
         <p className="text-xs text-center font-semibold text-neutral-500 dark:text-[#B5B5B5]">
           Already have an account?{' '}
-          <Link className="text-[#FF005C]" to="/login">Log in</Link>
+          <Link className="text-brand-pink" to="/login">Log in</Link>
         </p>
       </form>
     </PageShell>
@@ -357,7 +357,7 @@ function LabeledInput({ icon, label, value, onChange, type = 'text', placeholder
           value={value}
           placeholder={placeholder}
           onChange={onChange}
-          className="w-full pl-11 pr-4 py-3.5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold placeholder-neutral-400 focus:border-[#FF005C] focus:outline-none focus:ring-2 focus:ring-[#FF005C]/20 transition"
+          className="w-full pl-11 pr-4 py-3.5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold placeholder-neutral-400 focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/20 transition"
         />
       </div>
     </label>

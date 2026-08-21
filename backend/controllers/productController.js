@@ -22,13 +22,26 @@ const applyAvailability = async (products) => {
     const raw = typeof p.toObject === 'function' ? p.toObject() : p;
     const avail = map[raw._id.toString()] || 0;
     const threshold = raw.lowStockThreshold || 10;
-    const stockStatus = avail > threshold ? 'IN STOCK' : avail > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
-    const inStock = avail > 0;
+    const isUnlimited = raw.stockType === 'UNLIMITED';
     const savings = Math.max(0, (raw.originalPrice || 0) - (raw.sellingPrice || 0));
+
+    let stockStatus;
+    let inStock;
+    if (raw.comingSoon) {
+      stockStatus = 'COMING SOON';
+      inStock = false;
+    } else if (isUnlimited) {
+      stockStatus = 'IN STOCK';
+      inStock = true;
+    } else {
+      stockStatus = avail > threshold ? 'IN STOCK' : avail > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
+      inStock = avail > 0;
+    }
+
     return {
       ...raw,
-      availability: avail,
-      availableStock: avail,
+      availability: isUnlimited ? null : avail,
+      availableStock: isUnlimited ? null : avail,
       inStock,
       stockStatus,
       discountedPrice: raw.sellingPrice,
@@ -77,7 +90,7 @@ const buildProductJsonLd = (product) => {
 export const listProducts = async (req, res, next) => {
   try {
     const { category, brand, provider, featured, search, all } = req.query;
-    const filter = all === '1' ? {} : { active: true };
+    const filter = all === '1' ? {} : { active: true, archived: { $ne: true } };
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
     if (provider) filter.provider = provider;
@@ -116,7 +129,8 @@ export const getProduct = async (req, res, next) => {
         }
       }
     }
-    if (!product || (!product.active && req.user?.role !== 'admin')) {
+    const isPubliclyHidden = !product?.active || product?.archived;
+    if (!product || (isPubliclyHidden && req.user?.role !== 'admin')) {
       return next(new AppError('Product not found', 404, 'NOT_FOUND'));
     }
     const hydrated = (await applyAvailability([product]))[0];
@@ -274,7 +288,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       },
     };
 
-    const products = await Product.find({ active: true })
+    const products = await Product.find({ active: true, archived: { $ne: true } })
       .sort({ displayOrder: 1, featured: -1, createdAt: -1 })
       .lean();
     const hydratedProducts = await applyAvailability(products);

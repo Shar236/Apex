@@ -6,6 +6,15 @@ export const generateOrderNo = () => {
   return `APX-${ts}-${rnd}`;
 };
 
+export const generatePTEBookingRequestId = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const rnd = crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `PTE-${y}${m}${d}-${rnd}`;
+};
+
 export const generateResetToken = () =>
   crypto.randomBytes(32).toString('hex');
 

@@ -11,3 +11,4 @@ export { Campaign } from './Campaign.js';
 export { Redirect } from './Redirect.js';
 export { PageSEO } from './PageSEO.js';
 export { BlogPost } from './BlogPost.js';
+export { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES } from './PTEBookingRequest.js';

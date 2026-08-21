@@ -21,7 +21,7 @@ const loadCashfreeSdk = () => {
 };
 
 export const CheckoutModal = () => {
-  const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, setActiveTab } = useVoucher();
+  const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, clearCart, setActiveTab } = useVoucher();
   const { isAuthenticated, user, login, register } = useAuth();
 
   const [promoCode, setPromoCode] = useState('');
@@ -51,6 +51,13 @@ export const CheckoutModal = () => {
     phone: '',
   });
 
+  const checkoutItems = React.useMemo(() => {
+    if (!checkoutProduct) return [];
+    if (Array.isArray(checkoutProduct)) return checkoutProduct;
+    if (checkoutProduct.items && Array.isArray(checkoutProduct.items)) return checkoutProduct.items;
+    return [{ ...checkoutProduct, quantity: checkoutProduct.quantity || 1 }];
+  }, [checkoutProduct]);
+
   useEffect(() => {
     if (!isCheckoutOpen) return;
     setGuestLoginTab(isAuthenticated ? 'billing' : 'login');
@@ -64,9 +71,17 @@ export const CheckoutModal = () => {
     }
   }, [isCheckoutOpen, isAuthenticated, user]);
 
-  if (!isCheckoutOpen || !checkoutProduct) return null;
+  if (!isCheckoutOpen || checkoutItems.length === 0) return null;
 
-  const subtotal = checkoutProduct.discountedPrice;
+  const subtotal = checkoutItems.reduce(
+    (s, it) => s + (Number(it.discountedPrice != null ? it.discountedPrice : (it.sellingPrice || 0)) * (it.quantity || 1)),
+    0
+  );
+  const totalOriginal = checkoutItems.reduce(
+    (s, it) => s + (Number(it.originalPrice || 0) * (it.quantity || 1)),
+    0
+  );
+  const totalSavings = Math.max(0, totalOriginal - subtotal);
   const finalPrice = Math.max(0, subtotal - promoDiscount);
 
   const handleApplyPromo = async () => {
@@ -79,7 +94,7 @@ export const CheckoutModal = () => {
     const res = await accountApi.validatePromo({
       code: promoCode,
       subtotal,
-      productIds: [checkoutProduct._id || checkoutProduct.id],
+      productIds: checkoutItems.map((it) => it._id || it.id),
     });
     if (res.success && res.valid) {
       setPromoApplied(true);
@@ -128,7 +143,10 @@ export const CheckoutModal = () => {
     setProcessingState('creating');
 
     const orderPayload = {
-      items: [{ productId: checkoutProduct._id || checkoutProduct.id, quantity: 1 }],
+      items: checkoutItems.map((it) => ({
+        productId: it._id || it.id,
+        quantity: it.quantity || 1,
+      })),
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
       paymentMethod,
       billing: {
@@ -181,6 +199,7 @@ export const CheckoutModal = () => {
       setCompletedOrder(statusRes.data || createRes.data);
       setCompletedVouchers(statusRes.vouchers || []);
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      clearCart();
       handlePurchaseSuccess({ orderId: orderNo });
     } else {
       setError(statusRes.message || 'Payment was not completed. Please try again.');
@@ -228,36 +247,70 @@ export const CheckoutModal = () => {
               </div>
               <h2 className="font-heading font-black text-2xl">Complete Exam Voucher Order</h2>
               <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium">
-                Voucher appears in your dashboard and email instantly after payment.
+                Vouchers appear in your Candidate Vault and email instantly after payment.
               </p>
             </div>
 
-            <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20 mb-5 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#FF005C] tracking-wider block">Selected Voucher</span>
-                <h4 className="font-heading font-extrabold text-base leading-snug">{checkoutProduct.name}</h4>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                  Instant Delivery • Valid {checkoutProduct.validityMonths || 6} months
-                </span>
+            {checkoutItems.length === 1 ? (
+              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-brand-pink tracking-wider block">
+                    {checkoutItems[0].quantity > 1 ? `Selected Voucher (${checkoutItems[0].quantity}×)` : 'Selected Voucher'}
+                  </span>
+                  <h4 className="font-heading font-extrabold text-base leading-snug">{checkoutItems[0].name}</h4>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                    Instant Delivery • Valid {checkoutItems[0].validityMonths || 6} months
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-neutral-400 line-through block">{formatPrice(totalOriginal)}</span>
+                  <span className="font-heading font-black text-2xl text-brand-pink block leading-none">{formatPrice(finalPrice)}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-neutral-400 line-through block">{formatPrice(checkoutProduct.originalPrice)}</span>
-                <span className="font-heading font-black text-2xl text-[#FF005C] block leading-none">{formatPrice(finalPrice)}</span>
+            ) : (
+              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 mb-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-brand-pink/20 pb-2">
+                  <span className="text-[10px] uppercase font-bold text-brand-pink tracking-wider block">
+                    Order Summary ({checkoutItems.reduce((acc, it) => acc + (it.quantity || 1), 0)} Vouchers)
+                  </span>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-neutral-400 line-through mr-2">{formatPrice(totalOriginal)}</span>
+                    <span className="font-heading font-black text-xl text-brand-pink">{formatPrice(finalPrice)}</span>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  {checkoutItems.map((item, idx) => (
+                    <div key={item.id || item._id || idx} className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-brand-pink">{item.quantity || 1}×</span>
+                        <span className="font-bold text-neutral-800 dark:text-neutral-200 line-clamp-1">{item.name}</span>
+                      </div>
+                      <span className="font-black text-neutral-900 dark:text-white shrink-0">
+                        {formatPrice((item.discountedPrice != null ? item.discountedPrice : (item.sellingPrice || 0)) * (item.quantity || 1))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {totalSavings > 0 && (
+                  <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 pt-1 border-t border-brand-pink/10">
+                    <span>🎁 Total Savings: {formatPrice(totalSavings + promoDiscount)}</span>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {!isAuthenticated && (
               <div className="mb-5 rounded-2xl border border-[#EAEAEA] dark:border-[#292929] p-4">
                 <div className="flex gap-2 mb-4">
                   <button
                     onClick={() => setRegisterMode(false)}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${!registerMode ? 'bg-[#FF005C] text-white border-[#FF005C]' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${!registerMode ? 'bg-brand-pink text-white border-brand-pink' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
                   >
                     Log In
                   </button>
                   <button
                     onClick={() => setRegisterMode(true)}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${registerMode ? 'bg-[#FF005C] text-white border-[#FF005C]' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${registerMode ? 'bg-brand-pink text-white border-brand-pink' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
                   >
                     Create Account
                   </button>
@@ -297,7 +350,7 @@ export const CheckoutModal = () => {
                     placeholder="e.g. Rahul Sharma"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-[#FF005C] transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
                   />
                 </div>
                 <div>
@@ -308,7 +361,7 @@ export const CheckoutModal = () => {
                     placeholder="name@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-[#FF005C] transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
                   />
                 </div>
                 <div>
@@ -319,7 +372,7 @@ export const CheckoutModal = () => {
                     placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-[#FF005C] transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
                   />
                 </div>
               </div>
@@ -331,12 +384,12 @@ export const CheckoutModal = () => {
                     placeholder="Enter Coupon (e.g. APEX100)"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-[#FF005C]"
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
                   />
                   <button
                     type="button"
                     onClick={handleApplyPromo}
-                    className="px-4 py-2.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold hover:bg-[#FF005C] transition-colors"
+                    className="px-4 py-2.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold hover:bg-brand-pink transition-colors"
                   >
                     Apply
                   </button>
@@ -359,7 +412,7 @@ export const CheckoutModal = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
-                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'border-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C]' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
+                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'border-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
                   >
                     <QrCode className="w-4 h-4" />
                     <span>UPI / GPay / QR</span>
@@ -367,7 +420,7 @@ export const CheckoutModal = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'card' ? 'border-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C]' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
+                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'card' ? 'border-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>Card / NetBanking</span>
@@ -375,17 +428,17 @@ export const CheckoutModal = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 p-4 space-y-2 mt-3 text-sm font-bold">
+              <div className="rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 p-4 space-y-2 mt-3 text-sm font-bold">
                 <Row label="Subtotal (MRP)" value={formatPrice(checkoutProduct.originalPrice)} line />
                 <Row label="Product discount" value={`− ${formatPrice(checkoutProduct.originalPrice - subtotal)}`} good />
                 {promoApplied && <Row label="Promo code" value={`− ${fmt(promoDiscount)}`} good />}
-                <div className="h-px bg-[#FF005C]/20 my-1" />
+                <div className="h-px bg-brand-pink/20 my-1" />
                 <Row label="Total Payable" value={formatPrice(finalPrice)} big />
               </div>
 
               {error && (
                 <div className="text-xs font-bold text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-4 py-3 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {error}
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
                 </div>
               )}
 
@@ -419,7 +472,7 @@ export const CheckoutModal = () => {
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-[#FF005C] block mb-1">
+              <span className="text-xs font-black uppercase tracking-widest text-brand-pink block mb-1">
                 ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
               </span>
               <h2 className="font-heading font-black text-3xl">Voucher Code Issued!</h2>
@@ -434,9 +487,9 @@ export const CheckoutModal = () => {
             {completedVouchers?.length > 0 ? (
               <div className="space-y-3">
                 {completedVouchers.map((v, i) => (
-                  <div key={i} className="p-5 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border-2 border-dashed border-[#FF005C]/40 text-left space-y-3">
+                  <div key={i} className="p-5 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border-2 border-dashed border-brand-pink/40 text-left space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black text-[#FF005C] uppercase tracking-wider">{v.productName || 'Your Voucher Code'}</span>
+                      <span className="text-[11px] font-black text-brand-pink uppercase tracking-wider">{v.productName || 'Your Voucher Code'}</span>
                       <span className="text-[10px] font-black text-neutral-500 dark:text-[#B5B5B5]">
                         Exp {new Date(v.expiryDate).toLocaleDateString()}
                       </span>
@@ -447,7 +500,7 @@ export const CheckoutModal = () => {
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => handleCopy(i, v.code)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#161616] text-[#FF005C] font-black text-xs border border-[#FF005C]/40 shadow-sm hover:bg-[#FF005C] hover:text-white transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#161616] text-brand-pink font-black text-xs border border-brand-pink/40 shadow-sm hover:bg-brand-pink hover:text-white transition-all"
                       >
                         {copiedIdx === i ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         <span>{copiedIdx === i ? 'Copied!' : 'Copy Code'}</span>
@@ -502,7 +555,7 @@ function MiniField({ label, type = 'text', value, onChange, required = false, pl
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-[#FF005C] transition-all"
+        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
       />
     </label>
   );

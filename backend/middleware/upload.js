@@ -97,3 +97,40 @@ export const profileImageUpload = multer({
   },
 });
 
+// ── Product Logo Upload ───────────────────────────────────────────────────────
+const productLogosDir = path.join(uploadsBaseDir, 'product-logos');
+if (!fs.existsSync(productLogosDir)) {
+  fs.mkdirSync(productLogosDir, { recursive: true });
+}
+
+const productLogoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, productLogosDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+    cb(null, `logo_${uniqueSuffix}${ext}`);
+  },
+});
+
+// SVG intentionally excluded: user-uploaded SVGs can embed scripts and are an
+// XSS vector unless Cloudinary's account-level SVG delivery sanitization is
+// explicitly verified as enabled, which is not assumed here.
+const productLogoFileFilter = (_req, file, cb) => {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid logo format. Supported: JPG, JPEG, PNG, WebP'), false);
+  }
+};
+
+export const productLogoUpload = multer({
+  storage: productLogoStorage,
+  fileFilter: productLogoFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+});
+

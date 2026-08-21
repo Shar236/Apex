@@ -18,6 +18,7 @@ const lazyNamed = (loader, exportName) =>
 
 const ExamCategorySection = lazyNamed(() => import('./components/ExamCategorySection'), 'ExamCategorySection');
 const BestSellingVouchers = lazyNamed(() => import('./components/BestSellingVouchers'), 'BestSellingVouchers');
+const PTEBookingAssistance = lazyNamed(() => import('./components/PTEBookingAssistance'), 'PTEBookingAssistance');
 const SavingsCalculator = lazyNamed(() => import('./components/SavingsCalculator'), 'SavingsCalculator');
 const HowItWorks = lazyNamed(() => import('./components/HowItWorks'), 'HowItWorks');
 const WhyApexVoucher = lazyNamed(() => import('./components/WhyApexVoucher'), 'WhyApexVoucher');
@@ -32,6 +33,9 @@ const FinalCTASection = lazyNamed(() => import('./components/FinalCTASection'), 
 const ProductCatalog = lazyNamed(() => import('./components/ProductCatalog'), 'ProductCatalog');
 const ProductDetailModal = lazyNamed(() => import('./components/ProductDetailModal'), 'ProductDetailModal');
 const CheckoutModal = lazyNamed(() => import('./components/CheckoutModal'), 'CheckoutModal');
+const PTEBookingModal = lazyNamed(() => import('./components/PTEBookingModal'), 'PTEBookingModal');
+const PTEExamBookingPage = lazyNamed(() => import('./components/PTEExamBookingPage'), 'PTEExamBookingPage');
+const VoucherDetailPage = lazyNamed(() => import('./components/VoucherDetailPage'), 'VoucherDetailPage');
 const Dashboard = lazyNamed(() => import('./components/Dashboard'), 'Dashboard');
 const LiveChatWidget = lazyNamed(() => import('./components/LiveChatWidget'), 'LiveChatWidget');
 const FloatingSupportWidget = lazyNamed(() => import('./components/FloatingSupportWidget'), 'FloatingSupportWidget');
@@ -45,7 +49,7 @@ const PaymentReturnPage = lazyNamed(() => import('./components/PaymentReturnPage
 const AccountHome = lazy(() => import('./components/AccountPages'));
 const AdminConsole = lazy(() => import('./components/AdminConsole'));
 
-const PageFallback = ({ minHeight = 'min-h-[320px]' }) => (
+const PageFallback = ({ minHeight = 'min-h-80' }) => (
   <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500 dark:text-neutral-400`}>
     <div className="animate-pulse text-sm font-bold">Loading...</div>
   </div>
@@ -84,9 +88,9 @@ const CartDrawer = () => {
         <div>
           <div className="flex items-center justify-between pb-5 mb-6 border-b border-[#EAEAEA] dark:border-[#292929]">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-[#FF005C] p-[2px] shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-brand-pink p-0.5 shadow-sm">
                 <div className="w-full h-full bg-white dark:bg-[#161616] rounded-[10px] flex items-center justify-center">
-                  <ShoppingBag className="w-5 h-5 text-[#FF005C]" strokeWidth={2.5} />
+                  <ShoppingBag className="w-5 h-5 text-brand-pink" strokeWidth={2.5} />
                 </div>
               </div>
               <div>
@@ -102,7 +106,7 @@ const CartDrawer = () => {
           {cart.length > 0 ? (
             <div className="space-y-3.5">
               {cart.map((item) => (
-                <div key={item.id} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
+                <div key={item.id} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
@@ -110,7 +114,7 @@ const CartDrawer = () => {
                       </span>
                     </div>
                     <h4 className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug mb-1 line-clamp-2">{item.name}</h4>
-                    <span className="font-heading font-black text-lg text-[#FF005C] leading-none">{formatPrice(item.discountedPrice)}</span>
+                    <span className="font-heading font-black text-lg text-brand-pink leading-none">{formatPrice(item.discountedPrice)}</span>
                   </div>
 
                   <div className="flex flex-col items-end gap-2.5">
@@ -139,7 +143,7 @@ const CartDrawer = () => {
             </div>
           ) : (
             <div className="text-center py-20 space-y-4">
-              <div className="w-20 h-20 rounded-[24px] bg-neutral-100 dark:bg-[#262626] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center mx-auto">
+              <div className="w-20 h-20 rounded-3xl bg-neutral-100 dark:bg-[#262626] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center mx-auto">
                 <ShoppingBag className="w-10 h-10 text-neutral-400" strokeWidth={1.5} />
               </div>
               <div>
@@ -161,7 +165,7 @@ const CartDrawer = () => {
 
         {cart.length > 0 && (
           <div className="pt-6 border-t border-[#EAEAEA] dark:border-[#292929] space-y-4 mt-4">
-            <div className="space-y-2.5 p-4 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20">
+            <div className="space-y-2.5 p-4 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20">
               <div className="flex justify-between items-center text-sm font-semibold text-neutral-500 dark:text-[#B5B5B5]">
                 <span>Subtotal (MRP)</span>
                 <span className="line-through">{formatPrice(totalOriginal)}</span>
@@ -170,7 +174,7 @@ const CartDrawer = () => {
                 <span>🎁 Total Savings</span>
                 <span>− {formatPrice(totalSavings)}</span>
               </div>
-              <div className="h-px bg-[#FF005C]/20 my-1" />
+              <div className="h-px bg-brand-pink/20 my-1" />
               <div className="flex justify-between items-baseline pt-1">
                 <span className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">Total Payable</span>
                 <span className="font-heading font-black text-3xl text-neutral-900 dark:text-white tabular-nums">{formatPrice(totalAmount)}</span>
@@ -180,7 +184,7 @@ const CartDrawer = () => {
             <button
               onClick={() => {
                 setIsCartOpen(false);
-                startCheckout(cart[0]);
+                startCheckout(cart);
               }}
               className="w-full py-4 rounded-2xl btn-pink text-white font-black text-base shadow-xl flex items-center justify-center gap-2.5"
             >
@@ -190,7 +194,7 @@ const CartDrawer = () => {
             </button>
 
             <p className="text-center text-[11px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1.5">
-              <Ticket className="w-3.5 h-3.5 text-[#FF005C]" strokeWidth={2.5} />
+              <Ticket className="w-3.5 h-3.5 text-brand-pink" strokeWidth={2.5} />
               Codes delivered instantly to Email & WhatsApp
             </p>
           </div>
@@ -205,8 +209,8 @@ const ToastContainer = () => {
   if (!toastMessage) return null;
 
   return (
-    <div className="fixed top-24 right-6 z-50 max-w-sm bg-white dark:bg-[#161616] border-2 border-[#FF005C] text-neutral-900 dark:text-white px-5 py-3.5 rounded-2xl shadow-xl backdrop-blur-md text-sm font-bold animate-in slide-in-from-top-3 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+    <div className="fixed top-24 right-6 z-50 max-w-sm bg-white dark:bg-[#161616] border-2 border-brand-pink text-neutral-900 dark:text-white px-5 py-3.5 rounded-2xl shadow-xl backdrop-blur-md text-sm font-bold animate-in slide-in-from-top-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 flex items-center justify-center shrink-0">
         <span className="text-emerald-600 dark:text-emerald-400 text-lg">✓</span>
       </div>
       <span>{toastMessage}</span>
@@ -221,6 +225,7 @@ const HomePage = () => (
     <ExamLogoMarquee />
     <SectionSuspense><ExamCategorySection /></SectionSuspense>
     <SectionSuspense><BestSellingVouchers /></SectionSuspense>
+    <SectionSuspense><PTEBookingAssistance /></SectionSuspense>
     <SectionSuspense><SavingsCalculator /></SectionSuspense>
     <SectionSuspense><HowItWorks /></SectionSuspense>
     <SectionSuspense><WhyApexVoucher /></SectionSuspense>
@@ -241,6 +246,7 @@ const MainContent = () => {
   if (activeTab === 'dashboard') return <LazyPage><Dashboard /></LazyPage>;
   if (activeTab === 'shop') return <><LazyPage><ProductCatalog /></LazyPage><TrustStrip /></>;
   if (activeTab === 'calculator') return <><LazyPage><SavingsCalculator /></LazyPage><TrustStrip /></>;
+  if (activeTab === 'exam-booking') return <LazyPage><PTEExamBookingPage /></LazyPage>;
   if (activeTab === 'how-it-works') return <LazyPage><HowItWorks /><FAQSection /></LazyPage>;
   if (activeTab === 'exam-guides') return <LazyPage><ExamGuides /><FinalCTASection /></LazyPage>;
   if (activeTab === 'testimonials') return <LazyPage><Testimonials /><FinalCTASection /></LazyPage>;
@@ -254,6 +260,7 @@ const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer 
     selectedProductDetail,
     isCheckoutOpen,
     checkoutProduct,
+    isPTEBookingOpen,
     isAdminOpen,
   } = useVoucher();
 
@@ -267,6 +274,11 @@ const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer 
     {isCheckoutOpen && checkoutProduct && (
       <ModalSuspense>
         <CheckoutModal />
+      </ModalSuspense>
+    )}
+    {isPTEBookingOpen && (
+      <ModalSuspense>
+        <PTEBookingModal />
       </ModalSuspense>
     )}
     <CartDrawer />
@@ -295,6 +307,30 @@ const MarketingLayout = () => (
     <ToastContainer />
     <main className="flex-1">
       <MainContent />
+    </main>
+    <LegalTrustFooter />
+    <SharedModalsAndWidgets />
+  </div>
+);
+
+const ExamBookingLayout = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+    <Navbar />
+    <ToastContainer />
+    <main className="flex-1">
+      <LazyPage><PTEExamBookingPage /></LazyPage>
+    </main>
+    <LegalTrustFooter />
+    <SharedModalsAndWidgets />
+  </div>
+);
+
+const VoucherDetailLayout = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+    <Navbar />
+    <ToastContainer />
+    <main className="flex-1 pb-20 lg:pb-0">
+      <LazyPage><VoucherDetailPage /></LazyPage>
     </main>
     <LegalTrustFooter />
     <SharedModalsAndWidgets />
@@ -335,6 +371,8 @@ function RouterContent() {
   return (
     <Routes>
       <Route path="/" element={<MarketingLayout />} />
+      <Route path="/exam-booking" element={<ExamBookingLayout />} />
+      <Route path="/exam-vouchers/:slug" element={<VoucherDetailLayout />} />
       <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
       <Route path="/admin/login" element={<AuthLayout><AdminLoginPage /></AuthLayout>} />
       <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />

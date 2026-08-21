@@ -1,25 +1,59 @@
 export const PRODUCTS = [
   {
-    id: "pte-academic",
-    name: "Pearson PTE Academic Voucher",
+    id: "pte-practice-test",
+    name: "Pearson PTE Practice Test",
     brand: "Pearson PTE",
+    provider: "Pearson PTE",
+    category: "Practice Test",
+    originalPrice: 1132.50,
+    discountedPrice: 799.00,
+    savings: 333.50,
+    discountPercent: 29,
+    cta: "Select Options",
+    inStock: false,
+    displayOrder: 1,
+    validityMonths: 3,
+    deliveryType: "Instant Digital Delivery",
+    rating: 4.7,
+    reviewsCount: 520,
+    badge: "Out of stock",
+    description: "Official Scored PTE Mock Test with automated AI score report. Real exam interface and scoring algorithm.",
+    inclusions: [
+      "Official Scored Practice Test Access Code",
+      "Detailed Score Report Breakdown",
+      "Instant AI Evaluation within 2 Hours",
+      "3-Month Access Window"
+    ],
+    redemptionSteps: [
+      "Log into Pearson PTE Practice portal.",
+      "Redeem access code to unlock mock exam."
+    ]
+  },
+  {
+    id: "pte-academic",
+    name: "Pearson PTE Academic",
+    brand: "Pearson PTE",
+    provider: "Pearson PTE",
     category: "Exam Voucher",
-    originalPrice: 18900,
-    discountedPrice: 15499,
-    savings: 3401,
-    discountPercent: 18,
+    originalPrice: 18900.00,
+    discountedPrice: 14999.00,
+    savings: 3901.00,
+    discountPercent: 21,
     cta: "Buy Now",
     inStock: true,
+    displayOrder: 2,
+    validityMonths: 6,
+    deliveryType: "Instant Digital Delivery",
     rating: 4.9,
     reviewsCount: 1420,
     badge: "🔥 Best Seller",
-    description: "Official voucher code for Pearson PTE Academic Exam. Save ₹3,401 instantly on your test booking fee with guaranteed official acceptance.",
+    description: "Official voucher code for Pearson PTE Academic Exam. Save ₹3,901 instantly on your test booking fee with guaranteed official acceptance.",
     inclusions: [
       "Official 100% Genuine Pearson Voucher Code",
-      "2 Scored Official Mock Tests Included (Worth ₹2,200)",
+      "2 Scored Official Mock Tests Included",
       "Instant Email + WhatsApp Delivery in 10 seconds",
       "6-Month Validity Period",
-      "Free 1-Time Reschedule Guide & Exam Prep Blueprint"
+      "Free 1-Time Reschedule Guide"
     ],
     redemptionSteps: [
       "Visit mypte.pearsonpte.com and create or log in to your account.",
@@ -30,15 +64,19 @@ export const PRODUCTS = [
   },
   {
     id: "pte-core",
-    name: "Pearson PTE Core Voucher",
+    name: "Pearson PTE Core",
     brand: "Pearson PTE",
+    provider: "Pearson PTE",
     category: "Exam Voucher",
-    originalPrice: 18900,
-    discountedPrice: 15799,
-    savings: 3101,
+    originalPrice: 18900.00,
+    discountedPrice: 15799.00,
+    savings: 3101.00,
     discountPercent: 16,
     cta: "Buy Now",
     inStock: true,
+    displayOrder: 3,
+    validityMonths: 6,
+    deliveryType: "Instant Digital Delivery",
     rating: 4.8,
     reviewsCount: 680,
     badge: "🇨🇦 Canada PR Approved",
@@ -58,12 +96,13 @@ export const PRODUCTS = [
   },
   {
     id: "ets-gre",
-    name: "ETS GRE Voucher",
+    name: "ETS GRE",
     brand: "ETS GRE",
+    provider: "ETS GRE",
     category: "Exam Voucher",
-    originalPrice: 22500,
-    discountedPrice: 19799,
-    savings: 2701,
+    originalPrice: 22500.00,
+    discountedPrice: 19799.00,
+    savings: 2701.00,
     discountPercent: 12,
     cta: "Buy Now",
     inStock: true,
@@ -75,8 +114,7 @@ export const PRODUCTS = [
       "Official ETS GRE General Test Voucher Code",
       "GRE POWERPREP Online Practice Discount",
       "Instant Code Delivery via Email & SMS",
-      "12-Month Validity Period",
-      "Analytical Writing Essay Rubric Guide"
+      "12-Month Validity Period"
     ],
     redemptionSteps: [
       "Log into ets.org/gre.",
@@ -86,12 +124,13 @@ export const PRODUCTS = [
   },
   {
     id: "ets-toefl",
-    name: "ETS TOEFL Voucher",
+    name: "ETS TOEFL",
     brand: "ETS TOEFL",
+    provider: "ETS TOEFL",
     category: "Exam Voucher",
-    originalPrice: 18000,
-    discountedPrice: 13999,
-    savings: 4001,
+    originalPrice: 18000.00,
+    discountedPrice: 13999.00,
+    savings: 4001.00,
     discountPercent: 22,
     cta: "Buy Now",
     inStock: true,
@@ -103,22 +142,22 @@ export const PRODUCTS = [
       "Official ETS TOEFL iBT Voucher Code",
       "Interactive TOEFL Practice Test Set",
       "Instant Delivery within seconds",
-      "1-Year Extended Validity",
-      "Speaking & Writing AI Scoring Blueprint"
+      "1-Year Extended Validity"
     ],
     redemptionSteps: [
       "Visit ets.org/toefl and log into your ETS account.",
       "Schedule your test appointment.",
-      "Paste your Apex Voucher code on the payment screen to apply ₹18,000 credit."
+      "Paste your Apex Voucher code on the payment screen."
     ]
   },
   {
     id: "duolingo-english",
-    name: "Duolingo English Test Voucher",
+    name: "Duolingo English Test",
     brand: "Duolingo",
+    provider: "Duolingo",
     category: "Exam Voucher",
     originalPrice: 6112.50,
-    discountedPrice: 4999,
+    discountedPrice: 4999.00,
     savings: 1113.50,
     discountPercent: 18,
     cta: "Buy Now",
@@ -131,39 +170,176 @@ export const PRODUCTS = [
       "Official Duolingo English Test Coupon Code",
       "Priority Result Verification Support",
       "Unlimited Score Sends to Universities",
-      "Instant Code Delivery via WhatsApp & Email",
-      "Duolingo Subscore Boost Tips"
+      "Instant Code Delivery via WhatsApp & Email"
     ],
     redemptionSteps: [
       "Go to englishtest.duolingo.com and purchase test.",
-      "Enter your Apex Promo Code in the coupon field at checkout.",
-      "Start or schedule your test anytime within 90 days."
+      "Enter your Apex Promo Code in the coupon field at checkout."
     ]
   },
   {
-    id: "pte-practice-test",
-    name: "Pearson PTE Practice Test",
-    brand: "Pearson PTE",
-    category: "Practice/Mock",
-    originalPrice: 1132.50,
-    discountedPrice: 799.00,
-    savings: 333.50,
-    discountPercent: 29,
-    cta: "Select Options",
-    inStock: false, // Out of Stock demonstration state
-    rating: 4.7,
-    reviewsCount: 520,
-    badge: "Out of Stock",
-    description: "Official Scored PTE Mock Test with automated AI score report. Real exam interface and scoring algorithm.",
+    id: "act-exam",
+    name: "ACT Exam Voucher",
+    brand: "ACT",
+    provider: "ACT",
+    category: "Exam Voucher",
+    originalPrice: 19800.00,
+    discountedPrice: 12999.00,
+    savings: 6801.00,
+    discountPercent: 34,
+    cta: "Buy Now",
+    inStock: true,
+    rating: 4.8,
+    reviewsCount: 380,
+    badge: "⭐ Top Savings",
+    description: "Official voucher code for ACT College Readiness Assessment. Accepted by all four-year US colleges and universities.",
     inclusions: [
-      "Official Scored Practice Test Access Code",
-      "Detailed Score Report Breakdown (Enabling Skill Scores)",
-      "Instant AI Evaluation within 2 Hours",
-      "3-Month Access Window"
+      "Official ACT Registration Voucher Code",
+      "ACT Practice Test & Prep Guide",
+      "Instant Delivery via WhatsApp & Email",
+      "12-Month Validity"
     ],
     redemptionSteps: [
-      "Log into Pearson PTE Practice portal.",
-      "Redeem access code to unlock Version D or E mock exam."
+      "Go to my.act.org and create or log into your account.",
+      "Choose your test date and test center.",
+      "Apply voucher code on checkout page."
+    ]
+  },
+  {
+    id: "oet-exam",
+    name: "OET Exam Voucher",
+    brand: "OET",
+    provider: "OET",
+    category: "Exam Voucher",
+    originalPrice: 38940.00,
+    discountedPrice: 30900.00,
+    savings: 8040.00,
+    discountPercent: 21,
+    cta: "Buy Now",
+    inStock: true,
+    rating: 4.9,
+    reviewsCount: 420,
+    badge: "🏥 Healthcare Preferred",
+    description: "Official Occupational English Test (OET) voucher for healthcare professionals (Doctors, Nurses, Dentists & Pharmacists).",
+    inclusions: [
+      "Official OET Test Booking Voucher Code",
+      "Profession-Specific Prep Material Pack",
+      "Priority Customer Support",
+      "12-Month Validity"
+    ],
+    redemptionSteps: [
+      "Visit oet.com and register your OET booking.",
+      "Enter voucher code at the payment gateway to complete registration."
+    ]
+  },
+  {
+    id: "ielts-voucher",
+    name: "IELTS Exam Voucher / Preparation",
+    brand: "IELTS",
+    provider: "IELTS",
+    category: "Exam Voucher",
+    originalPrice: 99.00,
+    discountedPrice: 99.00,
+    savings: 0,
+    discountPercent: 0,
+    cta: "Buy Now",
+    inStock: true,
+    rating: 4.9,
+    reviewsCount: 2240,
+    badge: "🔥 Live Prediction",
+    description: "IELTS official test booking assistance, high-yield prediction files, speaking cue cards and slot reservation voucher.",
+    inclusions: [
+      "Official IELTS Practice & Prediction Blueprint",
+      "Speaking Band 8+ Sample Answers",
+      "Instant Download Link via Email & WhatsApp"
+    ],
+    redemptionSteps: [
+      "Download preparation material and use booking discount during registration."
+    ]
+  },
+  {
+    id: "languagecert-exam",
+    name: "LanguageCert Exam Voucher",
+    brand: "LanguageCert",
+    provider: "LanguageCert",
+    category: "Exam Voucher",
+    originalPrice: 16430.00,
+    discountedPrice: 11000.00,
+    savings: 5430.00,
+    discountPercent: 33,
+    cta: "Buy Now",
+    inStock: true,
+    rating: 4.8,
+    reviewsCount: 310,
+    badge: "🇬🇧 UK SELT Approved",
+    description: "Official LanguageCert International ESOL & SELT examination voucher. Fast 3-day results with online live proctoring.",
+    inclusions: [
+      "Official LanguageCert Exam Voucher Code",
+      "Take2 Free Re-sit Option Included",
+      "Online Proctoring at Home 24/7",
+      "12-Month Voucher Validity"
+    ],
+    redemptionSteps: [
+      "Visit languagecert.org and select your examination.",
+      "Enter the promo voucher code at checkout to book exam at ₹0."
+    ]
+  },
+  {
+    id: "celpip-exam",
+    name: "CELPIP Exam Voucher",
+    brand: "CELPIP",
+    provider: "CELPIP",
+    category: "Exam Voucher",
+    originalPrice: 18290.00,
+    discountedPrice: 14500.00,
+    savings: 3790.00,
+    discountPercent: 21,
+    cta: "Buy Now",
+    inStock: true,
+    rating: 4.8,
+    reviewsCount: 560,
+    badge: "🇨🇦 Canada PR / IRCC",
+    description: "Official CELPIP-General test voucher code for Canadian immigration (IRCC) and professional designation.",
+    inclusions: [
+      "Official 100% Genuine CELPIP Voucher Code",
+      "2 Free CELPIP Practice Tests (Online)",
+      "Instant 10-Second Digital Delivery",
+      "6-Month Validity Period"
+    ],
+    redemptionSteps: [
+      "Go to celpip.ca and create or log in to your account.",
+      "Select your test date and location.",
+      "Apply voucher code at the payment screen."
+    ]
+  },
+  {
+    id: "pte-canada",
+    name: "Pearson PTE Canada Voucher",
+    brand: "Pearson PTE",
+    provider: "Pearson PTE",
+    category: "Exam Voucher",
+    originalPrice: 28000.00,
+    discountedPrice: 25799.00,
+    savings: 2201.00,
+    discountPercent: 8,
+    cta: "Buy Now",
+    inStock: true,
+    displayOrder: 4,
+    validityMonths: 6,
+    deliveryType: "Instant Digital Delivery",
+    rating: 4.9,
+    reviewsCount: 780,
+    badge: "🇨🇦 Express Entry",
+    description: "Official Pearson PTE Canada voucher for Express Entry, Provincial Nominee Programs (PNP) and Canadian citizenship.",
+    inclusions: [
+      "Official Pearson PTE Canada Exam Code",
+      "Express Delivery via WhatsApp & Email",
+      "Free Immigration Score Conversion Chart",
+      "6-Month Validity Period"
+    ],
+    redemptionSteps: [
+      "Visit mypte.pearsonpte.com and select PTE Core / Canada.",
+      "Apply voucher code at payment to finalize booking."
     ]
   }
 ];
@@ -181,89 +357,80 @@ export const TESTIMONIALS = [
   },
   {
     id: 2,
-    name: "Rohan Kulkarni",
-    city: "Pune",
-    exam: "ETS GRE",
-    score: "328 / 340",
-    saved: "₹2,701",
+    name: "Rohan Patel",
+    city: "Ahmedabad",
+    exam: "PTE Core",
+    score: "CLB 9",
+    saved: "₹3,101",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    comment: "Flawless experience! Used the GRE voucher on official ETS site without any issues. The savings covered my prep books. High recommendation for any study abroad aspirant."
+    comment: "Used the PTE Core voucher for my Canada PR application. Code worked smoothly on the Pearson portal. The included mock tests were super helpful!"
   },
   {
     id: 3,
-    name: "Meera Nair",
-    city: "Kochi",
-    exam: "TOEFL iBT",
+    name: "Priya Venkatesh",
+    city: "Bangalore",
+    exam: "ETS GRE",
+    score: "328 / 340",
+    saved: "₹2,701",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+    comment: "Instant GRE voucher delivery at midnight! Got ₹2,700 off and booked my center test immediately. Highly recommend Apex Vouchers."
+  },
+  {
+    id: 4,
+    name: "Gurpreet Singh",
+    city: "Chandigarh",
+    exam: "ETS TOEFL",
     score: "112 / 120",
     saved: "₹4,001",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
-    comment: "Saved ₹4,000 on TOEFL! Got the voucher immediately and the free prep guides included were super helpful for my writing section."
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    comment: "Saved ₹4,000 on my TOEFL iBT voucher. Support was responsive on WhatsApp when I had questions. Received my score report last week!"
   }
 ];
 
 export const FAQ_ITEMS = [
   {
-    question: "What is an exam voucher?",
-    answer: "An exam voucher is an official prepaid digital discount code issued by institutional test organizers (Pearson, ETS, Duolingo). When entered during checkout on official test booking portals, it waives or reduces your exam registration fee."
+    question: "How do I redeem my exam voucher?",
+    answer: "After purchasing, you will receive a unique voucher code via email and WhatsApp. Go to the official test provider's website (e.g., mypte.pearsonpte.com or ets.org), proceed through the booking steps, and enter the voucher code in the 'Promo / Voucher Code' field at checkout. Your test fee will be discounted or waived completely.",
+    q: "How do I redeem my exam voucher?",
+    a: "After purchasing, you will receive a unique voucher code via email and WhatsApp. Go to the official test provider's website (e.g., mypte.pearsonpte.com or ets.org), proceed through the booking steps, and enter the voucher code in the 'Promo / Voucher Code' field at checkout. Your test fee will be discounted or waived completely."
   },
   {
-    question: "How quickly will I receive my voucher?",
-    answer: "Instantly! Our automated issuing system delivers your unique voucher code within 10 seconds of successful payment directly to your Email, WhatsApp, and User Dashboard."
+    question: "How fast will I receive my voucher code?",
+    answer: "Voucher delivery is 100% automated and instant! You will receive your code via email and WhatsApp within 10 to 30 seconds after successful payment.",
+    q: "How fast will I receive my voucher code?",
+    a: "Voucher delivery is 100% automated and instant! You will receive your code via email and WhatsApp within 10 to 30 seconds after successful payment."
   },
   {
-    question: "How do I redeem my voucher?",
-    answer: "Visit the official test site (e.g. mypte.pearsonpte.com or ets.org), choose your preferred exam center and date, and paste your Apex Voucher code into the 'Voucher / Promo Code' box at checkout. Your fee drops instantly!"
+    question: "Are these voucher codes genuine and official?",
+    answer: "Yes, 100%. All voucher codes sold by Apex Vouchers are authentic, official codes procured directly through authorized institutional channels. They carry a 100% Money-Back Validity Guarantee.",
+    q: "Are these voucher codes genuine and official?",
+    a: "Yes, 100%. All voucher codes sold by Apex Vouchers are authentic, official codes procured directly through authorized institutional channels. They carry a 100% Money-Back Validity Guarantee."
   },
   {
-    question: "How long is the voucher valid?",
-    answer: "Voucher validity ranges from 6 to 12 months depending on the exam (PTE vouchers: 6 months; GRE/TOEFL: 12 months; Duolingo: 90 days). You can book your test slot for any date within this validity period."
+    question: "How long is my voucher valid?",
+    answer: "PTE and Duolingo vouchers are valid for 6 months from the date of purchase. GRE and TOEFL vouchers are valid for 12 months. You must use the code to book your exam before the validity expires.",
+    q: "How long is my voucher valid?",
+    a: "PTE and Duolingo vouchers are valid for 6 months from the date of purchase. GRE and TOEFL vouchers are valid for 12 months. You must use the code to book your exam before the validity expires."
   },
   {
-    question: "Can I use the voucher for any test center?",
-    answer: "Yes! Our official exam vouchers are valid across all authorized test centers nationwide as well as for Online/Home Edition exams."
+    question: "Can I reschedule my exam after using a voucher?",
+    answer: "Yes! Rescheduling follows the official test provider's standard policy. Pearson and ETS allow rescheduling through your official candidate dashboard.",
+    q: "Can I reschedule my exam after using a voucher?",
+    a: "Yes! Rescheduling follows the official test provider's standard policy. Pearson and ETS allow rescheduling through your official candidate dashboard."
   },
   {
-    question: "Can I get a refund?",
-    answer: "Yes. We offer a 100% Money-Back Guarantee within 7 days of purchase, provided the voucher code has not been redeemed on the official exam portal."
-  },
-  {
-    question: "Can I transfer my voucher?",
-    answer: "Yes, absolutely. You can transfer your unredeemed voucher code to a friend or classmate anytime with 1-click inside your User Dashboard."
-  },
-  {
-    question: "Is payment secure?",
-    answer: "100% secure. All transactions are processed via bank-grade PCI-DSS compliant payment gateways with 256-bit SSL encryption. We support UPI, Credit/Debit Cards, NetBanking, and EMI."
-  },
-  {
-    question: "Which exams do you support?",
-    answer: "We support Pearson PTE Academic, Pearson PTE Core (Canada PR approved), ETS GRE General Test, ETS TOEFL iBT, and Duolingo English Test vouchers."
-  },
-  {
-    question: "What happens if I need help?",
-    answer: "Our dedicated student support team is available 24/7 via WhatsApp (+91 9855926113) and email (apexvouchers@gmail.com) to assist you with booking, date selection, or code redemption."
+    question: "What payment methods are supported?",
+    answer: "We support UPI (GPay, PhonePe, Paytm), Credit Cards, Debit Cards, Net Banking, and major digital wallets via our secure payment gateway.",
+    q: "What payment methods are supported?",
+    a: "We support UPI (GPay, PhonePe, Paytm), Credit Cards, Debit Cards, Net Banking, and major digital wallets via our secure payment gateway."
   }
 ];
 
 export const SOCIAL_PROOF_EVENTS = [
-  { name: "Rahul M.", city: "Mumbai", exam: "PTE Academic", saved: "₹3,401", time: "2 mins ago" },
-  { name: "Priya S.", city: "Bengaluru", exam: "TOEFL iBT", saved: "₹4,001", time: "5 mins ago" },
-  { name: "Vikram R.", city: "Hyderabad", exam: "ETS GRE", saved: "₹2,701", time: "8 mins ago" },
-  { name: "Sneha P.", city: "Ahmedabad", exam: "Duolingo English", saved: "₹1,113", time: "12 mins ago" },
-  { name: "Karan D.", city: "Chandigarh", exam: "PTE Core", saved: "₹3,101", time: "15 mins ago" }
-];
-
-export const SEEDED_USER_VOUCHERS = [
-  {
-    id: "ord-88321",
-    productName: "Pearson PTE Academic Voucher",
-    code: "APEX-PTE-8921-X7K",
-    purchaseDate: "2026-08-01",
-    expiryDate: "2027-02-01",
-    daysRemaining: 174,
-    status: "Active",
-    originalPrice: 18900,
-    paidPrice: 15499,
-    savings: 3401,
-    inclusions: ["PTE Academic Exam Voucher", "2 Official Scored Mock Tests", "Reschedule Guide"]
-  }
+  { name: "Rahul S.", city: "Mumbai", exam: "PTE Academic Voucher", timeAgo: "2 mins ago" },
+  { name: "Simran K.", city: "Amritsar", exam: "PTE Core Voucher", timeAgo: "5 mins ago" },
+  { name: "Aditya M.", city: "Hyderabad", exam: "ETS GRE Voucher", timeAgo: "8 mins ago" },
+  { name: "Sneha R.", city: "Pune", exam: "ETS TOEFL Voucher", timeAgo: "12 mins ago" },
+  { name: "Vikram N.", city: "Delhi", exam: "Duolingo English Test", timeAgo: "15 mins ago" },
+  { name: "Harpreet B.", city: "Ludhiana", exam: "PTE Academic Voucher", timeAgo: "19 mins ago" }
 ];

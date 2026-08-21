@@ -1,22 +1,25 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Film, Play, Video as VideoIcon,
   LogOut, Search, Plus, Edit2, Trash2, Upload, Save, RefreshCw, CheckCircle2, AlertTriangle, X, ArrowRight, Crown, Sparkles, Clock, ShieldCheck, Eye, EyeOff, Copy, Download, TrendingUp, TrendingDown, FileSpreadsheet, ShieldAlert, Megaphone, Globe, Calendar, DollarSign, Sliders, Type,
-  Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks, Bell, Layers, Check as CheckIcon, ArrowUp, ArrowDown, ChevronUp, ChevronDown
+  Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks, Bell, Layers, Check as CheckIcon, ArrowUp, ArrowDown, ChevronUp, ChevronDown,
+  CalendarCheck, MapPin, Phone, Mail, StickyNote, GripVertical
 } from 'lucide-react';
 
-import { adminApi, formatPrice } from '../lib/api';
+import { adminApi, formatPrice, apiBase, getToken } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useVoucher } from '../context/VoucherContext';
 import { useNavigate } from 'react-router-dom';
 import { ApexLogo } from './ApexLogo';
+import { DynamicPTELogo, PearsonOfficialLogo } from './OfficialBrandLogos';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: 'cms', label: 'Website CMS & Campaigns', icon: <Megaphone className="w-4 h-4 text-[#FF005C]" /> },
+  { id: 'cms', label: 'Website CMS & Campaigns', icon: <Megaphone className="w-4 h-4 text-brand-pink" /> },
   { id: 'products', label: 'Products & Pricing', icon: <Package className="w-4 h-4" /> },
   { id: 'vouchers', label: 'Voucher Inventory', icon: <Ticket className="w-4 h-4" /> },
   { id: 'orders', label: 'Orders', icon: <ShoppingCart className="w-4 h-4" /> },
+  { id: 'pte-bookings', label: 'PTE Booking Requests', icon: <CalendarCheck className="w-4 h-4" /> },
   { id: 'users', label: 'Customers', icon: <Users className="w-4 h-4" /> },
   { id: 'promotions', label: 'Promo Coupons', icon: <Tag className="w-4 h-4" /> },
   { id: 'seo', label: 'SEO Manager', icon: <SearchIcon className="w-4 h-4" /> },
@@ -55,14 +58,14 @@ export default function AdminConsole({ initial = 'dashboard' }) {
 
   return (
     <div className="min-h-screen bg-[#F3EEFF]/30 dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col lg:flex-row transition-colors duration-300">
-      <aside className="lg:w-72 lg:min-h-screen bg-white dark:bg-[#101010] border-r border-[#EAEAEA] dark:border-[#222] p-5 lg:sticky lg:top-0 flex-shrink-0 flex flex-col justify-between">
+      <aside className="lg:w-72 lg:min-h-screen bg-white dark:bg-[#101010] border-r border-[#EAEAEA] dark:border-[#222] p-5 lg:sticky lg:top-0 shrink-0 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-6 lg:mb-8">
             <ApexLogo className="h-7" />
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setNotificationsOpen(!notificationsOpen); loadNotifications(); }}
-                className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#202020] text-neutral-700 dark:text-neutral-200 hover:text-[#FF005C] transition"
+                className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#202020] text-neutral-700 dark:text-neutral-200 hover:text-brand-pink transition"
                 title="Notifications"
               >
                 <Bell className="w-4 h-4" />
@@ -72,7 +75,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
                   </span>
                 )}
               </button>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FF005C]/10 text-[#FF005C] border border-[#FF005C]/20 text-[10px] font-black">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/20 text-[10px] font-black">
                 <Crown className="w-3 h-3" /> ADMIN
               </span>
             </div>
@@ -89,8 +92,8 @@ export default function AdminConsole({ initial = 'dashboard' }) {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl font-black text-xs whitespace-nowrap transition flex-shrink-0 ${
-                  tab === t.id ? 'bg-[#FF005C] text-white shadow-lg' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1e1e1e]'
+                className={`inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl font-black text-xs whitespace-nowrap transition shrink-0 ${
+                  tab === t.id ? 'bg-brand-pink text-white shadow-lg' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1e1e1e]'
                 }`}
               >
                 {t.icon}
@@ -110,14 +113,14 @@ export default function AdminConsole({ initial = 'dashboard' }) {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-[1400px] mx-auto w-full relative">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-350 mx-auto w-full relative">
         {/* Real-time Notifications Drawer */}
         {notificationsOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
             <div className="bg-white dark:bg-[#141414] w-full max-w-md h-full shadow-2xl border-l border-neutral-200 dark:border-[#262626] flex flex-col animate-in slide-in-from-right duration-200">
               <div className="p-5 border-b border-neutral-200 dark:border-[#262626] flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#FF005C]/10 text-[#FF005C] flex items-center justify-center font-black">
+                  <div className="w-9 h-9 rounded-xl bg-brand-pink/10 text-brand-pink flex items-center justify-center font-black">
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
@@ -173,7 +176,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
                           {n.data.codeMasked && (
                             <div className="flex justify-between">
                               <span className="text-neutral-400">Voucher Code:</span>
-                              <span className="font-black text-[#FF005C]">{n.data.codeMasked}</span>
+                              <span className="font-black text-brand-pink">{n.data.codeMasked}</span>
                             </div>
                           )}
                           {n.data.voucherType && (
@@ -185,7 +188,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
                           {n.data.customerEmail && (
                             <div className="flex justify-between">
                               <span className="text-neutral-400">Customer:</span>
-                              <span className="truncate max-w-[180px] font-bold text-neutral-700 dark:text-neutral-300">{n.data.customerEmail}</span>
+                              <span className="truncate max-w-45 font-bold text-neutral-700 dark:text-neutral-300">{n.data.customerEmail}</span>
                             </div>
                           )}
                         </div>
@@ -198,11 +201,12 @@ export default function AdminConsole({ initial = 'dashboard' }) {
           </div>
         )}
 
-        {tab === 'dashboard' && <AdminOverview />}
+        {tab === 'dashboard' && <AdminOverview onNavigate={setTab} />}
         {tab === 'cms' && <WebsiteCMSAdmin />}
         {tab === 'products' && <ProductsAdmin />}
         {tab === 'vouchers' && <VouchersAdmin />}
         {tab === 'orders' && <OrdersAdmin />}
+        {tab === 'pte-bookings' && <PTEBookingsAdmin />}
         {tab === 'users' && <UsersAdmin />}
         {tab === 'promotions' && <PromotionsAdmin />}
         {tab === 'seo' && <SEOManager />}
@@ -213,9 +217,13 @@ export default function AdminConsole({ initial = 'dashboard' }) {
   );
 }
 
-function StatCard({ label, value, icon, tint = '#FF005C', growth = null, sub = null }) {
+function StatCard({ label, value, icon, tint = '#FF005C', growth = null, sub = null, onClick = null }) {
+  const Comp = onClick ? 'button' : 'div';
   return (
-    <div className="rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm flex flex-col justify-between">
+    <Comp
+      onClick={onClick || undefined}
+      className={`rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm flex flex-col justify-between text-left w-full ${onClick ? 'hover:border-brand-pink transition-colors cursor-pointer' : ''}`}
+    >
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white" style={{ background: tint }}>
@@ -232,11 +240,11 @@ function StatCard({ label, value, icon, tint = '#FF005C', growth = null, sub = n
         <div className="font-heading font-black text-2xl sm:text-3xl tabular-nums mt-1">{value}</div>
       </div>
       {sub && <div className="text-[11px] font-black text-neutral-400 mt-2 pt-2 border-t border-[#EAEAEA] dark:border-[#292929]">{sub}</div>}
-    </div>
+    </Comp>
   );
 }
 
-function AdminOverview() {
+function AdminOverview({ onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30d');
@@ -268,6 +276,7 @@ function AdminOverview() {
     { label: 'Active Promotions', value: kpi.activePromotions || 0, icon: <Tag className="w-5 h-5" />, tint: '#3B82F6' },
     { label: 'Pending Orders', value: kpi.pendingOrders || 0, icon: <Clock className="w-5 h-5" />, tint: '#F97316' },
     { label: 'Refunds Processed', value: kpi.refunds || 0, icon: <AlertTriangle className="w-5 h-5" />, tint: '#EF4444' },
+    { label: 'New PTE Requests', value: kpi.newPTEBookingRequests || 0, icon: <CalendarCheck className="w-5 h-5" />, tint: '#0EA5E9', onClick: () => onNavigate?.('pte-bookings') },
   ];
 
   return (
@@ -282,14 +291,14 @@ function AdminOverview() {
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm focus:outline-none focus:border-[#FF005C]"
+            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm focus:outline-none focus:border-brand-pink"
           >
             <option value="today">Today</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
             <option value="90d">Last 90 Days</option>
           </select>
-          <button onClick={() => refresh(period)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-[#FF005C]">
+          <button onClick={() => refresh(period)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
@@ -300,7 +309,7 @@ function AdminOverview() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {alerts.lowStockCount > 0 && (
             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
               <div>
                 <div className="font-black text-xs text-amber-900 dark:text-amber-300">Low Stock Alert</div>
                 <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{alerts.lowStockCount} products need restocking</div>
@@ -309,7 +318,7 @@ function AdminOverview() {
           )}
           {alerts.pendingOrdersCount > 0 && (
             <div className="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900/40 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-sky-600 dark:text-sky-400 flex-shrink-0" />
+              <Clock className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0" />
               <div>
                 <div className="font-black text-xs text-sky-900 dark:text-sky-300">Pending Orders</div>
                 <div className="text-[11px] font-bold text-sky-700 dark:text-sky-400">{alerts.pendingOrdersCount} orders awaiting action</div>
@@ -318,7 +327,7 @@ function AdminOverview() {
           )}
           {alerts.failedPaymentsCount > 0 && (
             <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+              <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
               <div>
                 <div className="font-black text-xs text-rose-900 dark:text-rose-300">Failed Payments</div>
                 <div className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{alerts.failedPaymentsCount} transaction attempts failed</div>
@@ -327,7 +336,7 @@ function AdminOverview() {
           )}
           {alerts.expiringPromosCount > 0 && (
             <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/40 flex items-center gap-3">
-              <Tag className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+              <Tag className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0" />
               <div>
                 <div className="font-black text-xs text-purple-900 dark:text-purple-300">Expiring Promos</div>
                 <div className="text-[11px] font-bold text-purple-700 dark:text-purple-400">{alerts.expiringPromosCount} promotions ending in 48h</div>
@@ -365,7 +374,7 @@ function AdminOverview() {
                       {item._id}: {formatPrice(item.revenue)} ({item.orders} orders)
                     </div>
                     <div
-                      className="w-full bg-[#FF005C] rounded-t-lg transition-all hover:bg-[#6C3CE0]"
+                      className="w-full bg-brand-pink rounded-t-lg transition-all hover:bg-[#6C3CE0]"
                       style={{ height: `${heightPct}%` }}
                     />
                     <span className="text-[9px] font-bold text-neutral-400 truncate w-full text-center">{item._id?.slice(5)}</span>
@@ -395,7 +404,7 @@ function AdminOverview() {
                     Sold: <span className="text-neutral-900 dark:text-white">{p.unitsSold} units</span> • Available Stock: <span className="text-emerald-600 dark:text-emerald-400">{p.stock}</span>
                   </div>
                 </div>
-                <div className="text-right font-heading font-black text-base text-[#FF005C]">
+                <div className="text-right font-heading font-black text-base text-brand-pink">
                   {formatPrice(p.revenue)}
                 </div>
               </div>
@@ -441,7 +450,7 @@ function AdminOverview() {
               type="checkbox"
               checked={unmaskedExport}
               onChange={(e) => setUnmaskedExport(e.target.checked)}
-              className="accent-[#FF005C]"
+              className="accent-brand-pink"
             />
             <span>Allow Unmasked Voucher Export</span>
           </label>
@@ -449,17 +458,17 @@ function AdminOverview() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => adminApi.downloadExport('orders')}
-            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] text-left font-black text-xs flex items-center justify-between transition"
+            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-left font-black text-xs flex items-center justify-between transition"
           >
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-[#FF005C]" />
+              <FileSpreadsheet className="w-4 h-4 text-brand-pink" />
               <span>Orders CSV</span>
             </div>
             <Download className="w-4 h-4 text-neutral-400" />
           </button>
           <button
             onClick={() => adminApi.downloadExport('customers')}
-            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] text-left font-black text-xs flex items-center justify-between transition"
+            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-left font-black text-xs flex items-center justify-between transition"
           >
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-[#6C3CE0]" />
@@ -469,7 +478,7 @@ function AdminOverview() {
           </button>
           <button
             onClick={() => adminApi.downloadExport('vouchers', unmaskedExport)}
-            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] text-left font-black text-xs flex items-center justify-between transition"
+            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-left font-black text-xs flex items-center justify-between transition"
           >
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
@@ -479,7 +488,7 @@ function AdminOverview() {
           </button>
           <button
             onClick={() => adminApi.downloadExport('sales')}
-            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] text-left font-black text-xs flex items-center justify-between transition"
+            className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-left font-black text-xs flex items-center justify-between transition"
           >
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-sky-500" />
@@ -526,7 +535,7 @@ function Pill({ text, tint = 'emerald' }) {
     rose: 'text-rose-700 bg-rose-50 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/40',
     amber: 'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40',
     neutral: 'text-neutral-600 bg-neutral-100 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700',
-    pink: 'text-[#FF005C] bg-[#FF005C]/10 border-[#FF005C]/20',
+    pink: 'text-brand-pink bg-brand-pink/10 border-brand-pink/20',
   };
   const t = ['FULFILLED', 'PAID', 'ASSIGNED', 'USED', 'ACTIVE', 'SOLD', 'AVAILABLE'].includes(text) ? 'emerald'
     : ['PENDING', 'PROCESSING', 'RESERVED', 'PAYMENT_PENDING', 'PAYMENT_RECEIVED_NEEDS_ALLOCATION'].includes(text) ? 'amber'
@@ -563,9 +572,16 @@ function ProductsAdmin() {
   const [quickPriceId, setQuickPriceId] = useState(null);
   const [quickPrices, setQuickPrices] = useState({ sellingPrice: 0, originalPrice: 0 });
 
-  const refresh = async () => {
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 50;
+
+  const filtersActive = !!(search || statusFilter || categoryFilter || providerFilter) || pages > 1;
+
+  const refresh = async (targetPage = page) => {
     setLoading(true);
-    const params = {};
+    const params = { sort: 'displayOrder', page: targetPage, limit: PAGE_SIZE };
     if (search) params.search = search;
     if (statusFilter) params.status = statusFilter;
     if (categoryFilter) params.category = categoryFilter;
@@ -574,6 +590,9 @@ function ProductsAdmin() {
     const res = await adminApi.products(params);
     setRows(res.data || []);
     setKpis(res.kpis || {});
+    setPage(res.page || 1);
+    setPages(res.pages || 1);
+    setTotal(res.total ?? (res.data || []).length);
     setLoading(false);
     if (typeof refreshProducts === 'function') {
       refreshProducts();
@@ -581,7 +600,7 @@ function ProductsAdmin() {
   };
 
   useEffect(() => {
-    const t = setTimeout(refresh, 300);
+    const t = setTimeout(() => refresh(1), 300);
     return () => clearTimeout(t);
   }, [search, statusFilter, categoryFilter, providerFilter]);
 
@@ -603,6 +622,14 @@ function ProductsAdmin() {
       badge: 'MOST POPULAR',
       badgeEnabled: true,
       badgeType: 'popular',
+      badges: '',
+      officialWebsiteUrl: '',
+      officialProductUrl: '',
+      sku: '',
+      productCode: '',
+      stockType: 'LIMITED',
+      deliveryType: 'Instant Delivery',
+      comingSoon: false,
       featured: false,
       active: true,
       displayOrder: 0,
@@ -623,6 +650,7 @@ function ProductsAdmin() {
       ...p,
       inclusions: Array.isArray(p.inclusions) ? p.inclusions.join('\n') : p.inclusions || '',
       redemptionSteps: Array.isArray(p.redemptionSteps) ? p.redemptionSteps.join('\n') : p.redemptionSteps || '',
+      badges: Array.isArray(p.badges) ? p.badges.join(', ') : p.badges || '',
     });
   };
 
@@ -684,10 +712,47 @@ function ProductsAdmin() {
     if (!confirm(`Are you sure you want to deactivate or remove ${p.name}?`)) return;
     const res = await adminApi.deleteProduct(p._id || p.id);
     if (res.success) {
-      if (res.deactivated) alert(`Product deactivated. Historical records preserved.`);
+      if (res.deactivated) alert(`Product archived. Historical records preserved.`);
       refresh();
     } else alert(res.message || 'Action failed');
   };
+
+  const duplicateProduct = async (p) => {
+    const res = await adminApi.duplicateProduct(p._id || p.id);
+    if (res.success) {
+      alert(`Duplicated as "${res.data.name}" (inactive, review before publishing).`);
+      refresh();
+    } else alert(res.message || 'Failed to duplicate product');
+  };
+
+  const archiveProduct = async (p) => {
+    if (!confirm(`Archive ${p.name}? It will be hidden from the public site but kept in Admin.`)) return;
+    const res = await adminApi.archiveProduct(p._id || p.id);
+    if (res.success) refresh();
+    else alert(res.message || 'Failed to archive product');
+  };
+
+  const restoreProduct = async (p) => {
+    const res = await adminApi.restoreProduct(p._id || p.id);
+    if (res.success) refresh();
+    else alert(res.message || 'Failed to restore product');
+  };
+
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const reorderTo = async (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || filtersActive) return;
+    const reordered = [...rows];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    const items = reordered.map((r, i) => ({ id: r._id, order: i + 1 }));
+    const res = await adminApi.reorderProducts(items);
+    if (res.success) refresh();
+    else alert(res.message || 'Failed to reorder products');
+  };
+
+  const moveProduct = (index, direction) => reorderTo(index, index + direction);
 
   return (
     <div className="space-y-6">
@@ -703,10 +768,11 @@ function ProductsAdmin() {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Total Products" value={kpis.totalProducts || 0} icon={<Package className="w-4 h-4" />} tint="#6C3CE0" />
         <StatCard label="Active Products" value={kpis.activeProducts || 0} icon={<CheckCircle2 className="w-4 h-4" />} tint="#10B981" />
         <StatCard label="Inactive Products" value={kpis.inactiveProducts || 0} icon={<X className="w-4 h-4" />} tint="#64748B" />
+        <StatCard label="Archived" value={kpis.archivedProducts || 0} icon={<Trash2 className="w-4 h-4" />} tint="#71717A" onClick={() => setStatusFilter('archived')} />
         <StatCard label="Out of Stock" value={kpis.outOfStockProducts || 0} icon={<AlertTriangle className="w-4 h-4" />} tint="#EF4444" />
         <StatCard label="Low Stock Alert" value={kpis.lowStockProducts || 0} icon={<Clock className="w-4 h-4" />} tint="#F59E0B" />
       </div>
@@ -731,6 +797,7 @@ function ProductsAdmin() {
               className="px-3.5 py-2.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold text-neutral-700 dark:text-neutral-300"
             >
               <option value="">All Categories</option>
+              <option value="PTE">PTE</option>
               <option value="English Language Test">English Language Test</option>
               <option value="Graduate Admissions">Graduate Admissions</option>
               <option value="Professional Certifications">Professional Certifications</option>
@@ -759,13 +826,14 @@ function ProductsAdmin() {
             { id: 'out_of_stock', label: 'Out of Stock' },
             { id: 'low_stock', label: 'Low Stock' },
             { id: 'featured', label: 'Featured' },
+            { id: 'archived', label: 'Archived' },
           ].map((pill) => (
             <button
               key={pill.id}
               onClick={() => setStatusFilter(pill.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
                 statusFilter === pill.id
-                  ? 'bg-[#FF005C] text-white shadow-sm'
+                  ? 'bg-brand-pink text-white shadow-sm'
                   : 'bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
               }`}
             >
@@ -785,12 +853,12 @@ function ProductsAdmin() {
           <div className="space-y-6">
             {/* Section 1: Basic Metadata */}
             <div>
-              <h4 className="text-xs font-black text-[#FF005C] uppercase tracking-wider mb-3">1. Basic Information</h4>
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">1. Basic Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Product Name *" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} placeholder="e.g. PTE Academic Voucher" />
                 <Field label="Exam Provider *" value={draft.provider} onChange={(v) => setDraft({ ...draft, provider: v, brand: v })} placeholder="Pearson / ETS / Duolingo" />
                 <Field label="Provider Short Name" value={draft.providerShortName} onChange={(v) => setDraft({ ...draft, providerShortName: v })} placeholder="PTE / GRE / TOEFL" />
-                <Field label="Category *" value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} placeholder="English Language Test" />
+                <Field label="Category *" value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} placeholder="PTE / English Language Test" />
                 <Field label="Display Order (Rank)" type="number" value={draft.displayOrder} onChange={(v) => setDraft({ ...draft, displayOrder: v })} placeholder="0" />
                 <Field label="CTA Button Text" value={draft.cta || 'Buy Now'} onChange={(v) => setDraft({ ...draft, cta: v })} />
               </div>
@@ -798,7 +866,7 @@ function ProductsAdmin() {
 
             {/* Section 2: Pricing & Discounts */}
             <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-[#FF005C] uppercase tracking-wider mb-3">2. Pricing & Discounts (Single Source of Truth)</h4>
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">2. Pricing & Discounts (Single Source of Truth)</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Original Price (MRP ₹) *" type="number" value={draft.originalPrice} onChange={(v) => setDraft({ ...draft, originalPrice: v })} />
                 <Field label="Selling Price (Final ₹) *" type="number" value={draft.sellingPrice} onChange={(v) => setDraft({ ...draft, sellingPrice: v })} />
@@ -814,24 +882,69 @@ function ProductsAdmin() {
 
             {/* Section 3: Branding & Card Badges */}
             <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-[#FF005C] uppercase tracking-wider mb-3">3. Customer Card Badges & Branding</h4>
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">3. Customer Card Badges & Branding</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field label="Card Badge Text" value={draft.badge || ''} onChange={(v) => setDraft({ ...draft, badge: v })} placeholder="e.g. MOST POPULAR" />
+                <Field label="Card Badge Text (legacy, first shown)" value={draft.badge || ''} onChange={(v) => setDraft({ ...draft, badge: v })} placeholder="e.g. MOST POPULAR" />
+                <div className="md:col-span-2">
+                  <Field label="Badges (comma separated)" value={draft.badges || ''} onChange={(v) => setDraft({ ...draft, badges: v })} placeholder="Best Seller, Canada, Study Abroad" />
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {['Best Seller', 'Most Popular', 'Featured', 'New', 'Limited Offer', 'Top Pick', 'Canada', 'UK', 'Australia', 'Study Abroad'].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          const current = String(draft.badges || '').split(',').map((s) => s.trim()).filter(Boolean);
+                          if (!current.includes(preset)) setDraft({ ...draft, badges: [...current, preset].join(', ') });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 text-[10px] font-black hover:bg-brand-pink/10 hover:text-brand-pink transition-colors"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <Field label="Validity (Months)" type="number" value={draft.validityMonths} onChange={(v) => setDraft({ ...draft, validityMonths: v })} />
                 <Field label="Validity (Days)" type="number" value={draft.validityDays} onChange={(v) => setDraft({ ...draft, validityDays: v })} />
-                <Field label="Product Logo URL" value={draft.logo || ''} onChange={(v) => setDraft({ ...draft, logo: v })} placeholder="https://..." />
+                <Field label="Delivery Type" value={draft.deliveryType || ''} onChange={(v) => setDraft({ ...draft, deliveryType: v })} placeholder="Instant Delivery" />
+                <ProductLogoUploader value={draft.logo || ''} onChange={(url) => setDraft({ ...draft, logo: url })} />
                 <Field label="Product Image URL" value={draft.image || ''} onChange={(v) => setDraft({ ...draft, image: v })} placeholder="https://..." />
-                <div className="flex items-center gap-3 pt-6">
+                <div>
+                  <Label>Stock Type</Label>
+                  <select value={draft.stockType || 'LIMITED'} onChange={(e) => setDraft({ ...draft, stockType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink">
+                    <option value="LIMITED">Limited (tracked via voucher inventory)</option>
+                    <option value="UNLIMITED">Unlimited (always in stock)</option>
+                  </select>
+                  {draft.stockType === 'UNLIMITED' && (
+                    <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1.5">
+                      ⚠ "Unlimited" only affects the storefront display — voucher delivery still requires real codes in
+                      inventory. Keep this product's voucher inventory stocked or checkout will succeed without a
+                      voucher to deliver.
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 pt-6 flex-wrap">
                   <Check label="Show Badge on Card" checked={!!draft.badgeEnabled} onChange={(v) => setDraft({ ...draft, badgeEnabled: v })} />
                   <Check label="Featured Product" checked={!!draft.featured} onChange={(v) => setDraft({ ...draft, featured: v })} />
                   <Check label="Active & Visible" checked={!!draft.active} onChange={(v) => setDraft({ ...draft, active: v })} />
+                  <Check label="Coming Soon" checked={!!draft.comingSoon} onChange={(v) => setDraft({ ...draft, comingSoon: v })} />
                 </div>
+              </div>
+            </div>
+
+            {/* Section 3B: Official Links & Identifiers */}
+            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">3B. Official Links & Identifiers</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Official Website URL" value={draft.officialWebsiteUrl || ''} onChange={(v) => setDraft({ ...draft, officialWebsiteUrl: v })} placeholder="https://www.pearsonpte.com/" />
+                <Field label="Official Product Page URL" value={draft.officialProductUrl || ''} onChange={(v) => setDraft({ ...draft, officialProductUrl: v })} placeholder="https://www.pearsonpte.com/pte-academic/" />
+                <Field label="SKU" value={draft.sku || ''} onChange={(v) => setDraft({ ...draft, sku: v })} placeholder="Optional internal SKU" />
+                <Field label="Product Code" value={draft.productCode || ''} onChange={(v) => setDraft({ ...draft, productCode: v })} placeholder="Optional internal code" />
               </div>
             </div>
 
             {/* Section 4: Descriptions & Details */}
             <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-[#FF005C] uppercase tracking-wider mb-3">4. Descriptions & Bullet Details</h4>
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">4. Descriptions & Bullet Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextArea label="Short Description (Shown on Card)" value={draft.shortDescription || ''} onChange={(v) => setDraft({ ...draft, shortDescription: v })} rows={2} />
                 <TextArea label="Full Description (Shown in Modal)" value={draft.description || ''} onChange={(v) => setDraft({ ...draft, description: v })} rows={2} />
@@ -842,7 +955,7 @@ function ProductsAdmin() {
 
             {/* Section 5: SEO */}
             <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-[#FF005C] uppercase tracking-wider mb-3">5. SEO Configuration</h4>
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">5. SEO Configuration</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="SEO Slug (URL identifier)" value={draft.slug || ''} onChange={(v) => setDraft({ ...draft, slug: v })} placeholder="pte-academic-voucher" />
                 <Field label="SEO Title" value={draft.seoTitle || ''} onChange={(v) => setDraft({ ...draft, seoTitle: v })} placeholder="Discounted PTE Voucher..." />
@@ -854,6 +967,12 @@ function ProductsAdmin() {
       )}
 
       {/* Main Products Table */}
+      {filtersActive && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-700 dark:text-amber-400">
+          <GripVertical className="w-3.5 h-3.5 shrink-0" />
+          <span>Clear search/filters to reorder products — reordering a filtered subset would corrupt the global display order.</span>
+        </div>
+      )}
       <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-bold">
@@ -876,24 +995,48 @@ function ProductsAdmin() {
                 <tr key={i}><td colSpan="10" className="p-4"><div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" /></td></tr>
               ))}
 
-              {!loading && rows.map((p) => {
+              {!loading && rows.map((p, rowIndex) => {
                 const isQuickEditing = quickPriceId === p._id;
                 const availableCount = p.availableVouchers ?? p.availability ?? 0;
                 const stockBadge = availableCount > (p.lowStockThreshold || 10) ? 'emerald' : availableCount > 0 ? 'amber' : 'rose';
 
                 return (
-                  <tr key={p._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111] transition-colors">
+                  <tr
+                    key={p._id}
+                    draggable={!filtersActive}
+                    onDragStart={() => setDragIndex(rowIndex)}
+                    onDragOver={(e) => { e.preventDefault(); if (!filtersActive) setDragOverIndex(rowIndex); }}
+                    onDragLeave={() => setDragOverIndex((cur) => (cur === rowIndex ? null : cur))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragIndex !== null) reorderTo(dragIndex, rowIndex);
+                      setDragIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                    className={`border-t transition-colors ${
+                      dragOverIndex === rowIndex && dragIndex !== null && dragIndex !== rowIndex
+                        ? 'border-t-2 border-t-brand-pink'
+                        : 'border-[#EAEAEA] dark:border-[#292929]'
+                    } ${dragIndex === rowIndex ? 'opacity-40' : ''} hover:bg-neutral-50/50 dark:hover:bg-[#111111]`}
+                  >
                     {/* Product & Branding */}
                     <Td>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 flex items-center justify-center font-black text-[#FF005C] flex-shrink-0">
+                        <div
+                          className={`text-neutral-300 dark:text-neutral-600 shrink-0 ${filtersActive ? 'cursor-not-allowed opacity-40' : 'cursor-grab active:cursor-grabbing hover:text-brand-pink'}`}
+                          title={filtersActive ? 'Clear search/filters to reorder' : 'Drag to reorder'}
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 flex items-center justify-center font-black text-brand-pink shrink-0">
                           {p.providerShortName || p.brand?.slice(0, 3) || 'APX'}
                         </div>
                         <div>
                           <div className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
                             <span>{p.name}</span>
                             {p.badge && (
-                              <span className="px-2 py-0.5 rounded-md bg-[#FF005C]/10 text-[#FF005C] border border-[#FF005C]/20 text-[9px] font-black">
+                              <span className="px-2 py-0.5 rounded-md bg-brand-pink/10 text-brand-pink border border-brand-pink/20 text-[9px] font-black">
                                 {p.badge}
                               </span>
                             )}
@@ -919,25 +1062,25 @@ function ProductsAdmin() {
                     {/* Selling Price & Quick Inline Edit */}
                     <Td className="text-right tabular-nums whitespace-nowrap">
                       {isQuickEditing ? (
-                        <div className="inline-flex items-center gap-1 bg-white dark:bg-[#161616] p-1 rounded-xl border border-[#FF005C]">
+                        <div className="inline-flex items-center gap-1 bg-white dark:bg-[#161616] p-1 rounded-xl border border-brand-pink">
                           <input
                             type="number"
                             value={quickPrices.sellingPrice}
                             onChange={(e) => setQuickPrices({ ...quickPrices, sellingPrice: Number(e.target.value) })}
                             className="w-20 px-2 py-1 rounded bg-neutral-100 dark:bg-[#0E0E0E] text-xs font-black outline-none"
                           />
-                          <button onClick={() => handleQuickPriceSave(p._id)} className="p-1 rounded bg-[#FF005C] text-white text-[10px] font-black">Save</button>
+                          <button onClick={() => handleQuickPriceSave(p._id)} className="p-1 rounded bg-brand-pink text-white text-[10px] font-black">Save</button>
                           <button onClick={() => setQuickPriceId(null)} className="p-1 rounded bg-neutral-200 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300 text-[10px]">✕</button>
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-1.5">
-                          <span className="font-black text-sm text-[#FF005C]">{formatPrice(p.sellingPrice)}</span>
+                          <span className="font-black text-sm text-brand-pink">{formatPrice(p.sellingPrice)}</span>
                           <button
                             onClick={() => {
                               setQuickPriceId(p._id);
                               setQuickPrices({ sellingPrice: p.sellingPrice, originalPrice: p.originalPrice });
                             }}
-                            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-[#262626] text-neutral-400 hover:text-[#FF005C]"
+                            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-[#262626] text-neutral-400 hover:text-brand-pink"
                             title="Quick edit price"
                           >
                             <Edit2 className="w-3 h-3" />
@@ -968,9 +1111,13 @@ function ProductsAdmin() {
 
                     {/* Active Status Toggle */}
                     <Td className="text-center whitespace-nowrap">
-                      <button onClick={() => toggleStatus(p)} className="cursor-pointer">
-                        <Pill text={p.active ? 'ACTIVE' : 'INACTIVE'} tint={p.active ? 'emerald' : 'neutral'} />
-                      </button>
+                      {p.archived ? (
+                        <Pill text="ARCHIVED" tint="neutral" />
+                      ) : (
+                        <button onClick={() => toggleStatus(p)} className="cursor-pointer">
+                          <Pill text={p.active ? 'ACTIVE' : 'INACTIVE'} tint={p.active ? 'emerald' : 'neutral'} />
+                        </button>
+                      )}
                     </Td>
 
                     {/* Featured Toggle */}
@@ -979,7 +1126,7 @@ function ProductsAdmin() {
                         onClick={() => toggleFeatured(p)}
                         className={`px-2.5 py-1 rounded-full text-[10px] font-black border cursor-pointer ${
                           p.featured
-                            ? 'bg-[#FF005C]/10 text-[#FF005C] border-[#FF005C]/30'
+                            ? 'bg-brand-pink/10 text-brand-pink border-brand-pink/30'
                             : 'bg-neutral-100 text-neutral-400 border-neutral-200 dark:bg-[#262626]'
                         }`}
                       >
@@ -989,7 +1136,16 @@ function ProductsAdmin() {
 
                     {/* Actions */}
                     <Td className="text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
+                      <div className="inline-flex items-center gap-1">
+                        <div className="flex flex-col mr-1">
+                          <button onClick={() => moveProduct(rowIndex, -1)} disabled={rowIndex === 0 || filtersActive} className="text-neutral-400 hover:text-brand-pink disabled:opacity-30 disabled:cursor-not-allowed" title={filtersActive ? 'Clear search/filters to reorder' : 'Move up'}>
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => moveProduct(rowIndex, 1)} disabled={rowIndex === rows.length - 1 || filtersActive} className="text-neutral-400 hover:text-brand-pink disabled:opacity-30 disabled:cursor-not-allowed" title={filtersActive ? 'Clear search/filters to reorder' : 'Move down'}>
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
                         <button
                           onClick={() => startEdit(p)}
                           className="px-2.5 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black flex items-center gap-1"
@@ -1004,6 +1160,32 @@ function ProductsAdmin() {
                         >
                           <Ticket className="w-3.5 h-3.5" /> Inventory
                         </button>
+
+                        <button
+                          onClick={() => duplicateProduct(p)}
+                          className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-purple-200"
+                          title="Duplicate product"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+
+                        {p.archived ? (
+                          <button
+                            onClick={() => restoreProduct(p)}
+                            className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200"
+                            title="Restore product"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => archiveProduct(p)}
+                            className="p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200"
+                            title="Archive product"
+                          >
+                            <AlertOctagon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                         <button
                           onClick={() => removeProduct(p)}
@@ -1022,6 +1204,31 @@ function ProductsAdmin() {
         </div>
         {!loading && rows.length === 0 && <Empty title="No products found" desc="Add your first exam voucher product to start selling." />}
       </div>
+
+      {!loading && total > 0 && (
+        <div className="flex items-center justify-between gap-3 px-1">
+          <span className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refresh(page - 1)}
+              disabled={page <= 1}
+              className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs font-black disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-bold text-neutral-500">Page {page} of {pages}</span>
+            <button
+              onClick={() => refresh(page + 1)}
+              disabled={page >= pages}
+              className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs font-black disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1153,7 +1360,7 @@ function VouchersAdmin() {
         <div className="flex items-center gap-2">
           <button
             onClick={refresh}
-            className="p-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] transition shadow-sm"
+            className="p-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition shadow-sm"
             title="Refresh Inventory"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1174,7 +1381,7 @@ function VouchersAdmin() {
           {productId && (
             <button
               onClick={() => setProductId('')}
-              className="text-xs font-black text-[#FF005C] hover:underline"
+              className="text-xs font-black text-brand-pink hover:underline"
             >
               Clear Product Filter (Show All)
             </button>
@@ -1191,8 +1398,8 @@ function VouchersAdmin() {
                 onClick={() => setProductId(isSelected ? '' : p._id)}
                 className={`p-4 rounded-3xl border cursor-pointer transition-all duration-200 shadow-sm ${
                   isSelected
-                    ? 'bg-[#FFF0F5] dark:bg-[#2A0A17] border-[#FF005C] ring-2 ring-[#FF005C]/20 shadow-md'
-                    : 'bg-white dark:bg-[#161616] border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C]/50'
+                    ? 'bg-[#FFF0F5] dark:bg-[#2A0A17] border-brand-pink ring-2 ring-brand-pink/20 shadow-md'
+                    : 'bg-white dark:bg-[#161616] border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -1248,7 +1455,7 @@ function VouchersAdmin() {
               <select
                 value={bulk.productId}
                 onChange={(e) => setBulk({ ...bulk, productId: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink"
               >
                 <option value="">— Select Target Product —</option>
                 {products.map((p) => (
@@ -1258,9 +1465,9 @@ function VouchersAdmin() {
                 ))}
               </select>
               {selectedProductObj && (
-                <div className="mt-2 p-3 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 text-xs flex items-center justify-between">
+                <div className="mt-2 p-3 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 text-xs flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-[#FF005C]">Bound Voucher Type:</span>{' '}
+                    <span className="font-bold text-brand-pink">Bound Voucher Type:</span>{' '}
                     <strong className="font-black">{selectedProductObj.voucherType || selectedProductObj.brand}</strong>
                   </div>
                   <span className="text-[10px] font-bold text-neutral-400">
@@ -1284,7 +1491,7 @@ function VouchersAdmin() {
                 onChange={(e) => setBulk({ ...bulk, codes: e.target.value })}
                 rows={7}
                 placeholder={'APX-DUOL-1234-ABC\nAPX-DUOL-5678-DEF\nAPX-DUOL-9012-GHI'}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C] font-mono uppercase"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink font-mono uppercase"
               />
             </div>
           </div>
@@ -1301,7 +1508,7 @@ function VouchersAdmin() {
               onClick={() => setStatus(sf.value)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition ${
                 status === sf.value
-                  ? 'bg-[#FF005C] text-white shadow-md'
+                  ? 'bg-brand-pink text-white shadow-md'
                   : 'bg-neutral-100 dark:bg-[#202020] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
               }`}
             >
@@ -1312,14 +1519,14 @@ function VouchersAdmin() {
 
         {/* Search & Product Dropdown */}
         <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-60">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by code, customer email, or order #..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-[#FF005C]"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
             />
           </div>
 
@@ -1385,7 +1592,7 @@ function VouchersAdmin() {
                         <div className="flex items-center gap-2">
                           <span
                             className={`${
-                              isRevealed ? 'text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-2 py-0.5 rounded-md' : 'text-[#6C3CE0]'
+                              isRevealed ? 'text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-2 py-0.5 rounded-md' : 'text-[#6C3CE0]'
                             }`}
                           >
                             {displayCode}
@@ -1406,7 +1613,7 @@ function VouchersAdmin() {
                           </button>
                           <button
                             onClick={() => handleCopy(v._id, isRevealed ? revealedCodes[v._id] : v.code)}
-                            className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-[#FF005C] transition"
+                            className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-brand-pink transition"
                             title="Copy Code"
                           >
                             {isCopied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1457,7 +1664,7 @@ function VouchersAdmin() {
                       {/* Order No */}
                       <Td className="whitespace-nowrap font-mono text-[11px]">
                         {v.orderId?.orderNo ? (
-                          <span className="text-[#FF005C]">#{v.orderId.orderNo}</span>
+                          <span className="text-brand-pink">#{v.orderId.orderNo}</span>
                         ) : (
                           <span className="text-neutral-400">—</span>
                         )}
@@ -1556,7 +1763,7 @@ function OrdersAdmin() {
                   <Td className="whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</Td>
                   <Td className="whitespace-nowrap">
                     {o.paymentStatus === 'PAID' && (
-                      <button onClick={() => handleResendEmail(o._id, o.orderNo)} className="mr-1 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-[#FF005C] border border-[#FF005C]/30 text-[10px] font-black">Resend Email</button>
+                      <button onClick={() => handleResendEmail(o._id, o.orderNo)} className="mr-1 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-brand-pink border border-brand-pink/30 text-[10px] font-black">Resend Email</button>
                     )}
                     {o.orderStatus !== 'FULFILLED' && (
                       <button onClick={() => updateStatus(o._id, 'FULFILLED', 'PAID')} className="mr-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 text-[10px] font-black">Fulfill</button>
@@ -1580,6 +1787,582 @@ function OrdersAdmin() {
       </div>
     </div>
   );
+}
+
+const PTE_BOOKING_STATUSES = [
+  'New',
+  'Contacted',
+  'Processing',
+  'Booking In Progress',
+  'Waiting for Customer',
+  'Booking Confirmed',
+  'Completed',
+  'Cancelled',
+  'Rejected',
+];
+const PTE_EXAM_TYPES = ['PTE Academic', 'PTE Core', 'PTE Academic UKVI'];
+
+function PTEStatusPill({ status }) {
+  const tintMap = {
+    New: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-900/40',
+    Contacted: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40',
+    Processing: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/40',
+    'Booking In Progress': 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/40',
+    'Waiting for Customer': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/40',
+    'Booking Confirmed': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40',
+    Completed: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40',
+    Cancelled: 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700',
+    Rejected: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/40',
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black whitespace-nowrap ${tintMap[status] || 'bg-neutral-100 text-neutral-600 border-neutral-200'}`}>
+      {status}
+    </span>
+  );
+}
+
+function fmtPTEDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function PTEBookingsAdmin() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [examType, setExamType] = useState('');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [statusDraft, setStatusDraft] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Confirmation Details Draft
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [bookingRef, setBookingRef] = useState('');
+  const [confirmedCentre, setConfirmedCentre] = useState('');
+  const [confirmedDate, setConfirmedDate] = useState('');
+  const [confirmedTime, setConfirmedTime] = useState('');
+  const [instructions, setInstructions] = useState('');
+
+  const refresh = async () => {
+    setLoading(true);
+    const params = {};
+    if (status) params.status = status;
+    if (examType) params.examType = examType;
+    if (search) params.search = search;
+    const res = await adminApi.pteBookings(params);
+    setRows(res.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const t = setTimeout(refresh, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, examType, search]);
+
+  const openDetail = (row) => {
+    setSelected(row);
+    setStatusDraft(row.status);
+    setNotesDraft(row.adminNotes || '');
+    setBookingRef(row.confirmationDetails?.bookingReference || '');
+    setConfirmedCentre(row.confirmationDetails?.confirmedCentre || '');
+    setConfirmedDate(row.confirmationDetails?.confirmedDate ? new Date(row.confirmationDetails.confirmedDate).toISOString().slice(0, 10) : '');
+    setConfirmedTime(row.confirmationDetails?.confirmedTime || '');
+    setInstructions(row.confirmationDetails?.importantInstructions || '');
+    setShowConfirmModal(false);
+  };
+
+  const closeDetail = () => {
+    setSelected(null);
+    setShowConfirmModal(false);
+  };
+
+  const saveDetail = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const payload = {
+      status: statusDraft,
+      adminNotes: notesDraft,
+    };
+    if (statusDraft === 'Booking Confirmed') {
+      payload.confirmationDetails = {
+        bookingReference: bookingRef,
+        confirmedCentre,
+        confirmedDate: confirmedDate || null,
+        confirmedTime,
+        importantInstructions: instructions,
+      };
+    }
+    const res = await adminApi.updatePTEBooking(selected._id, payload);
+    setSaving(false);
+    if (res.success) {
+      closeDetail();
+      refresh();
+    } else {
+      alert(res.message || 'Failed to update request');
+    }
+  };
+
+  const quickStatus = async (row, newStatus) => {
+    const res = await adminApi.updatePTEBooking(row._id, { status: newStatus });
+    if (res.success) refresh();
+    else alert(res.message);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    const params = {};
+    if (status) params.status = status;
+    if (examType) params.examType = examType;
+    if (search) params.search = search;
+    await adminApi.downloadExport('pte-bookings', false, params);
+    setExporting(false);
+  };
+
+  // Stats calculation
+  const totalCount = rows.length;
+  const newCount = rows.filter((r) => r.status === 'New').length;
+  const inProgressCount = rows.filter((r) => ['Processing', 'Booking In Progress'].includes(r.status)).length;
+  const waitingCustomerCount = rows.filter((r) => r.status === 'Waiting for Customer').length;
+  const confirmedCount = rows.filter((r) => ['Booking Confirmed', 'Completed'].includes(r.status)).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header & Title */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">PTE Booking Requests</h1>
+            <PearsonOfficialLogo className="h-4" />
+          </div>
+          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] mt-1">
+            Review customer PTE booking assistance requests, contact them, update timelines, and dispatch official confirmation details.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+          >
+            <Download className="w-4 h-4 text-brand-pink" />
+            <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={refresh}
+            className="p-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black transition-colors shadow-sm"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-4 h-4 text-neutral-400 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Stats Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Total Requests', count: totalCount, tint: '#6C3CE0' },
+          { label: 'New Unassigned', count: newCount, tint: '#0284C7' },
+          { label: 'In Progress', count: inProgressCount, tint: '#8B5CF6' },
+          { label: 'Waiting for Customer', count: waitingCustomerCount, tint: '#EA580C' },
+          { label: 'Confirmed / Done', count: confirmedCount, tint: '#10B981' },
+        ].map((kpi, idx) => (
+          <div key={idx} className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">{kpi.label}</div>
+            <div className="font-heading font-black text-2xl mt-1" style={{ color: kpi.tint }}>
+              {kpi.count}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-55 px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
+          <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+          <input
+            placeholder="Search request ID, name, email, phone, city..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent outline-none text-xs font-bold w-full"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={examType}
+            onChange={(e) => setExamType(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold"
+          >
+            <option value="">All Exam Types</option>
+            {PTE_EXAM_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold"
+          >
+            <option value="">All Statuses</option>
+            {PTE_BOOKING_STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Selected Detail Modal */}
+      {selected && (
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Col (5 cols): Customer & Booking info */}
+            <div className="lg:col-span-5 space-y-4">
+              
+              {/* Customer Contact Card */}
+              <div>
+                <Label>Customer Contact</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2.5 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-900 dark:text-white font-black text-sm">{selected.fullName}</span>
+                    <span className="text-[10px] font-mono font-bold text-neutral-400">{selected.requestId}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-neutral-200/60 dark:border-[#252525]">
+                    <a href={`mailto:${selected.email}`} className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 hover:text-brand-pink">
+                      <Mail className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>{selected.email}</span>
+                    </a>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <a href={`tel:${selected.phone}`} className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 hover:text-brand-pink">
+                      <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>{selected.phone}</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/${selected.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                        `Hello ${selected.fullName}, this is Apex Vouchers regarding your PTE Booking Assistance request (${selected.requestId}).`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black flex items-center gap-1"
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Exam & Preferences */}
+              <div>
+                <Label>Exam & Slot Preferences</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Exam:</span>
+                    <span className="font-black text-brand-pink">{selected.examType}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">City:</span>
+                    <span className="text-neutral-900 dark:text-white">{selected.preferredCity}</span>
+                  </div>
+                  {selected.preferredTestCentre && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Centre:</span>
+                      <span className="text-neutral-900 dark:text-white">{selected.preferredTestCentre}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Date:</span>
+                    <span className="text-neutral-900 dark:text-white">{fmtPTEDate(selected.preferredDate)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Preferred Time:</span>
+                    <span className="text-neutral-900 dark:text-white">{selected.preferredTime || 'Any Time'}</span>
+                  </div>
+                  {selected.alternativeDate && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Alt Date:</span>
+                      <span className="text-neutral-900 dark:text-white">{fmtPTEDate(selected.alternativeDate)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Customer Notes */}
+              {selected.message && (
+                <div>
+                  <Label>Customer Notes</Label>
+                  <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-medium text-neutral-600 dark:text-neutral-300 whitespace-pre-wrap">
+                    {selected.message}
+                  </div>
+                </div>
+              )}
+
+              {/* Activity History Timeline */}
+              <div>
+                <Label>Request Activity History</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-3 max-h-48 overflow-y-auto">
+                  {selected.activityHistory?.length ? (
+                    selected.activityHistory.map((act, i) => (
+                      <div key={i} className="text-[11px] font-bold border-l-2 border-brand-pink pl-2.5 py-0.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-neutral-400">
+                          <span>{new Date(act.timestamp).toLocaleString()}</span>
+                          <span className="text-[10px] text-neutral-500">{act.adminEmail?.split('@')[0]}</span>
+                        </div>
+                        <div className="text-neutral-900 dark:text-white font-black">{act.action}</div>
+                        {act.notes && <div className="text-neutral-500 font-medium">{act.notes}</div>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-[11px] font-bold text-neutral-400">
+                      ● Request Submitted on {new Date(selected.createdAt).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Col (7 cols): Status management & confirmation fields */}
+            <div className="lg:col-span-7 space-y-4">
+              
+              <div>
+                <Label>Request Status</Label>
+                <select
+                  value={statusDraft}
+                  onChange={(e) => setStatusDraft(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink"
+                >
+                  {PTE_BOOKING_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fast Status Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Contacted',
+                  'Processing',
+                  'Booking In Progress',
+                  'Waiting for Customer',
+                  'Booking Confirmed',
+                  'Completed',
+                  'Cancelled',
+                  'Rejected',
+                ].map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setStatusDraft(st)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-colors ${
+                      statusDraft === st
+                        ? 'bg-brand-pink text-white border-brand-pink'
+                        : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+
+              {/* If status is Booking Confirmed, show Confirmation Details Inputs */}
+              {statusDraft === 'Booking Confirmed' && (
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Official Confirmation Details for Candidate</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    These details will be included in the official status update email dispatched to the customer.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-neutral-500 mb-1">
+                        Pearson Booking Reference / Candidate ID
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. PTE-89218274"
+                        value={bookingRef}
+                        onChange={(e) => setBookingRef(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-emerald-300 dark:border-emerald-800 text-xs font-bold outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-neutral-500 mb-1">
+                        Confirmed Test Centre Name & Address
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pearson Professional Centres-Bangalore"
+                        value={confirmedCentre}
+                        onChange={(e) => setConfirmedCentre(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-emerald-300 dark:border-emerald-800 text-xs font-bold outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-neutral-500 mb-1">
+                        Confirmed Exam Date
+                      </label>
+                      <input
+                        type="date"
+                        value={confirmedDate}
+                        onChange={(e) => setConfirmedDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-emerald-300 dark:border-emerald-800 text-xs font-bold outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-neutral-500 mb-1">
+                        Confirmed Time Slot
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 09:30 AM IST"
+                        value={confirmedTime}
+                        onChange={(e) => setConfirmedTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-emerald-300 dark:border-emerald-800 text-xs font-bold outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase text-neutral-500 mb-1">
+                      Important Candidate Instructions
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Please carry original valid passport and arrive 30 minutes before exam time."
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-emerald-300 dark:border-emerald-800 text-xs font-medium outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <TextArea
+                label="Admin Internal Notes (tracked in request history)"
+                value={notesDraft}
+                onChange={setNotesDraft}
+                rows={4}
+              />
+
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>Only mark "Booking Confirmed" once the appointment is finalized through official Pearson channels.</span>
+              </div>
+
+              <div className="text-[11px] font-bold text-neutral-400">
+                Originally Submitted: {new Date(selected.createdAt).toLocaleString()}
+              </div>
+
+            </div>
+          </div>
+        </FormCard>
+      )}
+
+      {/* Requests Table */}
+      <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-bold">
+            <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
+              <tr>
+                <Th>Request ID & Name</Th>
+                <Th>Contact</Th>
+                <Th>Exam Type</Th>
+                <Th>City / Centre</Th>
+                <Th>Preferred Slot</Th>
+                <Th>Status</Th>
+                <Th>Submitted</Th>
+                <Th>Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan="8" className="p-4">
+                    <div className="h-8 bg-neutral-100 dark:bg-[#292929] rounded animate-pulse" />
+                  </td>
+                </tr>
+              )}
+              {!loading &&
+                rows.map((b) => (
+                  <tr key={b._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#1A1A1A]">
+                    <Td className="whitespace-nowrap font-black">
+                      <div className="font-mono text-[11px] text-brand-pink">{b.requestId}</div>
+                      <div className="text-neutral-900 dark:text-white">{b.fullName}</div>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <div>{b.email}</div>
+                      <div className="text-[10px] text-neutral-400">{b.phone}</div>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <span className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-[#222] text-neutral-800 dark:text-neutral-200 text-[10px] font-black">
+                        {b.examType}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <div>{b.preferredCity}</div>
+                      {b.preferredTestCentre && <div className="text-[10px] text-neutral-400">{b.preferredTestCentre}</div>}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <div>{fmtPTEDate(b.preferredDate)}</div>
+                      <div className="text-[10px] text-neutral-400">{b.preferredTime || 'Any Time'}</div>
+                    </Td>
+                    <Td>
+                      <PTEStatusPill status={b.status} />
+                    </Td>
+                    <Td className="whitespace-nowrap text-neutral-400">
+                      {new Date(b.createdAt).toLocaleDateString()}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() => openDetail(b)}
+                          className="px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-brand-pink border border-brand-pink/30 text-[10px] font-black hover:bg-brand-pink hover:text-white transition-colors"
+                        >
+                          View Details
+                        </button>
+                        {b.status === 'New' && (
+                          <button
+                            onClick={() => quickStatus(b, 'Contacted')}
+                            className="px-2 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[10px] font-black"
+                          >
+                            Mark Contacted
+                          </button>
+                        )}
+                      </div>
+                    </Td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading && rows.length === 0 && (
+          <Empty
+            title="No PTE booking requests found"
+            desc="Try changing your search terms or filter criteria."
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UserIconInline() {
+  return <Users className="w-3.5 h-3.5 text-neutral-400" />;
 }
 
 function UsersAdmin() {
@@ -1641,7 +2424,7 @@ function UsersAdmin() {
                     <div className="text-[10px] text-neutral-400">{u.email}</div>
                   </Td>
                   <Td>{u.phone || '—'}</Td>
-                  <Td><span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${u.role === 'admin' ? 'bg-[#FF005C]/10 text-[#FF005C] border-[#FF005C]/20' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}>{u.role}</span></Td>
+                  <Td><span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${u.role === 'admin' ? 'bg-brand-pink/10 text-brand-pink border-brand-pink/20' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}>{u.role}</span></Td>
                   <Td><Pill text={u.status} tint={u.status === 'active' ? 'emerald' : 'rose'} /></Td>
                   <Td className="text-right tabular-nums">{u.orderCount || 0}</Td>
                   <Td className="text-right tabular-nums">{u.voucherCount || 0}</Td>
@@ -1743,7 +2526,7 @@ function PromotionsAdmin() {
             <Field label="Promo Code *" value={draft.code} onChange={(v) => setDraft({ ...draft, code: String(v).toUpperCase() })} />
             <div>
               <Label>Discount Type</Label>
-              <select value={draft.discountType} onChange={(e) => setDraft({ ...draft, discountType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]">
+              <select value={draft.discountType} onChange={(e) => setDraft({ ...draft, discountType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink">
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed Amount (₹)</option>
               </select>
@@ -1789,7 +2572,7 @@ function PromotionsAdmin() {
                     <div className="text-[10px] text-neutral-400 max-w-xs truncate">{p.description}</div>
                   </Td>
                   <Td className="font-mono whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] border border-[#FF005C]/20 font-black">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink border border-brand-pink/20 font-black">
                       {p.code}
                       <button onClick={() => navigator.clipboard?.writeText(p.code)} className="ml-1"><Copy className="w-3 h-3" /></button>
                     </div>
@@ -1840,7 +2623,7 @@ function AuditLogsAdmin() {
           <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Admin Audit Trail</h1>
           <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Track every price edit, product creation, status change, and voucher operation.</p>
         </div>
-        <button onClick={refresh} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-[#FF005C]">
+        <button onClick={refresh} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
@@ -1911,7 +2694,7 @@ function Field({ label, type = 'text', value, onChange, required, placeholder })
       <Label>{label}</Label>
       <input type={type} value={value ?? ''} required={required} placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C] transition"
+        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink transition"
       />
     </label>
   );
@@ -1921,7 +2704,7 @@ function TextArea({ label, value, onChange, rows = 3 }) {
     <label className="block">
       <Label>{label}</Label>
       <textarea rows={rows} value={value ?? ''} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C] transition whitespace-pre-wrap"
+        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink transition whitespace-pre-wrap"
       />
     </label>
   );
@@ -1930,9 +2713,128 @@ function Check({ label, checked, onChange }) {
   return (
     <label className="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] cursor-pointer">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-[#FF005C]" />
+        className="w-4 h-4 accent-brand-pink" />
       <span className="text-xs font-black text-neutral-700 dark:text-neutral-200">{label}</span>
     </label>
+  );
+}
+
+const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const LOGO_MAX_SIZE = 5 * 1024 * 1024;
+
+function ProductLogoUploader({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState(value || '');
+  const fileInputRef = useRef(null);
+
+  useEffect(() => { setPreview(value || ''); }, [value]);
+
+  const handleFile = (file) => {
+    if (!file || uploading) return;
+    setError('');
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setError('Unsupported format. Use JPG, PNG, or WebP.');
+      return;
+    }
+    if (file.size > LOGO_MAX_SIZE) {
+      setError('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append('logo', file);
+    const token = getToken();
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${apiBase()}/api/admin/products/logo-upload`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      setUploading(false);
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+          onChange(data.url);
+          setPreview(data.url);
+        } else {
+          setError(data.message || 'Upload failed');
+        }
+      } catch {
+        setError('Upload failed');
+      }
+    };
+    xhr.onerror = () => {
+      setUploading(false);
+      setError('Network error during upload');
+    };
+    xhr.send(formData);
+  };
+
+  const removeLogo = () => {
+    onChange('');
+    setPreview('');
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div>
+      <Label>Product Logo</Label>
+      <div className="flex items-center gap-3">
+        <div className="w-16 h-16 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center overflow-hidden shrink-0">
+          {preview ? (
+            <img src={preview} alt="Logo preview" className="w-full h-full object-contain" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-neutral-300" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {uploading ? (
+            <div>
+              <div className="text-xs font-bold text-neutral-500 mb-1">Uploading... {progress}%</div>
+              <div className="h-2 rounded-full bg-neutral-200 dark:bg-[#292929] overflow-hidden">
+                <div className="h-full bg-brand-pink transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black"
+              >
+                {preview ? 'Replace Logo' : 'Upload Logo'}
+              </button>
+              {preview && (
+                <button
+                  type="button"
+                  onClick={removeLogo}
+                  className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[11px] font-black"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          {error && <p className="text-[11px] font-bold text-rose-500 mt-1.5">{error}</p>}
+          {!error && preview && !uploading && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1.5">✓ Logo ready</p>}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2018,7 +2920,7 @@ function SocialPreview({ variant = 'og', title, description, image, url, siteNam
   const isTwitter = variant === 'twitter';
   return (
     <div className={`rounded-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-white dark:bg-[#0E0E0E] ${isTwitter ? 'max-w-sm' : ''}`}>
-      <div className="aspect-[1200/630] bg-neutral-100 dark:bg-[#161616] relative overflow-hidden">
+      <div className="aspect-1200/630 bg-neutral-100 dark:bg-[#161616] relative overflow-hidden">
         <img src={safeImage} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         <div className="absolute inset-0 flex items-center justify-center text-neutral-300 dark:text-[#333] font-black text-xs">
           {!image && isTwitter ? 'Twitter Card Image (1200×675)' : !image ? 'OG Image (1200×630)' : ''}
@@ -2074,7 +2976,7 @@ function RichTextToolbar({ onFormat }) {
     <div className="flex flex-wrap gap-1.5 p-2 rounded-t-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-b-0 border-[#EAEAEA] dark:border-[#292929]">
       {btns.map(b => (
         <button key={b.id} onClick={() => onFormat?.(b.id)} title={b.title}
-          className="px-2 py-1 rounded-lg text-[10px] font-black bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-700 dark:text-neutral-200 hover:border-[#FF005C] hover:text-[#FF005C] transition">
+          className="px-2 py-1 rounded-lg text-[10px] font-black bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-700 dark:text-neutral-200 hover:border-brand-pink hover:text-brand-pink transition">
           {b.label}
         </button>
       ))}
@@ -2244,7 +3146,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
         {seoSubTabs.map(t => (
           <button key={t.id} onClick={() => setSeoSubTab(t.id)}
             className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black whitespace-nowrap transition ${
-              seoSubTab === t.id ? 'bg-[#FF005C] text-white shadow-sm' : 'text-neutral-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-[#161616]'
+              seoSubTab === t.id ? 'bg-brand-pink text-white shadow-sm' : 'text-neutral-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-[#161616]'
             }`}>
             {t.icon}{t.label}
           </button>
@@ -2259,14 +3161,14 @@ function SEOProductEditor({ product, onClose, onSaved }) {
                 <Label>SEO Title</Label>
                 <input value={form.seo.title} onChange={e => setForm({ ...form, seo: { ...form.seo, title: e.target.value } })}
                   placeholder="e.g. PTE Academic Voucher India – Save ₹3000+ | Apex Vouchers"
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                 <CharCounter value={form.seo.title} idealMin={30} idealMax={60} max={100} />
               </div>
               <div>
                 <Label>Meta Description</Label>
                 <textarea rows={3} value={form.seo.description} onChange={e => setForm({ ...form, seo: { ...form.seo, description: e.target.value } })}
                   placeholder="Buy PTE Academic exam vouchers at discounted prices. 10-second WhatsApp + email delivery, 6-12 month validity, 100% genuine official codes from Apex Vouchers."
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                 <CharCounter value={form.seo.description} idealMin={80} idealMax={160} max={250} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2293,7 +3195,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
                   <Label>Canonical URL (optional)</Label>
                   <input value={form.seo.canonicalUrl} onChange={e => setForm({ ...form, seo: { ...form.seo, canonicalUrl: e.target.value } })}
                     placeholder="https://apexvouchers.com/exam-vouchers/..."
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                   <div className="mt-1.5 text-[10px] font-bold text-neutral-400">Leave empty to auto-generate from slug.</div>
                 </div>
               </div>
@@ -2302,13 +3204,13 @@ function SEOProductEditor({ product, onClose, onSaved }) {
                   <Label>Focus Keyword</Label>
                   <input value={form.seo.focusKeyword} onChange={e => setForm({ ...form, seo: { ...form.seo, focusKeyword: e.target.value } })}
                     placeholder="e.g. PTE Academic Voucher"
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                 </div>
                 <div>
                   <Label>Secondary Keywords (one per line)</Label>
                   <textarea rows={4} value={form.seo.secondaryKeywords} onChange={e => setForm({ ...form, seo: { ...form.seo, secondaryKeywords: e.target.value } })}
                     placeholder="PTE voucher&#10;PTE exam voucher India&#10;PTE Academic discount"
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono focus:outline-none focus:border-[#FF005C]" />
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono focus:outline-none focus:border-brand-pink" />
                 </div>
               </div>
             </div>
@@ -2319,14 +3221,14 @@ function SEOProductEditor({ product, onClose, onSaved }) {
               <div>
                 <Label>Short Description (legacy card text)</Label>
                 <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
               </div>
               <div>
                 <Label>Long-form Rich Description (H2/H3 allowed)</Label>
                 <RichTextToolbar onFormat={insertFormatting} />
                 <textarea id="rich-desc-ta" rows={14} value={form.richDescription} onChange={e => setForm({ ...form, richDescription: e.target.value })}
                   placeholder="<h2>What is a PTE Academic Voucher?</h2>&#10;<p>A PTE Academic voucher is a pre-paid exam code...</p>"
-                  className="w-full px-4 py-3 rounded-b-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-[#FF005C] whitespace-pre-wrap" />
+                  className="w-full px-4 py-3 rounded-b-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-brand-pink whitespace-pre-wrap" />
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-neutral-400">Supported HTML: h2, h3, h4, p, strong, em, ul, ol, li, a, br, table, thead, tbody, tr, th, td, span, div. Unsafe tags are stripped on save.</span>
                   <span className="text-[10px] font-mono font-bold text-neutral-500">{String(form.richDescription || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length} words</span>
@@ -2339,7 +3241,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="!mb-0">Facebook / Open Graph</Label>
+                  <Label className="mb-0!">Facebook / Open Graph</Label>
                   <span className="text-[9px] font-black uppercase tracking-wider text-[#1877F2]">OG</span>
                 </div>
                 <Field label="OG Title" value={form.seo.ogTitle} onChange={v => setForm({ ...form, seo: { ...form.seo, ogTitle: v } })} placeholder="Falls back to SEO title" />
@@ -2348,7 +3250,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
               </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="!mb-0">Twitter / X Card</Label>
+                  <Label className="mb-0!">Twitter / X Card</Label>
                   <span className="text-[9px] font-black uppercase tracking-wider text-neutral-500">X</span>
                 </div>
                 <Field label="Twitter Title" value={form.seo.twitterTitle} onChange={v => setForm({ ...form, seo: { ...form.seo, twitterTitle: v } })} placeholder="Falls back to OG/SEO title" />
@@ -2423,7 +3325,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
                 </div>
                 <textarea rows={12} value={form.faqs} onChange={e => setForm({ ...form, faqs: e.target.value })}
                   placeholder="Is the PTE voucher valid for any test center?&#10;Yes. The official PTE voucher works at all authorized Pearson test centers across India.&#10;---&#10;How long is the voucher valid?&#10;Each voucher is valid for 6 to 12 months from date of purchase."
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-[#FF005C] whitespace-pre-wrap" />
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-brand-pink whitespace-pre-wrap" />
                 <div className="mt-1.5 text-[10px] font-bold text-neutral-500">
                   {form.faqs ? `${form.faqs.split('\n---\n').length} FAQ(s) detected` : '0 FAQs'}
                 </div>
@@ -2717,7 +3619,7 @@ function SEOManager() {
           <a href="/robots.txt" target="_blank" rel="noreferrer" className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-[11px] inline-flex items-center gap-1.5 hover:border-[#6C3CE0] hover:text-[#6C3CE0]">
             <ExternalLink className="w-3.5 h-3.5" /> robots.txt
           </a>
-          <button onClick={loadOverview} className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-[11px] inline-flex items-center gap-1.5 hover:border-[#FF005C]">
+          <button onClick={loadOverview} className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-[11px] inline-flex items-center gap-1.5 hover:border-brand-pink">
             <RefreshCw className={`w-4 h-4 ${loadingOverview ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
@@ -2727,7 +3629,7 @@ function SEOManager() {
         {subTabs.map(t => (
           <button key={t.id} onClick={() => setSubTab(t.id)}
             className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[11px] font-black whitespace-nowrap transition ${
-              subTab === t.id ? 'bg-[#FF005C] text-white shadow-sm' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#262626]'
+              subTab === t.id ? 'bg-brand-pink text-white shadow-sm' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#262626]'
             }`}>
             {t.icon}{t.label}
           </button>
@@ -2854,7 +3756,7 @@ function SEOManager() {
                 { l: 'Create a Redirect', i: <ArrowLeftRight className="w-4 h-4" />, t: '#F59E0B', action: () => startEditRedirect() },
                 { l: 'Update Global SEO', i: <Settings2 className="w-4 h-4" />, t: '#6C3CE0', action: () => setSubTab('global') },
               ].map(q => (
-                <button key={q.l} onClick={q.action} className="flex items-center gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-left hover:border-[#FF005C] transition">
+                <button key={q.l} onClick={q.action} className="flex items-center gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-left hover:border-brand-pink transition">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: q.t }}>{q.i}</div>
                   <div className="font-black text-xs">{q.l}</div>
                 </button>
@@ -2891,7 +3793,7 @@ function SEOManager() {
                       <tr key={ps.id || ps._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111]">
                         <Td>
                           <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 flex items-center justify-center font-black text-[9px] text-[#FF005C]">
+                            <div className="w-9 h-9 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 flex items-center justify-center font-black text-[9px] text-brand-pink">
                               APX
                             </div>
                             <div>
@@ -2979,13 +3881,13 @@ function SEOManager() {
                 <div>
                   <Label>SEO Title</Label>
                   <input value={pageDraft.seo?.title || ''} onChange={e => setPageDraft({ ...pageDraft, seo: { ...pageDraft.seo, title: e.target.value } })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                   <CharCounter value={pageDraft.seo?.title} idealMin={30} idealMax={60} max={100} />
                 </div>
                 <div>
                   <Label>Meta Description</Label>
                   <textarea rows={3} value={pageDraft.seo?.description || ''} onChange={e => setPageDraft({ ...pageDraft, seo: { ...pageDraft.seo, description: e.target.value } })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]" />
+                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink" />
                   <CharCounter value={pageDraft.seo?.description} idealMin={80} idealMax={160} max={250} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3084,7 +3986,7 @@ function SEOManager() {
                   <Label>Post Content (HTML supported, sanitized on save)</Label>
                   <RichTextToolbar onFormat={() => {}} />
                   <textarea rows={12} value={blogDraft.content} onChange={e => setBlogDraft({ ...blogDraft, content: e.target.value })}
-                    className="w-full px-4 py-3 rounded-b-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-[#FF005C] whitespace-pre-wrap" />
+                    className="w-full px-4 py-3 rounded-b-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-brand-pink whitespace-pre-wrap" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Cover Image URL" value={blogDraft.coverImage} onChange={v => setBlogDraft({ ...blogDraft, coverImage: v })} />
@@ -3192,7 +4094,7 @@ function SEOManager() {
                   <div>
                     <Label>Redirect Type</Label>
                     <select value={redirectDraft.type} onChange={e => setRedirectDraft({ ...redirectDraft, type: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]">
+                      className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink">
                       <option value="301">301 — Permanent (SEO friendly)</option>
                       <option value="302">302 — Temporary</option>
                     </select>
@@ -3610,7 +4512,7 @@ function VideosAdmin() {
               onClick={() => setStatusFilter(pill.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap cursor-pointer ${
                 statusFilter === pill.id
-                  ? 'bg-[#FF005C] text-white shadow-sm'
+                  ? 'bg-brand-pink text-white shadow-sm'
                   : 'bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
               }`}
             >
@@ -3703,8 +4605,8 @@ function VideosAdmin() {
                   <label className="block text-xs font-black text-slate-900 dark:text-white">
                     🎬 Upload Video to Cloudinary (.mp4, .webm, .mov)
                   </label>
-                  <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-[#FF005C]/30 bg-rose-50/30 dark:bg-[#2A0A17]/20 hover:border-[#FF005C] cursor-pointer transition">
-                    <span className="text-xs font-black text-[#FF005C]">Click to Upload MP4 Video</span>
+                  <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-brand-pink/30 bg-rose-50/30 dark:bg-[#2A0A17]/20 hover:border-brand-pink cursor-pointer transition">
+                    <span className="text-xs font-black text-brand-pink">Click to Upload MP4 Video</span>
                     <span className="text-[10px] text-slate-400 font-medium mt-0.5">Direct Cloudinary Stream • Max 100MB</span>
                     <input
                       type="file"
@@ -3762,13 +4664,13 @@ function VideosAdmin() {
             {/* Right Col: Live Card Preview */}
             <div className="space-y-2">
               <Label>Live Customer Card Preview</Label>
-              <div className="w-full aspect-[9/16] rounded-2xl bg-[#161616] border-2 border-amber-400 p-4 relative overflow-hidden flex flex-col justify-between text-white shadow-xl">
+              <div className="w-full aspect-9/16 rounded-2xl bg-[#161616] border-2 border-amber-400 p-4 relative overflow-hidden flex flex-col justify-between text-white shadow-xl">
                 <img 
                   src={draft.thumbnailUrl || draft.thumbnail || (draft.cloudinaryPublicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${draft.cloudinaryPublicId}.jpg` : 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600')} 
                   alt="preview" 
                   className="absolute inset-0 w-full h-full object-cover opacity-60" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/70" />
+                <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-transparent to-slate-950/70" />
 
                 <div className="relative z-10 flex justify-between items-center">
                   <span className="px-2.5 py-1 rounded bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
@@ -3825,7 +4727,7 @@ function VideosAdmin() {
                   {/* Thumbnail & Title */}
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-10 rounded-xl bg-neutral-900 overflow-hidden relative border border-[#EAEAEA] dark:border-[#292929] flex-shrink-0">
+                      <div className="w-14 h-10 rounded-xl bg-neutral-900 overflow-hidden relative border border-[#EAEAEA] dark:border-[#292929] shrink-0">
                         <img src={v.thumbnailUrl || v.thumbnail || v.poster} alt={v.title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                           <Play className="w-3.5 h-3.5 fill-white text-white" />
@@ -4186,7 +5088,7 @@ function WebsiteCMSAdmin() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-[#121212] p-6 rounded-3xl border border-[#EAEAEA] dark:border-[#222] shadow-sm">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF005C]/10 text-[#FF005C] font-black text-xs border border-[#FF005C]/20 mb-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink font-black text-xs border border-brand-pink/20 mb-2">
             <Megaphone className="w-3.5 h-3.5" /> WEBSITE CONTENT & CAMPAIGN CMS
           </span>
           <h2 className="font-heading font-black text-2xl text-slate-900 dark:text-white">
@@ -4221,7 +5123,7 @@ function WebsiteCMSAdmin() {
             onClick={() => setActiveSubTab(sub.id)}
             className={`px-4 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition flex items-center gap-2 ${
               activeSubTab === sub.id
-                ? 'bg-[#FF005C] text-white shadow-md'
+                ? 'bg-brand-pink text-white shadow-md'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-[#1D1D1D]'
             }`}
           >
@@ -4246,7 +5148,7 @@ function WebsiteCMSAdmin() {
                 setEditingCampaign(null);
                 setIsCampaignModalOpen(true);
               }}
-              className="px-5 py-3 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-[#FF005C]/20 inline-flex items-center gap-2 cursor-pointer transition"
+              className="px-5 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 inline-flex items-center gap-2 cursor-pointer transition"
             >
               <Plus className="w-4 h-4" /> Create New Campaign
             </button>
@@ -4298,11 +5200,11 @@ function WebsiteCMSAdmin() {
                             </span>
                           </td>
                           <td className="p-4">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-50 text-[#FF005C] font-extrabold text-[10px] border border-rose-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-50 text-brand-pink font-extrabold text-[10px] border border-rose-200">
                               {c.badgeText || 'Offer'}
                             </span>
                           </td>
-                          <td className="p-4 font-black text-[#FF005C]">
+                          <td className="p-4 font-black text-brand-pink">
                             {c.discountType === 'PERCENTAGE' ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`}
                             {c.maxDiscount > 0 && (
                               <div className="text-[10px] text-neutral-400 font-normal">Max: ₹{c.maxDiscount}</div>
@@ -4371,12 +5273,12 @@ function WebsiteCMSAdmin() {
               />
             </div>
             <div>
-              <label className="block text-xs font-black text-[#FF005C] mb-1">Highlighted Heading (Pink)</label>
+              <label className="block text-xs font-black text-brand-pink mb-1">Highlighted Heading (Pink)</label>
               <input
                 type="text"
                 value={heroForm.headingHighlight}
                 onChange={(e) => setHeroForm({ ...heroForm, headingHighlight: e.target.value })}
-                className="w-full p-3 rounded-2xl border border-[#FF005C]/40 bg-[#FFF0F5] dark:bg-[#2A0A17] font-black text-xs text-[#FF005C]"
+                className="w-full p-3 rounded-2xl border border-brand-pink/40 bg-[#FFF0F5] dark:bg-[#2A0A17] font-black text-xs text-brand-pink"
                 placeholder="Our Vouchers."
               />
             </div>
@@ -4430,7 +5332,7 @@ function WebsiteCMSAdmin() {
             <button
               onClick={handleSaveHeroSettings}
               disabled={savingSettings}
-              className="px-6 py-3 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-[#FF005C]/20 cursor-pointer transition flex items-center gap-2"
+              className="px-6 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 cursor-pointer transition flex items-center gap-2"
             >
               <Save className="w-4 h-4" /> Save Hero Slogans
             </button>
@@ -4452,7 +5354,7 @@ function WebsiteCMSAdmin() {
               id="annEnabled"
               checked={announcementForm.enabled}
               onChange={(e) => setAnnouncementForm({ ...announcementForm, enabled: e.target.checked })}
-              className="w-4 h-4 accent-[#FF005C]"
+              className="w-4 h-4 accent-brand-pink"
             />
             <label htmlFor="annEnabled" className="text-xs font-black text-slate-900 dark:text-white cursor-pointer">
               Enable Top Announcement Bar
@@ -4470,15 +5372,15 @@ function WebsiteCMSAdmin() {
             />
           </div>
 
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-rose-50/50 dark:bg-[#2A0A17]/30 border border-[#FF005C]/20">
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-rose-50/50 dark:bg-[#2A0A17]/30 border border-brand-pink/20">
             <input
               type="checkbox"
               id="annOverride"
               checked={announcementForm.overrideWithCampaign}
               onChange={(e) => setAnnouncementForm({ ...announcementForm, overrideWithCampaign: e.target.checked })}
-              className="w-4 h-4 accent-[#FF005C]"
+              className="w-4 h-4 accent-brand-pink"
             />
-            <label htmlFor="annOverride" className="text-xs font-black text-[#FF005C] cursor-pointer">
+            <label htmlFor="annOverride" className="text-xs font-black text-brand-pink cursor-pointer">
               Automatically Override with Active Campaign Banner (e.g. 🇮🇳 Independence Day Sale — 50% OFF)
             </label>
           </div>
@@ -4487,7 +5389,7 @@ function WebsiteCMSAdmin() {
             <button
               onClick={handleSaveAnnouncement}
               disabled={savingSettings}
-              className="px-6 py-3 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-[#FF005C]/20 cursor-pointer transition flex items-center gap-2"
+              className="px-6 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 cursor-pointer transition flex items-center gap-2"
             >
               <Save className="w-4 h-4" /> Save Announcement Settings
             </button>
@@ -4548,7 +5450,7 @@ function WebsiteCMSAdmin() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
-                          <span className="text-[#FF005C] font-black">₹</span>
+                          <span className="text-brand-pink font-black">₹</span>
                           <input
                             type="number"
                             value={prod.sellingPrice}
@@ -4558,7 +5460,7 @@ function WebsiteCMSAdmin() {
                                 prev.map((p, i) => (i === idx ? { ...p, sellingPrice: val } : p))
                               );
                             }}
-                            className="w-24 p-2 rounded-xl border border-[#FF005C]/30 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-xs text-[#FF005C]"
+                            className="w-24 p-2 rounded-xl border border-brand-pink/30 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-xs text-brand-pink"
                           />
                         </div>
                       </td>
@@ -4576,7 +5478,7 @@ function WebsiteCMSAdmin() {
                                 prev.map((p, i) => (i === idx ? { ...p, inStock: val } : p))
                               );
                             }}
-                            className="w-4 h-4 accent-[#FF005C]"
+                            className="w-4 h-4 accent-brand-pink"
                           />
                           <span className="text-xs font-bold">{prod.inStock ? 'In Stock' : 'Out of Stock'}</span>
                         </label>
@@ -4584,7 +5486,7 @@ function WebsiteCMSAdmin() {
                       <td className="p-4 text-right">
                         <button
                           onClick={() => handleQuickPriceSave(prod)}
-                          className="px-4 py-2 rounded-xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-xs shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                          className="px-4 py-2 rounded-xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-md inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <Save className="w-3.5 h-3.5" /> Save Price
                         </button>
@@ -4651,7 +5553,7 @@ function WebsiteCMSAdmin() {
             <button
               onClick={handleSaveFooterSettings}
               disabled={savingSettings}
-              className="px-6 py-3 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-[#FF005C]/20 cursor-pointer transition flex items-center gap-2"
+              className="px-6 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 cursor-pointer transition flex items-center gap-2"
             >
               <Save className="w-4 h-4" /> Save Footer Settings
             </button>
@@ -4668,7 +5570,7 @@ function WebsiteCMSAdmin() {
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2 border border-slate-800">
-            <div className="flex items-center gap-2 text-xs font-black text-[#FF005C]">
+            <div className="flex items-center gap-2 text-xs font-black text-brand-pink">
               <ShieldCheck className="w-4 h-4" /> 🔒 SECURITY & SECRET MANAGEMENT POLICY
             </div>
             <p className="text-xs text-slate-300 font-medium leading-relaxed">
@@ -4687,12 +5589,12 @@ function WebsiteCMSAdmin() {
               />
             </div>
             <div>
-              <label className="block text-xs font-black text-[#FF005C] mb-1">Official Sender & Support Email</label>
+              <label className="block text-xs font-black text-brand-pink mb-1">Official Sender & Support Email</label>
               <input
                 type="text"
                 disabled
                 value="apexvouchers@gmail.com"
-                className="w-full p-3 rounded-2xl border border-[#FF005C]/30 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-xs text-[#FF005C]"
+                className="w-full p-3 rounded-2xl border border-brand-pink/30 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-xs text-brand-pink"
               />
             </div>
           </div>
@@ -4730,23 +5632,23 @@ function WebsiteCMSAdmin() {
 
           <div className="p-6 rounded-3xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#292929] space-y-6">
             {activeCampaign ? (
-              <div className="p-5 rounded-3xl bg-gradient-to-r from-[#FFF0F5] via-rose-50 to-pink-50 dark:from-[#2A0A17] dark:via-[#1F0811] dark:to-[#16050B] border border-[#FF005C]/30 shadow-lg space-y-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF005C] text-white font-black text-xs uppercase">
+              <div className="p-5 rounded-3xl bg-linear-to-r from-[#FFF0F5] via-rose-50 to-pink-50 dark:from-[#2A0A17] dark:via-[#1F0811] dark:to-[#16050B] border border-brand-pink/30 shadow-lg space-y-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full bg-brand-pink text-white font-black text-xs uppercase">
                   {activeCampaign.badgeText || '🇮🇳 CAMPAIGN ACTIVE'}
                 </span>
                 <h4 className="text-2xl font-black text-slate-900 dark:text-white">{activeCampaign.title}</h4>
-                <p className="text-sm font-bold text-[#FF005C]">{activeCampaign.subtitle}</p>
+                <p className="text-sm font-bold text-brand-pink">{activeCampaign.subtitle}</p>
                 <p className="text-xs text-slate-600 dark:text-slate-300">{activeCampaign.description}</p>
               </div>
             ) : (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF0F5] border border-[#FF005C]/20 text-xs font-black text-[#FF005C]">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF0F5] border border-brand-pink/20 text-xs font-black text-brand-pink">
                 🎟️ Save on Exam Fees with Apex Vouchers
               </div>
             )}
 
             <h1 className="font-heading font-black text-3xl sm:text-4xl text-slate-900 dark:text-white leading-tight">
               {heroForm.headingLine1} <br />
-              <span className="text-[#FF005C]">{heroForm.headingHighlight}</span> <br />
+              <span className="text-brand-pink">{heroForm.headingHighlight}</span> <br />
               {heroForm.headingLine3}
             </h1>
 
@@ -4754,7 +5656,7 @@ function WebsiteCMSAdmin() {
               {heroForm.descriptionText}
             </p>
 
-            <button className="px-6 py-3 rounded-full bg-[#FF005C] text-white font-black text-xs shadow-lg">
+            <button className="px-6 py-3 rounded-full bg-brand-pink text-white font-black text-xs shadow-lg">
               {activeCampaign?.ctaText || heroForm.ctaText || 'Browse Vouchers'}
             </button>
           </div>
@@ -4881,14 +5783,14 @@ function CampaignFormModal({ campaign, products, onClose, onSave }) {
               </select>
             </div>
             <div>
-              <label className="block text-[#FF005C] mb-1 font-black">Discount Value *</label>
+              <label className="block text-brand-pink mb-1 font-black">Discount Value *</label>
               <input
                 type="number"
                 required
                 min="0"
                 value={form.discountValue}
                 onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })}
-                className="w-full p-3 rounded-2xl border border-[#FF005C]/40 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-[#FF005C]"
+                className="w-full p-3 rounded-2xl border border-brand-pink/40 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-brand-pink"
               />
             </div>
             <div>
@@ -4941,14 +5843,14 @@ function CampaignFormModal({ campaign, products, onClose, onSave }) {
           <div>
             <label className="block text-slate-700 dark:text-slate-300 mb-1 font-black">Included Products</label>
             <div className="p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] space-y-2 max-h-36 overflow-y-auto">
-              <label className="flex items-center gap-2 text-xs font-bold text-[#FF005C]">
+              <label className="flex items-center gap-2 text-xs font-bold text-brand-pink">
                 <input
                   type="checkbox"
                   checked={form.applicableProducts.length === 0}
                   onChange={(e) => {
                     if (e.target.checked) setForm({ ...form, applicableProducts: [] });
                   }}
-                  className="w-4 h-4 accent-[#FF005C]"
+                  className="w-4 h-4 accent-brand-pink"
                 />
                 Apply to ALL Vouchers (PTE, IELTS, TOEFL, Duolingo)
               </label>
@@ -4970,7 +5872,7 @@ function CampaignFormModal({ campaign, products, onClose, onSave }) {
                           });
                         }
                       }}
-                      className="w-4 h-4 accent-[#FF005C]"
+                      className="w-4 h-4 accent-brand-pink"
                     />
                     {prod.name} ({prod.brand || prod.provider})
                   </label>
@@ -4989,7 +5891,7 @@ function CampaignFormModal({ campaign, products, onClose, onSave }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-black shadow-lg shadow-[#FF005C]/20"
+              className="px-6 py-2.5 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black shadow-lg shadow-brand-pink/20"
             >
               {campaign ? 'Update Campaign' : 'Save & Publish Campaign'}
             </button>

@@ -17,8 +17,8 @@ export const TrustStrip = () => {
           {trustItems.map((item, idx) => {
             const IconComp = item.icon;
             return (
-              <div key={idx} className="flex items-center gap-2 text-neutral-300 hover:text-[#FF005C] transition-colors">
-                <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#FF005C]">
+              <div key={idx} className="flex items-center gap-2 text-neutral-300 hover:text-brand-pink transition-colors">
+                <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-brand-pink">
                   <IconComp className="w-4 h-4" />
                 </span>
                 <span>✓ {item.label}</span>

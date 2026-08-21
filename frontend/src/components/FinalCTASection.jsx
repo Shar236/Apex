@@ -10,7 +10,7 @@ export const FinalCTASection = () => {
     <section className="relative overflow-hidden bg-[#111111] dark:bg-[#0A0A0A] py-20 sm:py-24 text-white border-b border-neutral-800 dark:border-[#292929] transition-colors duration-300">
       
       {/* Background Hot Pink Glow */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#FF005C]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-125 h-125 bg-brand-pink/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         
@@ -19,14 +19,14 @@ export const FinalCTASection = () => {
           {/* Left Content */}
           <div className="lg:col-span-7 space-y-6 text-left">
             
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FF005C]/10 border border-[#FF005C]/20 text-[#FF005C] text-xs font-extrabold uppercase tracking-widest">
-              <ShieldCheck className="w-4 h-4 text-[#FF005C]" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-pink/10 border border-brand-pink/20 text-brand-pink text-xs font-extrabold uppercase tracking-widest">
+              <ShieldCheck className="w-4 h-4 text-brand-pink" />
               GUARANTEED OFFICIAL VOUCHERS
             </div>
 
             <h2 className="font-heading text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white">
               Ready to Save on Your <br />
-              <span className="text-[#FF005C]">Next English Exam?</span>
+              <span className="text-brand-pink">Next English Exam?</span>
             </h2>
 
             <p className="text-neutral-300 font-medium text-base sm:text-lg max-w-xl">
@@ -36,7 +36,7 @@ export const FinalCTASection = () => {
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={() => setActiveTab('shop')}
-                className="btn-pink !py-4 !px-9 !text-base shadow-xl"
+                className="btn-pink py-4! px-9! text-base! shadow-xl"
               >
                 <Ticket className="w-5 h-5" />
                 <span>Browse Vouchers</span>
@@ -47,7 +47,7 @@ export const FinalCTASection = () => {
                 href="https://wa.me/919855926113"
                 target="_blank"
                 rel="noreferrer"
-                className="btn-secondary !py-4 !px-8 !text-base !bg-[#161616] !text-white !border-[#292929] hover:!border-[#FF005C]"
+                className="btn-secondary py-4! px-8! text-base! bg-[#161616]! text-white! border-[#292929]! hover:border-brand-pink!"
               >
                 <MessageCircle className="w-5 h-5 text-emerald-400" />
                 <span>Contact Us</span>

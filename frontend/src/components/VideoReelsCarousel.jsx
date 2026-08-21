@@ -184,6 +184,8 @@ export const VideoReelsCarousel = () => {
   const mobileVideoRef = useRef(null);
   const modalVideoRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
+  const isTransitioningRef = useRef(false);
+  const shouldAutoPlayNextRef = useRef(false);
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -302,39 +304,100 @@ export const VideoReelsCarousel = () => {
   };
 
   const handleVideoEnded = () => {
-    setIsPlaying(false);
-    setUserInitiatedPlay(false);
-    setShowControls(true);
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+
+    // Automatic Reel-to-Reel: seamlessly transition to next reel and auto-play
+    shouldAutoPlayNextRef.current = true;
+    setUserInitiatedPlay(true);
+    setUseIframeFallback(false);
+
+    setActiveIndex((prev) => (prev + 1) % total);
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
+  };
+
+  const goToIndex = (targetIdx, keepPlaying = isPlaying || userInitiatedPlay) => {
+    if (targetIdx === activeIndex || isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    pauseVisibleVideo();
+
+    shouldAutoPlayNextRef.current = keepPlaying;
+    setUseIframeFallback(false);
+    setActiveIndex(targetIdx);
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
   };
 
   const handleNext = () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
     pauseVisibleVideo();
-    setIsPlaying(false);
-    setUserInitiatedPlay(false);
-    setShowControls(true);
+
+    shouldAutoPlayNextRef.current = isPlaying || userInitiatedPlay;
     setUseIframeFallback(false);
     setActiveIndex((prev) => (prev + 1) % total);
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
   };
 
   const handlePrev = () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
     pauseVisibleVideo();
-    setIsPlaying(false);
-    setUserInitiatedPlay(false);
-    setShowControls(true);
+
+    shouldAutoPlayNextRef.current = isPlaying || userInitiatedPlay;
     setUseIframeFallback(false);
     setActiveIndex((prev) => (prev - 1 + total) % total);
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
   };
 
   useEffect(() => {
     setUseIframeFallback(false);
-    setIsPlaying(false);
-    setUserInitiatedPlay(false);
-    setShowControls(true);
-
     const currentVideoEl = getCurrentVideoElement();
-    if (currentVideoEl) {
-      currentVideoEl.currentTime = 0;
-      currentVideoEl.pause();
+
+    if (shouldAutoPlayNextRef.current || userInitiatedPlay) {
+      if (currentVideo) recordView(currentVideo);
+
+      if (currentVideoEl) {
+        currentVideoEl.currentTime = 0;
+        const playPromise = currentVideoEl.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              setUserInitiatedPlay(true);
+              resetControlsTimer();
+            })
+            .catch((err) => {
+              console.warn('[VideoReels]: Autoplay blocked by browser policy:', err);
+              setIsPlaying(false);
+              setUserInitiatedPlay(false);
+              setShowControls(true);
+            });
+        } else {
+          setIsPlaying(true);
+          setUserInitiatedPlay(true);
+          resetControlsTimer();
+        }
+      }
+    } else {
+      setIsPlaying(false);
+      setUserInitiatedPlay(false);
+      setShowControls(true);
+      if (currentVideoEl) {
+        currentVideoEl.currentTime = 0;
+        currentVideoEl.pause();
+      }
     }
   }, [activeIndex]);
 
@@ -348,6 +411,7 @@ export const VideoReelsCarousel = () => {
           currentVideoEl.pause();
           setIsPlaying(false);
           setUserInitiatedPlay(false);
+          shouldAutoPlayNextRef.current = false;
           setShowControls(true);
         }
       },
@@ -376,7 +440,7 @@ export const VideoReelsCarousel = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeModalVideo, isPlaying]);
+  }, [activeModalVideo, isPlaying, userInitiatedPlay]);
 
   const togglePlay = () => {
     if (currentVideo) recordView(currentVideo);
@@ -402,6 +466,7 @@ export const VideoReelsCarousel = () => {
           .then(() => {
             setIsPlaying(true);
             setUserInitiatedPlay(true);
+            shouldAutoPlayNextRef.current = true;
             resetControlsTimer();
           })
           .catch((error) => {
@@ -411,11 +476,14 @@ export const VideoReelsCarousel = () => {
       } else {
         setIsPlaying(true);
         setUserInitiatedPlay(true);
+        shouldAutoPlayNextRef.current = true;
         resetControlsTimer();
       }
     } else {
       currentVideoEl.pause();
       setIsPlaying(false);
+      setUserInitiatedPlay(false);
+      shouldAutoPlayNextRef.current = false;
       setShowControls(true);
     }
   };
@@ -513,13 +581,7 @@ export const VideoReelsCarousel = () => {
           
           {/* Far Left Card (offset -2) */}
           <div 
-            onClick={() => {
-              pauseVisibleVideo();
-              setIsPlaying(false);
-              setUserInitiatedPlay(false);
-              setUseIframeFallback(false);
-              setActiveIndex((activeIndex - 2 + total) % total);
-            }}
+            onClick={() => goToIndex((activeIndex - 2 + total) % total)}
             className="w-[200px] h-[370px] rounded-[20px] bg-slate-900 border border-amber-500/20 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
             {/* Real Video Frame Preview */}
@@ -535,7 +597,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <img src={getVideoAt(-2).poster || getVideoAt(-2).thumbnailUrl} alt={getVideoAt(-2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2 py-0.5 rounded bg-black/70 text-[9px] font-bold text-amber-400 border border-amber-500/30">
@@ -558,13 +620,7 @@ export const VideoReelsCarousel = () => {
 
           {/* Immediate Left Card (offset -1) */}
           <div 
-            onClick={() => {
-              pauseVisibleVideo();
-              setIsPlaying(false);
-              setUserInitiatedPlay(false);
-              setUseIframeFallback(false);
-              setActiveIndex((activeIndex - 1 + total) % total);
-            }}
+            onClick={() => goToIndex((activeIndex - 1 + total) % total)}
             className="w-[240px] h-[440px] rounded-[22px] bg-slate-900 border border-amber-500/30 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
             {/* Real Video Frame Preview */}
@@ -580,7 +636,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <img src={getVideoAt(-1).poster || getVideoAt(-1).thumbnailUrl} alt={getVideoAt(-1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-bold text-amber-400 border border-amber-500/30">
@@ -612,7 +668,7 @@ export const VideoReelsCarousel = () => {
             {/* Direct HTML5 Video Player (Serves as Visual Content and Thumbnail Preview) */}
             {currentIsInsta ? (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 flex items-center justify-center text-white shadow-xl animate-pulse">
+                <div className="w-14 h-14 rounded-full bg-linear-to-tr from-amber-500 via-rose-500 to-pink-500 flex items-center justify-center text-white shadow-xl animate-pulse">
                   <Instagram className="w-7 h-7" />
                 </div>
                 <div>
@@ -623,7 +679,7 @@ export const VideoReelsCarousel = () => {
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"
+                  className="px-5 py-2.5 rounded-xl bg-linear-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"
                 >
                   <Instagram className="w-4 h-4" />
                   <span>Watch on Instagram ↗</span>
@@ -637,7 +693,7 @@ export const VideoReelsCarousel = () => {
                 muted={isMuted}
                 playsInline
                 preload="auto"
-                loop={isMovieMode || true}
+                loop={false}
                 crossOrigin="anonymous"
                 onEnded={handleVideoEnded}
                 onError={() => setUseIframeFallback(true)}
@@ -667,7 +723,7 @@ export const VideoReelsCarousel = () => {
 
             {/* Gradient Dark Overlay (Fades out when playing so 100% of video is crystal clear) */}
             <div 
-              className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
+              className={`absolute inset-0 bg-linear-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
                 isPlaying ? 'opacity-0' : 'opacity-100'
               }`} 
             />
@@ -774,7 +830,7 @@ export const VideoReelsCarousel = () => {
                     href={currentInstaLink || 'https://instagram.com'}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="flex-1 py-2 rounded-xl bg-linear-to-r from-pink-500 to-amber-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Instagram className="w-3.5 h-3.5" />
                     <span>Watch Reel ↗</span>
@@ -809,13 +865,7 @@ export const VideoReelsCarousel = () => {
 
           {/* Immediate Right Card (offset +1) */}
           <div 
-            onClick={() => {
-              pauseVisibleVideo();
-              setIsPlaying(false);
-              setUserInitiatedPlay(false);
-              setUseIframeFallback(false);
-              setActiveIndex((activeIndex + 1) % total);
-            }}
+            onClick={() => goToIndex((activeIndex + 1) % total)}
             className="w-[240px] h-[440px] rounded-[22px] bg-slate-900 border border-amber-500/30 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
             {/* Real Video Frame Preview */}
@@ -831,7 +881,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <img src={getVideoAt(1).poster || getVideoAt(1).thumbnailUrl} alt={getVideoAt(1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-bold text-amber-400 border border-amber-500/30">
@@ -854,13 +904,7 @@ export const VideoReelsCarousel = () => {
 
           {/* Far Right Card (offset +2) */}
           <div 
-            onClick={() => {
-              pauseVisibleVideo();
-              setIsPlaying(false);
-              setUserInitiatedPlay(false);
-              setUseIframeFallback(false);
-              setActiveIndex((activeIndex + 2) % total);
-            }}
+            onClick={() => goToIndex((activeIndex + 2) % total)}
             className="w-[200px] h-[370px] rounded-[20px] bg-slate-900 border border-amber-500/20 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
             {/* Real Video Frame Preview */}
@@ -876,7 +920,7 @@ export const VideoReelsCarousel = () => {
             ) : (
               <img src={getVideoAt(2).poster || getVideoAt(2).thumbnailUrl} alt={getVideoAt(2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2 py-0.5 rounded bg-black/60 text-[9px] font-bold text-amber-400 border border-amber-500/30">
@@ -903,7 +947,7 @@ export const VideoReelsCarousel = () => {
         <div className="md:hidden space-y-6">
           <div 
             onTouchStart={resetControlsTimer}
-            className="w-full max-w-xs mx-auto aspect-[9/16] rounded-[22px] bg-[#161616] border-2 border-amber-400 shadow-xl relative overflow-hidden flex flex-col justify-between p-5"
+            className="w-full max-w-xs mx-auto aspect-9/16 rounded-[22px] bg-[#161616] border-2 border-amber-400 shadow-xl relative overflow-hidden flex flex-col justify-between p-5"
           >
             {/* Direct HTML5 Video Player */}
             {currentIsInsta ? (
@@ -914,7 +958,7 @@ export const VideoReelsCarousel = () => {
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-linear-to-r from-pink-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-1.5"
                 >
                   <Instagram className="w-4 h-4" />
                   <span>Watch on Instagram ↗</span>
@@ -928,7 +972,7 @@ export const VideoReelsCarousel = () => {
                 muted={isMuted}
                 playsInline
                 preload="auto"
-                loop={isMovieMode || true}
+                loop={false}
                 crossOrigin="anonymous"
                 onEnded={handleVideoEnded}
                 onError={() => setUseIframeFallback(true)}
@@ -957,7 +1001,7 @@ export const VideoReelsCarousel = () => {
 
             {/* Gradient Overlay */}
             <div 
-              className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
+              className={`absolute inset-0 bg-linear-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
                 isPlaying ? 'opacity-0' : 'opacity-100'
               }`} 
             />
@@ -1049,7 +1093,7 @@ export const VideoReelsCarousel = () => {
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-2 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+                  className="w-full py-2 rounded-lg bg-linear-to-r from-pink-500 to-amber-500 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <Instagram className="w-3.5 h-3.5" />
                   <span>Watch on Instagram ↗</span>
@@ -1088,7 +1132,7 @@ export const VideoReelsCarousel = () => {
               {videoList.map((_, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setActiveIndex(idx)}
+                  onClick={() => goToIndex(idx)}
                   aria-label={`Go to video ${idx + 1}`}
                   className={`h-2.5 rounded-full transition-all shrink-0 cursor-pointer ${
                     activeIndex === idx
@@ -1153,7 +1197,7 @@ export const VideoReelsCarousel = () => {
                     <img src={activeModalVideo.poster} alt={activeModalVideo.title} className="absolute inset-0 w-full h-full object-cover opacity-40" />
                     <div className="absolute inset-0 bg-slate-950/70" />
                     
-                    <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-2xl animate-pulse">
+                    <div className="relative z-10 w-16 h-16 rounded-full bg-linear-to-tr from-pink-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-2xl animate-pulse">
                       <Instagram className="w-8 h-8" />
                     </div>
                     
@@ -1166,7 +1210,7 @@ export const VideoReelsCarousel = () => {
                       href={modalInstaLink || 'https://instagram.com'}
                       target="_blank"
                       rel="noreferrer"
-                      className="relative z-10 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"
+                      className="relative z-10 px-6 py-3 rounded-2xl bg-linear-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"
                     >
                       <Instagram className="w-4 h-4" />
                       <span>Watch on Instagram ↗</span>

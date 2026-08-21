@@ -113,10 +113,22 @@ export const deleteCloudinaryAsset = async (publicId, resourceType = 'video') =>
   }
 };
 
+/**
+ * Inserts f_auto,q_auto delivery transformation into a Cloudinary secure_url
+ * so images are served in an optimal format/quality automatically.
+ */
+export const buildOptimizedImageUrl = (secureUrl) => {
+  if (!secureUrl || typeof secureUrl !== 'string') return secureUrl;
+  if (!secureUrl.includes('res.cloudinary.com') || !secureUrl.includes('/upload/')) return secureUrl;
+  if (secureUrl.includes('/upload/f_auto')) return secureUrl;
+  return secureUrl.replace('/upload/', '/upload/f_auto,q_auto/');
+};
+
 export default {
   buildDirectVideoUrl,
   buildVideoThumbnailUrl,
   extractPublicId,
   uploadBufferToCloudinary,
   deleteCloudinaryAsset,
+  buildOptimizedImageUrl,
 };

@@ -36,6 +36,21 @@ export const protect = async (req, res, next) => {
   }
 };
 
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return next();
+    const decoded = verifyToken(token);
+    const user = await User.findById(decoded.id).select('-passwordHash -resetToken -resetExpires');
+    if (user && user.status === 'active') {
+      req.user = user;
+    }
+    next();
+  } catch {
+    next();
+  }
+};
+
 export const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) {
     return next(new AppError('Not authenticated', 401, 'NO_AUTH'));

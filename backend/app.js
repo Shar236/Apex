@@ -19,6 +19,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
+import pteBookingRoutes from './routes/pteBookingRoutes.js';
 
 const app = express();
 
@@ -94,6 +95,15 @@ const avatarUploadLimiter = rateLimit({
 });
 app.use('/api/account/profile/avatar', avatarUploadLimiter);
 
+const pteBookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  message: { success: false, message: 'Too many booking assistance requests. Please try again later.' },
+});
+app.use('/api/pte-bookings', pteBookingLimiter);
+app.use('/api/pte-booking-requests', pteBookingLimiter);
+
 app.get('/sitemap.xml', getSitemapXML);
 app.get('/robots.txt', getRobotsTxt);
 
@@ -129,6 +139,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/seo', seoRoutes);
+app.use('/api/pte-bookings', pteBookingRoutes);
+app.use('/api/pte-booking-requests', pteBookingRoutes);
 
 
 app.use('/api/*', (req, res) => {

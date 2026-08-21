@@ -12,6 +12,10 @@ import {
   quickUpdateStatus,
   quickUpdateFeatured,
   deleteProduct,
+  duplicateProduct,
+  archiveProduct,
+  restoreProduct,
+  reorderProducts,
   getProductInventory,
   listVouchers,
   getVoucherInventoryByProduct,
@@ -46,10 +50,16 @@ import {
   deleteVideo,
   updateVideoSettings,
   uploadMedia,
+  uploadProductLogo,
 } from '../controllers/adminController.js';
 import { getOrderByIdAdmin } from '../controllers/orderController.js';
+import {
+  listPTEBookingRequestsAdmin,
+  getPTEBookingRequestAdmin,
+  updatePTEBookingRequestAdmin,
+} from '../controllers/pteBookingController.js';
 import { protectAdmin } from '../middleware/auth.js';
-import { mediaUpload } from '../middleware/upload.js';
+import { mediaUpload, productLogoUpload } from '../middleware/upload.js';
 
 const r = Router();
 
@@ -62,12 +72,17 @@ r.get('/users/:id', getUser);
 r.patch('/users/:id/status', setUserStatus);
 
 r.get('/products', listAdminProducts);
+r.patch('/products/reorder', reorderProducts);
+r.post('/products/logo-upload', productLogoUpload.single('logo'), uploadProductLogo);
 r.get('/products/:id', getAdminProduct);
 r.post('/products', createProduct);
 r.patch('/products/:id', updateProduct);
 r.patch('/products/:id/price', quickUpdatePrice);
 r.patch('/products/:id/status', quickUpdateStatus);
 r.patch('/products/:id/featured', quickUpdateFeatured);
+r.post('/products/:id/duplicate', duplicateProduct);
+r.patch('/products/:id/archive', archiveProduct);
+r.patch('/products/:id/restore', restoreProduct);
 r.delete('/products/:id', deleteProduct);
 r.get('/products/:id/inventory', getProductInventory);
 
@@ -134,6 +149,10 @@ r.patch('/reels/:id/publish', quickTogglePublishVideo);
 r.patch('/reels/:id/status', quickTogglePublishVideo);
 r.patch('/reels/:id/order', quickUpdateOrderVideo);
 r.delete('/reels/:id', deleteVideo);
+
+r.get('/pte-bookings', listPTEBookingRequestsAdmin);
+r.get('/pte-bookings/:id', getPTEBookingRequestAdmin);
+r.patch('/pte-bookings/:id', updatePTEBookingRequestAdmin);
 
 r.get('/audit-logs', listAuditLogs);
 r.get('/export/:resource', exportCSV);

@@ -69,7 +69,7 @@ export const Dashboard = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <ApexLogo className="h-6" />
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-xs font-bold text-[#FF005C] border border-[#FF005C]/20">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-xs font-bold text-brand-pink border border-brand-pink/20">
                 <Ticket className="w-3.5 h-3.5" />
                 <span>SELF-SERVE CANDIDATE VAULT</span>
               </span>
@@ -141,7 +141,7 @@ export const Dashboard = () => {
                       </h3>
 
                       <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-[#FF005C]" />
+                        <Clock className="w-3.5 h-3.5 text-brand-pink" />
                         <span>
                           Valid until <strong className="text-neutral-900 dark:text-white">
                             {new Date(v.expiryDate).toLocaleDateString()}
@@ -156,11 +156,11 @@ export const Dashboard = () => {
                       )}
                     </div>
 
-                    <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20 text-right shrink-0">
-                      <span className="text-[10px] font-black text-[#FF005C] uppercase tracking-wider block">
+                    <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 text-right shrink-0">
+                      <span className="text-[10px] font-black text-brand-pink uppercase tracking-wider block">
                       Official Savings
                     </span>
-                      <span className="font-heading font-black text-2xl text-[#FF005C] block leading-none">
+                      <span className="font-heading font-black text-2xl text-brand-pink block leading-none">
                         Save {formatPrice(pricing.savings)}
                       </span>
                       <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold block mt-1">
@@ -185,7 +185,7 @@ export const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => toggleRevealCode(v.id)}
-                            className="px-3 py-2 rounded-xl bg-white dark:bg-[#161616] text-neutral-700 dark:text-neutral-200 border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold hover:border-[#FF005C] transition-colors"
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-[#161616] text-neutral-700 dark:text-neutral-200 border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold hover:border-brand-pink transition-colors"
                           >
                             {isRevealed ? 'Hide Code' : 'Reveal Code'}
                           </button>
@@ -193,7 +193,7 @@ export const Dashboard = () => {
                           {isRevealed && (
                             <button
                               onClick={() => handleCopyCode(v.id, v.code)}
-                              className="px-3.5 py-2 rounded-xl bg-[#FF005C] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:bg-[#E00052] transition-colors"
+                              className="px-3.5 py-2 rounded-xl bg-brand-pink text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:bg-[#E00052] transition-colors"
                             >
                               {copiedId === v.id ? (
                                 <Check className="w-4 h-4" />
@@ -212,7 +212,7 @@ export const Dashboard = () => {
                         <>
                           <button
                             onClick={() => setTransferModalId(v.id)}
-                            className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] text-neutral-800 dark:text-neutral-200 border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold hover:border-[#FF005C] hover:text-[#FF005C] transition-all flex items-center gap-1.5"
+                            className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] text-neutral-800 dark:text-neutral-200 border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold hover:border-brand-pink hover:text-brand-pink transition-all flex items-center gap-1.5"
                           >
                             <Send className="w-3.5 h-3.5" />
                             <span>Transfer Code</span>
@@ -245,7 +245,7 @@ export const Dashboard = () => {
           </div>
         ) : (
           <div className="text-center py-20 bg-white dark:bg-[#161616] rounded-3xl border border-[#EAEAEA] dark:border-[#292929] p-8 space-y-4">
-            <div className="w-20 h-20 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] flex items-center justify-center mx-auto">
+            <div className="w-20 h-20 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center mx-auto">
               <Ticket className="w-10 h-10" />
             </div>
             <h3 className="font-heading font-black text-xl text-neutral-900 dark:text-white">
@@ -276,7 +276,7 @@ export const Dashboard = () => {
                 placeholder="friend@gmail.com"
                 value={transferEmail}
                 onChange={(e) => setTransferEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-[#FF005C]"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
               />
               <div className="flex gap-2">
                 <button

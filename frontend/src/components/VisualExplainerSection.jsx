@@ -47,10 +47,10 @@ export const VisualExplainerSection = () => {
               </div>
 
               {/* Vector Digital Coupon Pass Graphic */}
-              <div className="relative bg-[#FF005C] text-white rounded-2xl p-5 shadow-lg border border-[#FF005C]/40 space-y-3">
+              <div className="relative bg-brand-pink text-white rounded-2xl p-5 shadow-lg border border-brand-pink/40 space-y-3">
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] uppercase font-black tracking-widest text-white/90">Pearson PTE / ETS GRE</span>
-                  <span className="text-xs font-black bg-white text-[#FF005C] px-2 py-0.5 rounded shadow-sm">SAVE ₹3,401</span>
+                  <span className="text-xs font-black bg-white text-brand-pink px-2 py-0.5 rounded shadow-sm">SAVE ₹3,401</span>
                 </div>
 
                 <div className="border-t-2 border-b-2 border-dashed border-white/40 py-3 my-2 text-center">
@@ -65,7 +65,7 @@ export const VisualExplainerSection = () => {
               </div>
 
               <div className="p-4 rounded-xl bg-slate-900 dark:bg-[#0A0A0A] border border-slate-800 dark:border-[#292929] text-xs text-slate-300 space-y-1.5 font-medium">
-                <p className="font-bold text-[#FF005C] flex items-center gap-1">
+                <p className="font-bold text-brand-pink flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   Direct Institutional Resell Credit
                 </p>
@@ -81,7 +81,7 @@ export const VisualExplainerSection = () => {
           <div className="lg:col-span-7 space-y-6">
             
             <div className="space-y-3">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-slate-100 dark:bg-[#161616] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929]">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-slate-100 dark:bg-[#161616] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929]">
                 EXAM VOUCHER EXPLAINED
               </span>
               <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -99,7 +99,7 @@ export const VisualExplainerSection = () => {
                 return (
                   <div key={idx} className="p-4 rounded-2xl bg-slate-50 dark:bg-[#161616] border border-slate-200/80 dark:border-[#292929] space-y-2">
                     <div className="flex items-center gap-2 font-heading font-black text-slate-900 dark:text-white text-sm">
-                      <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-[#262626] text-[#FF005C] flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-[#262626] text-brand-pink flex items-center justify-center">
                         <IconComp className="w-4 h-4" />
                       </div>
                       <span>{card.title}</span>

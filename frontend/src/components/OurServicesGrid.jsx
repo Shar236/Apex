@@ -16,12 +16,12 @@ export const OurServicesGrid = () => {
       cta: 'Buy Voucher',
       actionTab: 'shop',
       vector: (
-        <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20 flex items-center justify-between mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#FF005C] text-white flex items-center justify-center font-black text-lg">
+        <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between mb-4">
+          <div className="w-10 h-10 rounded-xl bg-brand-pink text-white flex items-center justify-center font-black text-lg">
             ⚡
           </div>
           <div className="text-right">
-            <span className="text-[10px] font-black uppercase text-[#FF005C] bg-white dark:bg-[#161616] px-2.5 py-1 rounded-full border border-[#FF005C]/30 shadow-sm">
+            <span className="text-[10px] font-black uppercase text-brand-pink bg-white dark:bg-[#161616] px-2.5 py-1 rounded-full border border-brand-pink/30 shadow-sm">
               INSTANT DIGITAL
             </span>
           </div>
@@ -102,7 +102,7 @@ export const OurServicesGrid = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
             STUDENT-FRIENDLY SERVICES
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] dark:text-white tracking-tight mt-3">
@@ -124,7 +124,7 @@ export const OurServicesGrid = () => {
               <div>
                 {/* Top Badge */}
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3 py-1 rounded-full border border-[#FF005C]/20">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3 py-1 rounded-full border border-brand-pink/20">
                     {service.badge}
                   </span>
                   <span className="text-xs font-bold text-slate-400">
@@ -137,7 +137,7 @@ export const OurServicesGrid = () => {
 
                 {/* Title & Subtitle */}
                 <div className="space-y-1 mb-3">
-                  <h3 className="font-heading font-black text-xl text-[#0F172A] dark:text-white leading-snug group-hover:text-[#FF005C] transition-colors">
+                  <h3 className="font-heading font-black text-xl text-[#0F172A] dark:text-white leading-snug group-hover:text-brand-pink transition-colors">
                     {service.title}
                   </h3>
                   <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
@@ -162,10 +162,10 @@ export const OurServicesGrid = () => {
 
               {/* Interactive CTA Button */}
               <div className="pt-4 border-t border-slate-100 dark:border-[#292929] flex items-center justify-between">
-                <span className="font-heading font-extrabold text-xs text-[#0F172A] dark:text-white group-hover:text-[#FF005C] transition-colors">
+                <span className="font-heading font-extrabold text-xs text-[#0F172A] dark:text-white group-hover:text-brand-pink transition-colors">
                   {service.cta}
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#262626] text-slate-900 dark:text-white group-hover:bg-[#FF005C] group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#262626] text-slate-900 dark:text-white group-hover:bg-brand-pink group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm">
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
                 </div>
               </div>

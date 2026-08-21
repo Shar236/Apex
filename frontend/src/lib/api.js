@@ -288,7 +288,26 @@ export const adminApi = {
   quickUpdateStatus: (id, active) => request(`/api/admin/products/${id}/status`, { method: 'PATCH', body: JSON.stringify({ active }) }),
   quickUpdateFeatured: (id, featured) => request(`/api/admin/products/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
   deleteProduct: (id) => request(`/api/admin/products/${id}`, { method: 'DELETE' }),
+  duplicateProduct: (id) => request(`/api/admin/products/${id}/duplicate`, { method: 'POST' }),
+  archiveProduct: (id) => request(`/api/admin/products/${id}/archive`, { method: 'PATCH' }),
+  restoreProduct: (id) => request(`/api/admin/products/${id}/restore`, { method: 'PATCH' }),
+  reorderProducts: (items) => request('/api/admin/products/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
   getProductInventory: (id) => request(`/api/admin/products/${id}/inventory`),
+  uploadProductLogo: async (file) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/products/logo-upload`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.success === false) {
+      return { success: false, message: data?.message || `Upload failed (${resp.status})` };
+    }
+    return { success: true, ...data };
+  },
   vouchers: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);
@@ -322,9 +341,12 @@ export const adminApi = {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`);
   },
-  downloadExport: async (resource, unmasked = false) => {
+  downloadExport: async (resource, unmasked = false, params = {}) => {
     const token = getToken();
-    const url = `${apiBase()}/api/admin/export/${resource}${unmasked ? '?unmasked=true' : ''}`;
+    const queryParams = { ...params };
+    if (unmasked) queryParams.unmasked = 'true';
+    const qs = new URLSearchParams(queryParams).toString();
+    const url = `${apiBase()}/api/admin/export/${resource}${qs ? `?${qs}` : ''}`;
     const resp = await fetch(url, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -379,6 +401,17 @@ export const adminApi = {
     return await resp.json();
   },
   seo: seoApi,
+  pteBookings: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/pte-bookings${qs ? `?${qs}` : ''}`);
+  },
+  getPTEBooking: (id) => request(`/api/admin/pte-bookings/${id}`),
+  updatePTEBooking: (id, data) => request(`/api/admin/pte-bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+export const pteBookingApi = {
+  submit: (payload) => request('/api/pte-booking-requests', { method: 'POST', body: JSON.stringify(payload) }),
+  mine: () => request('/api/pte-bookings/mine'),
 };
 
 export const videoApi = {

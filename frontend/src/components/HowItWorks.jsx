@@ -11,7 +11,7 @@ export const HowItWorks = () => {
       title: 'Choose Your Exam',
       desc: 'Select from PTE Academic, PTE Core, GRE, TOEFL, or Duolingo English Test.',
       illustration: (
-        <svg className="w-16 h-16 text-[#FF005C]" viewBox="0 0 100 100" fill="none">
+        <svg className="w-16 h-16 text-brand-pink" viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="40" fill="#FFF0F5" stroke="#FF005C" strokeWidth="3" />
           <path d="M35 50L45 60L65 40" stroke="#FF005C" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -22,7 +22,7 @@ export const HowItWorks = () => {
       title: 'Select Your Voucher',
       desc: 'View discounted rates, savings amount, and choose your preferred voucher quantity.',
       illustration: (
-        <svg className="w-16 h-16 text-[#FF005C]" viewBox="0 0 100 100" fill="none">
+        <svg className="w-16 h-16 text-brand-pink" viewBox="0 0 100 100" fill="none">
           <rect x="20" y="30" width="60" height="40" rx="6" fill="#161616" />
           <path d="M20 42H80" stroke="#FF005C" strokeWidth="3" />
           <circle cx="65" cy="55" r="4" fill="#FF005C" />
@@ -46,7 +46,7 @@ export const HowItWorks = () => {
       title: 'Receive Your Voucher',
       desc: 'Get your official voucher discount code instantly delivered via Email & WhatsApp in 10s.',
       illustration: (
-        <svg className="w-16 h-16 text-[#FF005C]" viewBox="0 0 100 100" fill="none">
+        <svg className="w-16 h-16 text-brand-pink" viewBox="0 0 100 100" fill="none">
           <rect x="20" y="30" width="60" height="40" rx="6" fill="#FFF0F5" stroke="#FF005C" strokeWidth="3" />
           <path d="M20 32L50 55L80 32" stroke="#FF005C" strokeWidth="3" strokeLinecap="round" />
         </svg>
@@ -60,7 +60,7 @@ export const HowItWorks = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
             SIMPLE PROCESS
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-neutral-900 dark:text-white tracking-tight mt-3">
@@ -82,7 +82,7 @@ export const HowItWorks = () => {
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="font-heading font-black text-3xl text-[#FF005C]">{st.num}</span>
+                  <span className="font-heading font-black text-3xl text-brand-pink">{st.num}</span>
                   <div className="p-2 rounded-2xl bg-neutral-50 dark:bg-[#111111] border border-[#EAEAEA] dark:border-[#292929]">
                     {st.illustration}
                   </div>
@@ -97,7 +97,7 @@ export const HowItWorks = () => {
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[#EAEAEA] dark:border-[#292929] flex items-center gap-1 text-[11px] font-bold text-[#FF005C]">
+              <div className="mt-6 pt-4 border-t border-[#EAEAEA] dark:border-[#292929] flex items-center gap-1 text-[11px] font-bold text-brand-pink">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Verified Step {idx + 1}</span>
               </div>

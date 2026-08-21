@@ -16,7 +16,7 @@ export const ExamCategorySection = () => {
       validity: 'Valid for 6 Months',
       badge: 'MOST POPULAR',
       featured: true,
-      logoComponent: <PearsonPTELogo />
+      logoComponent: <PearsonPTELogo inverted={true} />
     },
     {
       id: 'ielts',
@@ -38,7 +38,7 @@ export const ExamCategorySection = () => {
       validity: 'Valid for 12 Months',
       badge: 'MAX DISCOUNT',
       featured: false,
-      logoComponent: <ETSToeflLogo />
+      logoComponent: <ETSToeflLogo inverted={false} />
     },
     {
       id: 'duolingo',
@@ -49,7 +49,7 @@ export const ExamCategorySection = () => {
       validity: 'Valid for 90 Days',
       badge: 'FAST RESULTS',
       featured: false,
-      logoComponent: <DuolingoTestLogo />
+      logoComponent: <DuolingoTestLogo inverted={false} />
     }
   ];
 
@@ -59,7 +59,7 @@ export const ExamCategorySection = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#F0F7FF] dark:bg-[#1E293B] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929]">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#F0F7FF] dark:bg-[#1E293B] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929]">
             CHOOSE YOUR EXAM
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] dark:text-white tracking-tight mt-3">
@@ -90,14 +90,14 @@ export const ExamCategorySection = () => {
                 key={cat.id}
                 className={`relative rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between overflow-hidden ${
                   cat.featured
-                    ? 'bg-[#0F172A] text-white shadow-2xl border-2 border-[#FF005C] -translate-y-1.5'
-                    : 'bg-white dark:bg-[#161616] text-[#0F172A] dark:text-white border border-slate-200/80 dark:border-[#292929] hover:border-[#FF005C] hover:shadow-xl hover:-translate-y-1'
+                    ? 'bg-[#0F172A] text-white shadow-2xl border-2 border-brand-pink -translate-y-1.5'
+                    : 'bg-white dark:bg-[#161616] text-[#0F172A] dark:text-white border border-slate-200/80 dark:border-[#292929] hover:border-brand-pink hover:shadow-xl hover:-translate-y-1'
                 }`}
               >
                 {/* Top Badge */}
                 <div className="flex items-center justify-between mb-4">
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                    cat.featured ? 'bg-[#FF005C] text-white shadow-sm' : 'bg-slate-100 dark:bg-[#262626] text-slate-700 dark:text-slate-300'
+                    cat.featured ? 'bg-brand-pink text-white shadow-sm' : 'bg-slate-100 dark:bg-[#262626] text-slate-700 dark:text-slate-300'
                   }`}>
                     {cat.badge}
                   </span>

@@ -40,10 +40,10 @@ export const LiveChatWidget = () => {
       {!isOpen ? (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-12 h-12 rounded-full bg-[#111111] dark:bg-[#161616] text-white shadow-xl flex items-center justify-center border border-[#FF005C]/40 hover:border-[#FF005C] transition-all hover:scale-105 group"
+          className="w-12 h-12 rounded-full bg-[#111111] dark:bg-[#161616] text-white shadow-xl flex items-center justify-center border border-brand-pink/40 hover:border-brand-pink transition-all hover:scale-105 group"
           title="Open Live Chat Assistant"
         >
-          <MessageSquare className="w-5 h-5 text-[#FF005C]" />
+          <MessageSquare className="w-5 h-5 text-brand-pink" />
         </button>
       ) : (
         <div className="w-80 sm:w-96 bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden flex flex-col h-[480px] animate-in slide-in-from-bottom-5 duration-200">
@@ -71,7 +71,7 @@ export const LiveChatWidget = () => {
                 <div
                   className={`max-w-[80%] p-3 rounded-2xl font-medium leading-relaxed ${
                     m.sender === 'user'
-                      ? 'bg-[#FF005C] text-white rounded-br-none'
+                      ? 'bg-brand-pink text-white rounded-br-none'
                       : 'bg-white dark:bg-[#262626] text-neutral-900 dark:text-white border border-[#EAEAEA] dark:border-[#292929] rounded-bl-none shadow-sm'
                   }`}
                 >
@@ -88,7 +88,7 @@ export const LiveChatWidget = () => {
               placeholder="Ask a question about vouchers..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-semibold text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-[#FF005C]"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-semibold text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-brand-pink"
             />
             <button
               type="submit"

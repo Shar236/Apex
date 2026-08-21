@@ -70,7 +70,7 @@ export const StudyDestinations = () => {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 via-blue-50/40 to-slate-50 border-b border-slate-200/60">
+    <section className="py-16 sm:py-24 bg-linear-to-b from-slate-50 via-blue-50/40 to-slate-50 border-b border-slate-200/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header (Exact like EduVouchers reference) */}
@@ -101,7 +101,7 @@ export const StudyDestinations = () => {
                   alt={c.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
                 <div className="absolute bottom-4 left-4 flex items-center gap-3">
                   <span className="text-3xl shadow-sm">{c.flag}</span>

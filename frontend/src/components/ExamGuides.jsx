@@ -89,7 +89,7 @@ export const ExamGuides = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
             STUDENTS DIARY & GUIDES
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-white tracking-tight mt-3">
@@ -111,10 +111,10 @@ export const ExamGuides = () => {
                 alt={featuredArticle.title}
                 className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
 
               <div className="relative z-10 space-y-3">
-                <span className="px-3 py-1 rounded-md bg-[#FF005C] text-white font-extrabold text-xs tracking-wider uppercase inline-block">
+                <span className="px-3 py-1 rounded-md bg-brand-pink text-white font-extrabold text-xs tracking-wider uppercase inline-block">
                   {featuredArticle.category}
                 </span>
 
@@ -145,13 +145,13 @@ export const ExamGuides = () => {
               <div
                 key={art.id}
                 onClick={() => setSelectedArticle(art)}
-                className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-[#161616] hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] transition-all cursor-pointer group flex items-start justify-between gap-4"
+                className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-[#161616] hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition-all cursor-pointer group flex items-start justify-between gap-4"
               >
                 <div className="space-y-1">
-                  <span className="text-[10px] font-extrabold text-[#FF005C] uppercase tracking-widest">
+                  <span className="text-[10px] font-extrabold text-brand-pink uppercase tracking-widest">
                     {art.category}
                   </span>
-                  <h4 className="font-heading font-extrabold text-sm sm:text-base text-neutral-900 dark:text-white group-hover:text-[#FF005C] transition-colors leading-snug">
+                  <h4 className="font-heading font-extrabold text-sm sm:text-base text-neutral-900 dark:text-white group-hover:text-brand-pink transition-colors leading-snug">
                     {art.title}
                   </h4>
                   <p className="text-neutral-500 dark:text-[#B5B5B5] text-xs font-medium line-clamp-1">
@@ -159,7 +159,7 @@ export const ExamGuides = () => {
                   </p>
                 </div>
 
-                <div className="shrink-0 text-neutral-400 group-hover:text-[#FF005C] transition-colors pt-1">
+                <div className="shrink-0 text-neutral-400 group-hover:text-brand-pink transition-colors pt-1">
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
@@ -183,7 +183,7 @@ export const ExamGuides = () => {
             </button>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 rounded-md bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] text-xs font-extrabold uppercase">
+              <span className="px-3 py-1 rounded-md bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink text-xs font-extrabold uppercase">
                 {selectedArticle.category}
               </span>
               <h3 className="font-heading font-extrabold text-2xl text-neutral-900 dark:text-white leading-snug">
@@ -203,8 +203,8 @@ export const ExamGuides = () => {
               <p>
                 When booking your test, always check if your target university requires specific subscore minimums (e.g. minimum 6.0 in Writing for UK universities or CLB 9 for Canada PR).
               </p>
-              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-[#FF005C]/20">
-                <p className="font-extrabold text-[#FF005C] text-xs uppercase tracking-wider mb-1">💡 Apex Saver Tip:</p>
+              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20">
+                <p className="font-extrabold text-brand-pink text-xs uppercase tracking-wider mb-1">💡 Apex Saver Tip:</p>
                 <p className="text-xs text-neutral-700 dark:text-neutral-200 font-semibold">
                   Always use official Apex Exam Vouchers to save up to ₹4,000 on your test registration fee. All codes are 100% genuine and delivered instantly to your email.
                 </p>

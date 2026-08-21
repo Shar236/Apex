@@ -9,7 +9,7 @@ export const Testimonials = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
             STUDENT REVIEWS & RATING
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-neutral-900 dark:text-white tracking-tight mt-3">
@@ -34,7 +34,7 @@ export const Testimonials = () => {
                       <Star key={i} className="w-4 h-4 fill-amber-400" />
                     ))}
                   </div>
-                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-md bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C]">
+                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-md bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink">
                     Verified Purchase ✓
                   </span>
                 </div>

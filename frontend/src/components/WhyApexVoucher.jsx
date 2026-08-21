@@ -50,7 +50,7 @@ export const WhyApexVoucher = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-[#FF005C]/20 shadow-sm">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20 shadow-sm">
             WHY STUDENTS LOVE APEX
           </span>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
@@ -73,15 +73,15 @@ export const WhyApexVoucher = () => {
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
-                    <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-[#FF005C] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform border border-[#FF005C]/20">
-                      <IconComp className="w-6 h-6 text-[#FF005C]" strokeWidth={2.5} />
+                    <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform border border-brand-pink/20">
+                      <IconComp className="w-6 h-6 text-brand-pink" strokeWidth={2.5} />
                     </div>
                     <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-slate-100 dark:bg-[#262626] text-slate-800 dark:text-slate-200">
                       {feat.badge}
                     </span>
                   </div>
 
-                  <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white leading-snug mb-2 group-hover:text-[#FF005C] transition-colors">
+                  <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white leading-snug mb-2 group-hover:text-brand-pink transition-colors">
                     {feat.title}
                   </h3>
 

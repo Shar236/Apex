@@ -110,6 +110,15 @@ const productSchema = new mongoose.Schema(
     lowStockThreshold: { type: Number, default: 10 },
     inStock: { type: Boolean, default: true, index: true },
     active: { type: Boolean, default: true, index: true },
+    archived: { type: Boolean, default: false, index: true },
+    comingSoon: { type: Boolean, default: false },
+    stockType: { type: String, enum: ['LIMITED', 'UNLIMITED'], default: 'LIMITED' },
+    deliveryType: { type: String, trim: true, default: 'Instant Delivery' },
+    badges: [{ type: String, trim: true }],
+    officialWebsiteUrl: { type: String, trim: true, default: '' },
+    officialProductUrl: { type: String, trim: true, default: '' },
+    sku: { type: String, trim: true, default: '' },
+    productCode: { type: String, trim: true, default: '' },
     cta: { type: String, default: 'Buy Now' },
     seoTitle: { type: String, trim: true, default: '' },
     seoDescription: { type: String, trim: true, default: '' },
@@ -162,6 +171,7 @@ productSchema.pre('save', function (next) {
   next();
 });
 
+productSchema.index({ active: 1, archived: 1 });
 productSchema.index({ category: 1, active: 1 });
 productSchema.index({ brand: 1, active: 1 });
 productSchema.index({ provider: 1, active: 1 });

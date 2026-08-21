@@ -30,7 +30,7 @@ export const NightHero3DGraphic = () => {
           transform: `translate3d(${mouseOffset.x * 6}px, ${mouseOffset.y * 6}px, 0)`,
         }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] rounded-full bg-gradient-to-tr from-[#FF005C]/20 via-[#1A092A]/40 to-[#0A0A0A]/60 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] rounded-full bg-linear-to-tr from-[#FF005C]/20 via-[#1A092A]/40 to-[#0A0A0A]/60 blur-3xl" />
       </div>
 
       {/* Central Night Vector Illustration with 3D Character */}
@@ -109,7 +109,7 @@ export const NightHero3DGraphic = () => {
         {/* CARD 1: PTE Academic VOUCHER - SAVE ₹3,101 */}
         <div className="absolute top-2 left-0 sm:-left-2 z-30 pointer-events-auto animate-float-pte hero-floating-card-wrapper cursor-pointer">
           <div className="hero-floating-card-inner bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[#292929] shadow-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#005A9C] to-[#003B66] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#005A9C] to-[#003B66] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
               P
             </div>
             <div className="flex flex-col text-left">
@@ -125,13 +125,13 @@ export const NightHero3DGraphic = () => {
         {/* CARD 2: IELTS Test VOUCHER - SAVE ₹2,751 */}
         <div className="absolute top-4 right-0 sm:-right-2 z-30 pointer-events-auto animate-float-ielts hero-floating-card-wrapper cursor-pointer">
           <div className="hero-floating-card-inner bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[#292929] shadow-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#2A0A17] text-[#FF005C] border border-[#FF005C]/30 font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-[#2A0A17] text-brand-pink border border-brand-pink/30 font-black text-lg flex items-center justify-center shrink-0 shadow-md">
               I
             </div>
             <div className="flex flex-col text-left">
               <span className="text-xs font-black text-white leading-tight">IELTS Test</span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VOUCHER</span>
-              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#FF005C] text-white font-black text-[10px] shadow-sm">
+              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-pink text-white font-black text-[10px] shadow-sm">
                 SAVE ₹2,751
               </span>
             </div>
@@ -141,7 +141,7 @@ export const NightHero3DGraphic = () => {
         {/* CARD 3: TOEFL iBT VOUCHER - SAVE ₹2,401 */}
         <div className="absolute bottom-14 left-1 sm:-left-3 z-30 pointer-events-auto animate-float-toefl hero-floating-card-wrapper cursor-pointer">
           <div className="hero-floating-card-inner bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[#292929] shadow-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#F59E0B] to-[#D97706] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
               T
             </div>
             <div className="flex flex-col text-left">
@@ -157,7 +157,7 @@ export const NightHero3DGraphic = () => {
         {/* CARD 4: Duolingo Test VOUCHER - SAVE ₹1,901 */}
         <div className="absolute bottom-10 right-1 sm:-right-3 z-30 pointer-events-auto animate-float-duolingo hero-floating-card-wrapper cursor-pointer">
           <div className="hero-floating-card-inner bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[#292929] shadow-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#58CC02] to-[#10B981] text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#58CC02] to-[#10B981] text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md">
               🦉
             </div>
             <div className="flex flex-col text-left">

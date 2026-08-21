@@ -10,13 +10,31 @@ import { User } from '../models/User.js';
 
 const SAMPLE_PRODUCTS = [
   {
-    name: 'Pearson PTE Academic Voucher',
+    name: 'Pearson PTE Practice Test',
+    provider: 'Pearson PTE',
+    brand: 'Pearson PTE',
+    category: 'Practice Test',
+    description: 'Official Scored PTE Mock Test with automated AI score report. Real exam interface and scoring algorithm.',
+    originalPrice: 1132.50,
+    sellingPrice: 799.00,
+    currency: 'INR',
+    validityMonths: 3,
+    badge: 'Out of stock',
+    inStock: false,
+    rating: 4.7,
+    reviewsCount: 520,
+    featured: false,
+    active: true,
+    displayOrder: 1,
+  },
+  {
+    name: 'Pearson PTE Academic',
     provider: 'Pearson PTE',
     brand: 'Pearson PTE',
     category: 'Exam Voucher',
-    description: 'Official voucher code for Pearson PTE Academic Exam. Save ₹3,401 instantly on your test booking fee with guaranteed official acceptance.',
-    originalPrice: 18900,
-    sellingPrice: 15499,
+    description: 'Official voucher code for Pearson PTE Academic Exam. Save ₹3,901 instantly on your test booking fee with guaranteed official acceptance.',
+    originalPrice: 18900.00,
+    sellingPrice: 14999.00,
     currency: 'INR',
     validityMonths: 6,
     inclusions: [
@@ -38,15 +56,17 @@ const SAMPLE_PRODUCTS = [
     featured: true,
     inStock: true,
     active: true,
+    displayOrder: 2,
   },
   {
-    name: 'Pearson PTE Core Voucher',
+    name: 'Pearson PTE Core',
     provider: 'Pearson PTE',
     brand: 'Pearson PTE',
     category: 'Exam Voucher',
     description: 'Save big on the PTE Core exam required for Canada Permanent Residency (IRCC approved). Guaranteed valid and instantly delivered.',
-    originalPrice: 18900,
-    sellingPrice: 15799,
+    originalPrice: 18900.00,
+    sellingPrice: 15799.00,
+    currency: 'INR',
     validityMonths: 6,
     badge: '🇨🇦 Canada PR Approved',
     rating: 4.8,
@@ -54,15 +74,17 @@ const SAMPLE_PRODUCTS = [
     featured: true,
     active: true,
     inStock: true,
+    displayOrder: 3,
   },
   {
-    name: 'ETS GRE Voucher',
+    name: 'ETS GRE',
     provider: 'ETS GRE',
     brand: 'ETS GRE',
     category: 'Exam Voucher',
     description: 'Discounted exam voucher code for ETS GRE General Test. Accepted by top universities worldwide.',
-    originalPrice: 22500,
-    sellingPrice: 19799,
+    originalPrice: 22500.00,
+    sellingPrice: 19799.00,
+    currency: 'INR',
     validityMonths: 12,
     badge: '🎓 Grad School Top Pick',
     rating: 4.9,
@@ -70,15 +92,17 @@ const SAMPLE_PRODUCTS = [
     featured: true,
     active: true,
     inStock: true,
+    displayOrder: 4,
   },
   {
-    name: 'ETS TOEFL Voucher',
+    name: 'ETS TOEFL',
     provider: 'ETS TOEFL',
     brand: 'ETS TOEFL',
     category: 'Exam Voucher',
     description: 'Save ₹4,001 on the TOEFL iBT test. Preferred by over 12,000 universities in 160+ countries.',
-    originalPrice: 18000,
-    sellingPrice: 13999,
+    originalPrice: 18000.00,
+    sellingPrice: 13999.00,
+    currency: 'INR',
     validityMonths: 12,
     badge: '⚡ Max Discount (22% OFF)',
     rating: 4.9,
@@ -86,15 +110,17 @@ const SAMPLE_PRODUCTS = [
     featured: false,
     active: true,
     inStock: true,
+    displayOrder: 5,
   },
   {
-    name: 'Duolingo English Test Voucher',
+    name: 'Duolingo English Test',
     provider: 'Duolingo',
     brand: 'Duolingo',
     category: 'Exam Voucher',
     description: 'Get 18% off the fast, accessible Duolingo English Test. Complete at home in 1 hour.',
-    originalPrice: 6112.5,
-    sellingPrice: 4999,
+    originalPrice: 6112.50,
+    sellingPrice: 4999.00,
+    currency: 'INR',
     validityMonths: 3,
     badge: '🚀 Fast 48h Results',
     rating: 4.8,
@@ -102,6 +128,115 @@ const SAMPLE_PRODUCTS = [
     featured: false,
     active: true,
     inStock: true,
+    displayOrder: 6,
+  },
+  {
+    name: 'ACT Exam Voucher',
+    provider: 'ACT',
+    brand: 'ACT',
+    category: 'Exam Voucher',
+    description: 'Official voucher code for ACT College Readiness Assessment. Accepted by all four-year US colleges and universities.',
+    originalPrice: 19800.00,
+    sellingPrice: 12999.00,
+    currency: 'INR',
+    validityMonths: 12,
+    badge: '⭐ Top Savings',
+    rating: 4.8,
+    reviewsCount: 380,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 7,
+  },
+  {
+    name: 'OET Exam Voucher',
+    provider: 'OET',
+    brand: 'OET',
+    category: 'Exam Voucher',
+    description: 'Official Occupational English Test (OET) voucher for healthcare professionals (Doctors, Nurses, Dentists & Pharmacists).',
+    originalPrice: 38940.00,
+    sellingPrice: 30900.00,
+    currency: 'INR',
+    validityMonths: 12,
+    badge: '🏥 Healthcare Preferred',
+    rating: 4.9,
+    reviewsCount: 420,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 8,
+  },
+  {
+    name: 'IELTS Exam Voucher',
+    provider: 'IELTS',
+    brand: 'IELTS',
+    category: 'Exam Voucher',
+    description: 'IELTS official test booking assistance, high-yield prediction files, speaking cue cards and slot reservation voucher.',
+    originalPrice: 99.00,
+    sellingPrice: 99.00,
+    currency: 'INR',
+    validityMonths: 12,
+    badge: '🔥 Live Prediction',
+    rating: 4.9,
+    reviewsCount: 2240,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 9,
+  },
+  {
+    name: 'LanguageCert Exam Voucher',
+    provider: 'LanguageCert',
+    brand: 'LanguageCert',
+    category: 'Exam Voucher',
+    description: 'Official LanguageCert International ESOL & SELT examination voucher. Fast 3-day results with online live proctoring.',
+    originalPrice: 16430.00,
+    sellingPrice: 11000.00,
+    currency: 'INR',
+    validityMonths: 12,
+    badge: '🇬🇧 UK SELT Approved',
+    rating: 4.8,
+    reviewsCount: 310,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 10,
+  },
+  {
+    name: 'CELPIP Exam Voucher',
+    provider: 'CELPIP',
+    brand: 'CELPIP',
+    category: 'Exam Voucher',
+    description: 'Official CELPIP-General test voucher code for Canadian immigration (IRCC) and professional designation.',
+    originalPrice: 18290.00,
+    sellingPrice: 14500.00,
+    currency: 'INR',
+    validityMonths: 6,
+    badge: '🇨🇦 Canada PR / IRCC',
+    rating: 4.8,
+    reviewsCount: 560,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 11,
+  },
+  {
+    name: 'Pearson PTE Canada Voucher',
+    provider: 'Pearson PTE',
+    brand: 'Pearson PTE',
+    category: 'Exam Voucher',
+    description: 'Official Pearson PTE Canada voucher for Express Entry, Provincial Nominee Programs (PNP) and Canadian citizenship.',
+    originalPrice: 28000.00,
+    sellingPrice: 25799.00,
+    currency: 'INR',
+    validityMonths: 6,
+    badge: '🇨🇦 Express Entry',
+    rating: 4.9,
+    reviewsCount: 780,
+    featured: false,
+    active: true,
+    inStock: true,
+    displayOrder: 12,
   },
 ];
 
@@ -131,32 +266,40 @@ export default async function seed() {
   }
 
   for (const p of SAMPLE_PRODUCTS) {
-    const exists = await Product.findOne({ name: p.name });
-    let product = exists;
-    if (!exists) {
+    let product = await Product.findOne({
+      $or: [{ name: p.name }, { provider: p.provider, category: p.category, displayOrder: p.displayOrder }],
+    });
+    if (!product) {
       product = new Product(p);
       await product.save();
       console.log(`[seed] product created: ${product.name}`);
+    } else {
+      Object.assign(product, p);
+      await product.save();
+      console.log(`[seed] product updated: ${product.name}`);
     }
-    const count = await VoucherCode.countDocuments({ productId: product._id, status: 'AVAILABLE' });
-    if (count < 25) {
-      const need = 25 - count;
-      const docs = [];
-      const expiry = new Date();
-      expiry.setMonth(expiry.getMonth() + (product.validityMonths || 6));
-      for (let i = 0; i < need; i++) {
-        docs.push({
-          code: generateCode(product.brand),
-          productId: product._id,
-          status: 'AVAILABLE',
-          expiryDate: expiry,
-        });
-      }
-      try {
-        await VoucherCode.insertMany(docs, { ordered: false });
-        console.log(`[seed] +${docs.length} voucher codes for ${product.name}`);
-      } catch (err) {
-        console.log('[seed] vouchers insertMany skipped (dupes)');
+
+    if (product.inStock !== false) {
+      const count = await VoucherCode.countDocuments({ productId: product._id, status: 'AVAILABLE' });
+      if (count < 25) {
+        const need = 25 - count;
+        const docs = [];
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + (product.validityMonths || 6));
+        for (let i = 0; i < need; i++) {
+          docs.push({
+            code: generateCode(product.brand),
+            productId: product._id,
+            status: 'AVAILABLE',
+            expiryDate: expiry,
+          });
+        }
+        try {
+          await VoucherCode.insertMany(docs, { ordered: false });
+          console.log(`[seed] +${docs.length} voucher codes for ${product.name}`);
+        } catch (err) {
+          console.log('[seed] vouchers insertMany skipped (dupes)');
+        }
       }
     }
   }
@@ -275,7 +418,6 @@ export default async function seed() {
     await Video.insertMany(SAMPLE_VIDEOS);
     console.log('[seed] sample Cloudinary reels initialized (v1-v5)');
   } else {
-    // Upgrade existing seed videos to use real Cloudinary video URLs and keyframe snapshots
     for (const sample of SAMPLE_VIDEOS) {
       const match = await Video.findOne({
         $or: [
@@ -314,7 +456,6 @@ export default async function seed() {
   console.log('[seed] done');
   process.exit(0);
 }
-
 
 if (process.argv[1]?.endsWith('seed.js')) {
   seed().catch((e) => {

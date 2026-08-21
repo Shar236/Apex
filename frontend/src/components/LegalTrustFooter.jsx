@@ -28,31 +28,50 @@ export const LegalTrustFooter = () => {
 
             <div className="space-y-1.5 pt-1 text-[11px]">
               <p className="text-neutral-300 font-bold flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-[#FF005C]" />
-                <a href={`tel:${footerPhone.replace(/\s+/g, '')}`} className="hover:text-[#FF005C]">
+                <Phone className="w-3.5 h-3.5 text-brand-pink" />
+                <a href={`tel:${footerPhone.replace(/\s+/g, '')}`} className="hover:text-brand-pink">
                   {footerPhone}
                 </a>
               </p>
               <p className="text-neutral-300 font-bold flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-[#FF005C]" />
-                <a href={`mailto:${footerEmail}`} className="hover:text-[#FF005C]">
+                <Mail className="w-3.5 h-3.5 text-brand-pink" />
+                <a href={`mailto:${footerEmail}`} className="hover:text-brand-pink">
                   {footerEmail}
                 </a>
               </p>
             </div>
           </div>
 
-          {/* Column 2: Exam Vouchers */}
+          {/* Column 2: Exam Vouchers & Services */}
           <div className="space-y-3">
-            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Exam Vouchers</h4>
+            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Services & Booking</h4>
             <ul className="space-y-2">
-              {['PTE Voucher', 'IELTS Voucher', 'TOEFL Voucher', 'Duolingo Voucher'].map((item, idx) => (
-                <li key={idx}>
-                  <button onClick={() => setActiveTab('shop')} className="hover:text-[#FF005C] transition-colors text-left font-medium">
-                    {item}
-                  </button>
-                </li>
-              ))}
+              <li>
+                <button onClick={() => setActiveTab('shop')} className="hover:text-brand-pink transition-colors text-left font-medium">
+                  Exam Vouchers
+                </button>
+              </li>
+              <li>
+                <button onClick={() => { setActiveTab('exam-booking'); window.location.href = '/exam-booking'; }} className="hover:text-brand-pink transition-colors text-left font-medium flex items-center gap-1">
+                  <span>PTE Exam Booking</span>
+                  <span className="text-[9px] bg-brand-pink/20 text-brand-pink px-1.5 py-0.2 rounded font-black">NEW</span>
+                </button>
+              </li>
+              <li>
+                <button onClick={() => { setActiveTab('exam-booking'); window.location.href = '/exam-booking?exam=pte-academic'; }} className="hover:text-brand-pink transition-colors text-left font-medium">
+                  PTE Academic
+                </button>
+              </li>
+              <li>
+                <button onClick={() => { setActiveTab('exam-booking'); window.location.href = '/exam-booking?exam=pte-core'; }} className="hover:text-brand-pink transition-colors text-left font-medium">
+                  PTE Core
+                </button>
+              </li>
+              <li>
+                <button onClick={() => { setActiveTab('exam-booking'); window.location.href = '/exam-booking?exam=pte-ukvi'; }} className="hover:text-brand-pink transition-colors text-left font-medium">
+                  PTE Academic UKVI
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -67,7 +86,7 @@ export const LegalTrustFooter = () => {
                 { name: 'Blog', tab: 'exam-guides' }
               ].map((item, idx) => (
                 <li key={idx}>
-                  <button onClick={() => setActiveTab(item.tab)} className="hover:text-[#FF005C] transition-colors text-left font-medium">
+                  <button onClick={() => setActiveTab(item.tab)} className="hover:text-brand-pink transition-colors text-left font-medium">
                     {item.name}
                   </button>
                 </li>
@@ -81,7 +100,7 @@ export const LegalTrustFooter = () => {
             <ul className="space-y-2">
               {['Help Center', 'Refund Policy', 'Terms of Service', 'Privacy Policy'].map((item, idx) => (
                 <li key={idx}>
-                  <button onClick={() => setActiveTab('faq')} className="hover:text-[#FF005C] transition-colors text-left font-medium">
+                  <button onClick={() => setActiveTab('faq')} className="hover:text-brand-pink transition-colors text-left font-medium">
                     {item}
                   </button>
                 </li>
@@ -111,7 +130,7 @@ export const LegalTrustFooter = () => {
           <p>{footerCopyright}</p>
           <div className="flex items-center gap-1 text-neutral-400 font-semibold">
             <span>Built with</span>
-            <Heart className="w-3.5 h-3.5 text-[#FF005C] fill-[#FF005C]" />
+            <Heart className="w-3.5 h-3.5 text-brand-pink fill-[#FF005C]" />
             <span>for study abroad candidates worldwide.</span>
           </div>
         </div>

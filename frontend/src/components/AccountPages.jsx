@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useVoucher } from '../context/VoucherContext';
-import { accountApi, formatPrice, apiBase } from '../lib/api';
+import { accountApi, pteBookingApi, formatPrice, apiBase } from '../lib/api';
 import { ApexLogo } from './ApexLogo';
 import { PhoneInput } from './PhoneInput';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
@@ -40,6 +40,8 @@ import {
   Lock,
   Trash2,
   Info,
+  CalendarCheck,
+  MapPin,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -49,6 +51,7 @@ const tabs = [
   { id: 'overview', label: 'Overview', icon: Crown, mobileLabel: 'Overview' },
   { id: 'orders', label: 'My Orders', icon: ClipboardList, mobileLabel: 'Orders' },
   { id: 'vouchers', label: 'My Vouchers', icon: Ticket, mobileLabel: 'Vouchers' },
+  { id: 'pte-bookings', label: 'PTE Booking Requests', icon: CalendarCheck, mobileLabel: 'PTE Requests' },
   { id: 'profile', label: 'Profile', icon: UserIcon, mobileLabel: 'Profile' },
   { id: 'settings', label: 'Account Settings', icon: Settings, mobileLabel: 'Settings' },
   { id: 'security', label: 'Security', icon: Shield, mobileLabel: 'Security' },
@@ -110,6 +113,11 @@ export default function AccountHome({ initialTab = 'overview' }) {
   const [transferModalId, setTransferModalId] = useState(null);
   const [transferEmail, setTransferEmail] = useState('');
   const [refundConfirmId, setRefundConfirmId] = useState(null);
+
+  // PTE booking requests
+  const [pteBookings, setPteBookings] = useState([]);
+  const [pteBookingsLoading, setPteBookingsLoading] = useState(false);
+  const [pteBookingsLoaded, setPteBookingsLoaded] = useState(false);
 
   // Profile state
   const [profileLoading, setProfileLoading] = useState(false);
@@ -182,6 +190,16 @@ export default function AccountHome({ initialTab = 'overview' }) {
     setActiveTab('dashboard');
     return () => setActiveTab('home');
   }, [setActiveTab]);
+
+  useEffect(() => {
+    if (tab !== 'pte-bookings' || pteBookingsLoaded) return;
+    setPteBookingsLoading(true);
+    pteBookingApi.mine().then((res) => {
+      if (res.success) setPteBookings(Array.isArray(res.data) ? res.data : []);
+      setPteBookingsLoaded(true);
+      setPteBookingsLoading(false);
+    });
+  }, [tab, pteBookingsLoaded]);
 
   // ── Profile actions ───────────────────────────────────────────────────────
 
@@ -385,9 +403,9 @@ export default function AccountHome({ initialTab = 'overview' }) {
   const stats = [
     {
       label: 'Total Orders', value: accountStats?.totalOrders || 0,
-      icon: <ShoppingBag className="w-5 h-5 text-[#FF005C]" strokeWidth={2.3} />,
-      bgLight: 'bg-[#FF005C]/10', borderLight: 'border-[#FF005C]/20',
-      badge: 'Orders', glow: 'group-hover:shadow-[#FF005C]/10', accentColor: 'text-[#FF005C]',
+      icon: <ShoppingBag className="w-5 h-5 text-brand-pink" strokeWidth={2.3} />,
+      bgLight: 'bg-brand-pink/10', borderLight: 'border-brand-pink/20',
+      badge: 'Orders', glow: 'group-hover:shadow-brand-pink/10', accentColor: 'text-brand-pink',
     },
     {
       label: 'Active Vouchers', value: accountStats?.activeVouchers || 0,
@@ -430,7 +448,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               aria-label="Go to Apex Vouchers Home"
             >
               <ApexLogo className="h-7" />
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[11px] font-black text-[#FF005C] border border-[#FF005C]/20 group-hover:border-[#FF005C]/50 transition-colors">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-[11px] font-black text-brand-pink border border-brand-pink/20 group-hover:border-brand-pink/50 transition-colors">
                 <Ticket className="w-3.5 h-3.5" />
                 CANDIDATE PORTAL
               </span>
@@ -442,7 +460,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               Manage your exam vouchers, orders, and account — all in one place.
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => navigate('/')}
               className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black transition hover:bg-neutral-200 dark:hover:bg-neutral-700"
@@ -455,7 +473,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
         {/* Layout: sidebar + content */}
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar (desktop) / Tabs (mobile) */}
-          <nav className="lg:w-56 flex-shrink-0">
+          <nav className="lg:w-56 shrink-0">
             {/* Desktop sidebar */}
             <div className="hidden lg:flex flex-col gap-1 sticky top-24">
               {tabs.map((t) => {
@@ -466,7 +484,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                     onClick={() => setTab(t.id)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left w-full ${
                       tab === t.id
-                        ? 'bg-[#FF005C] text-white shadow-lg shadow-[#FF005C]/20'
+                        ? 'bg-brand-pink text-white shadow-lg shadow-brand-pink/20'
                         : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-[#1A1A1A] hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
@@ -493,10 +511,10 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <button
                     key={t.id}
                     onClick={() => setTab(t.id)}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black border whitespace-nowrap transition flex-shrink-0 ${
+                    className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black border whitespace-nowrap transition shrink-0 ${
                       tab === t.id
-                        ? 'bg-[#FF005C] text-white border-[#FF005C] shadow-lg'
-                        : 'bg-white dark:bg-[#161616] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929] hover:text-[#FF005C]'
+                        ? 'bg-brand-pink text-white border-brand-pink shadow-lg'
+                        : 'bg-white dark:bg-[#161616] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929] hover:text-brand-pink'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" strokeWidth={2.3} />
@@ -506,7 +524,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               })}
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black border whitespace-nowrap transition flex-shrink-0 bg-white dark:bg-[#161616] text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/40"
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black border whitespace-nowrap transition shrink-0 bg-white dark:bg-[#161616] text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/40"
               >
                 <LogOut className="w-3.5 h-3.5" strokeWidth={2.3} />
                 Logout
@@ -548,7 +566,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <div className="lg:col-span-2 rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-black text-neutral-900 dark:text-white">Recent Orders</h3>
-                      <button onClick={() => setTab('orders')} className="text-xs font-black text-[#FF005C] flex items-center gap-1">
+                      <button onClick={() => setTab('orders')} className="text-xs font-black text-brand-pink flex items-center gap-1">
                         View all <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -564,7 +582,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-black text-neutral-900 dark:text-white">Voucher Wallet</h3>
-                      <button onClick={() => setTab('vouchers')} className="text-xs font-black text-[#FF005C]">See all</button>
+                      <button onClick={() => setTab('vouchers')} className="text-xs font-black text-brand-pink">See all</button>
                     </div>
                     <div className="space-y-3">
                       {userVouchers?.slice(0, 3)?.length === 0 && (
@@ -627,11 +645,11 @@ export default function AccountHome({ initialTab = 'overview' }) {
 
                           <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
                             <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#F3EEFF] dark:bg-[#1e1638] border border-[#6C3CE0]/20 flex-1 min-w-0">
-                              <ShieldCheck className="w-5 h-5 text-[#6C3CE0] flex-shrink-0" />
+                              <ShieldCheck className="w-5 h-5 text-[#6C3CE0] shrink-0" />
                               <span className="font-mono font-black tracking-wider text-neutral-900 dark:text-white truncate text-sm">
                                 {isRevealed ? v.code : `${v.code?.slice(0, 4) || 'XXXX'}-XXXX-XXXX-XXXX`}
                               </span>
-                              <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                              <div className="ml-auto flex items-center gap-2 shrink-0">
                                 <button onClick={() => toggleReveal(v.id)} className="p-1.5 rounded-lg bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 text-[10px] font-black">
                                   {isRevealed ? 'HIDE' : 'REVEAL'}
                                 </button>
@@ -657,7 +675,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                               </button>
                             </>
                           )}
-                          <a href="https://pearsonpte.com" target="_blank" rel="noreferrer" className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-[#FF005C] text-white shadow flex items-center gap-1.5">
+                          <a href="https://pearsonpte.com" target="_blank" rel="noreferrer" className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-brand-pink text-white shadow flex items-center gap-1.5">
                             <ExternalLink className="w-4 h-4" /> Redeem on Pearson
                           </a>
                         </div>
@@ -665,6 +683,138 @@ export default function AccountHome({ initialTab = 'overview' }) {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── PTE BOOKING REQUESTS TAB ─────────────────────────────────── */}
+            {tab === 'pte-bookings' && (
+              <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div>
+                    <h3 className="font-black text-xl text-neutral-900 dark:text-white">PTE Booking Requests</h3>
+                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      Track your booking assistance requests, view status updates, and access official Pearson confirmation details.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setActiveTab('exam-booking'); navigate('/exam-booking'); }}
+                    className="px-4 py-2.5 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink hover:bg-[#FFE0EB] text-xs font-black border border-brand-pink/30 flex items-center gap-1.5 transition-colors"
+                  >
+                    <span>+ New Booking Request</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {pteBookingsLoading && (
+                    <div className="h-24 bg-neutral-100 dark:bg-[#292929] rounded-2xl animate-pulse" />
+                  )}
+                  {!pteBookingsLoading && pteBookings.length === 0 && (
+                    <EmptyState
+                      icon={<CalendarCheck className="w-7 h-7 text-neutral-400" />}
+                      title="No booking assistance requests yet"
+                      desc="Request PTE exam booking assistance and track your schedule progress here."
+                      action={
+                        <button
+                          onClick={() => { setActiveTab('exam-booking'); navigate('/exam-booking'); }}
+                          className="btn-pink py-2.5! px-5! text-xs! font-black"
+                        >
+                          Request Booking Assistance
+                        </button>
+                      }
+                    />
+                  )}
+                  {!pteBookingsLoading && pteBookings.map((b) => (
+                    <div
+                      key={b._id}
+                      className="rounded-2xl p-5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-[#202020] pb-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-brand-pink">
+                            {b.requestId}
+                          </span>
+                          <span className="font-black text-neutral-900 dark:text-white text-sm">{b.examType}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${statusColor(b.status)}`}>
+                            {b.status}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-neutral-400">
+                          Submitted {formatDate(b.createdAt)}
+                        </div>
+                      </div>
+
+                      {/* Request Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                        <div>
+                          <span className="text-[10px] uppercase text-neutral-400 block">Preferred City</span>
+                          <span className="text-neutral-900 dark:text-white">{b.preferredCity}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-neutral-400 block">Preferred Date</span>
+                          <span className="text-neutral-900 dark:text-white">{b.preferredDate ? formatDate(b.preferredDate) : 'Flexible'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-neutral-400 block">Preferred Time</span>
+                          <span className="text-neutral-900 dark:text-white">{b.preferredTime || 'Any Time'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-neutral-400 block">Test Centre</span>
+                          <span className="text-neutral-900 dark:text-white">{b.preferredTestCentre || 'Nearest Available'}</span>
+                        </div>
+                      </div>
+
+                      {/* Official Booking Confirmation Details if status is Booking Confirmed or Completed */}
+                      {(b.status === 'Booking Confirmed' || b.status === 'Completed') && b.confirmationDetails?.bookingReference && (
+                        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 space-y-2 text-xs">
+                          <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>Official Pearson Exam Confirmation Details</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-bold pt-1">
+                            <div>
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block uppercase">Booking Reference</span>
+                              <span className="font-mono text-emerald-900 dark:text-emerald-200">{b.confirmationDetails.bookingReference}</span>
+                            </div>
+                            {b.confirmationDetails.confirmedCentre && (
+                              <div>
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block uppercase">Confirmed Centre</span>
+                                <span className="text-emerald-900 dark:text-emerald-200">{b.confirmationDetails.confirmedCentre}</span>
+                              </div>
+                            )}
+                            {b.confirmationDetails.confirmedDate && (
+                              <div>
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block uppercase">Confirmed Date & Time</span>
+                                <span className="text-emerald-900 dark:text-emerald-200">
+                                  {formatDate(b.confirmationDetails.confirmedDate)} {b.confirmationDetails.confirmedTime ? `• ${b.confirmationDetails.confirmedTime}` : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {b.confirmationDetails.importantInstructions && (
+                            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 pt-1 border-t border-emerald-200 dark:border-emerald-900/50">
+                              <strong>Instructions:</strong> {b.confirmationDetails.importantInstructions}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* WhatsApp Follow-up link */}
+                      <div className="flex items-center justify-end pt-1">
+                        <a
+                          href={`https://wa.me/919855926113?text=${encodeURIComponent(
+                            `Hello Apex Vouchers, I am inquiring about my PTE booking assistance request ${b.requestId}.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-black text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>Chat on WhatsApp regarding this request</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -694,7 +844,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                 <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
                     {/* Avatar */}
-                    <div className="relative group flex-shrink-0">
+                    <div className="relative group shrink-0">
                       <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-neutral-100 dark:bg-[#1A1A1A] flex items-center justify-center">
                         {avatarPreview ? (
                           <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
@@ -751,7 +901,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                             <button
                               onClick={uploadAvatar}
                               disabled={avatarUploading}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-[#FF005C] text-white shadow disabled:opacity-60"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-brand-pink text-white shadow disabled:opacity-60"
                             >
                               {avatarUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                               {avatarUploading ? 'Uploading...' : 'Save Photo'}
@@ -788,7 +938,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                 {/* Personal information form */}
                 <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                   <h3 className="font-black text-lg mb-5 text-neutral-900 dark:text-white flex items-center gap-2">
-                    <UserIcon className="w-5 h-5 text-[#FF005C]" />
+                    <UserIcon className="w-5 h-5 text-brand-pink" />
                     Personal Information
                   </h3>
 
@@ -816,7 +966,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                             className="flex-1 px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold opacity-60 cursor-not-allowed"
                           />
                           {user?.emailVerified && (
-                            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 flex-shrink-0">
+                            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 shrink-0">
                               <Check className="w-3 h-3" /> Verified
                             </span>
                           )}
@@ -825,7 +975,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                       <button
                         type="button"
                         onClick={() => setEmailChangeOpen(!emailChangeOpen)}
-                        className="mt-2 text-xs font-black text-[#FF005C] hover:underline flex items-center gap-1"
+                        className="mt-2 text-xs font-black text-brand-pink hover:underline flex items-center gap-1"
                       >
                         <Mail className="w-3 h-3" /> Change Email Address
                         <ChevronRight className={`w-3 h-3 transition-transform ${emailChangeOpen ? 'rotate-90' : ''}`} />
@@ -843,7 +993,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                               value={newEmail}
                               onChange={(e) => setNewEmail(e.target.value)}
                               placeholder="new@email.com"
-                              className="flex-1 px-4 py-2.5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-xl text-neutral-900 dark:text-white text-sm font-bold focus:border-[#FF005C] focus:outline-none focus:ring-2 focus:ring-[#FF005C]/20"
+                              className="flex-1 px-4 py-2.5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-xl text-neutral-900 dark:text-white text-sm font-bold focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/20"
                               required
                             />
                             <button
@@ -895,7 +1045,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
 
                     {/* Passport name reminder */}
                     <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 flex gap-3">
-                      <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                      <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-0.5">Government ID Match Required</p>
                         <p className="text-xs font-bold text-amber-700 dark:text-amber-400/80">
@@ -935,7 +1085,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                 {/* Account information card */}
                 <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                   <h3 className="font-black text-lg mb-5 text-neutral-900 dark:text-white flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-[#FF005C]" />
+                    <Settings className="w-5 h-5 text-brand-pink" />
                     Account Information
                   </h3>
 
@@ -977,7 +1127,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               <div className="space-y-6 max-w-2xl">
                 <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                   <h3 className="font-black text-lg mb-5 text-neutral-900 dark:text-white flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-[#FF005C]" />
+                    <Lock className="w-5 h-5 text-brand-pink" />
                     Change Password
                   </h3>
 
@@ -1036,14 +1186,14 @@ export default function AccountHome({ initialTab = 'overview' }) {
                 {/* Security info */}
                 <div className="rounded-3xl p-5 sm:p-7 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
                   <h4 className="font-black text-sm text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[#FF005C]" />
+                    <ShieldCheck className="w-4 h-4 text-brand-pink" />
                     Security Tips
                   </h4>
                   <ul className="space-y-2 text-xs font-bold text-neutral-500 dark:text-neutral-400">
-                    <li className="flex items-start gap-2"><span className="text-[#FF005C] mt-0.5">•</span> Use a strong, unique password for your Apex Vouchers account</li>
-                    <li className="flex items-start gap-2"><span className="text-[#FF005C] mt-0.5">•</span> Never share your voucher codes or account credentials</li>
-                    <li className="flex items-start gap-2"><span className="text-[#FF005C] mt-0.5">•</span> Keep your phone number and email up to date for order notifications</li>
-                    <li className="flex items-start gap-2"><span className="text-[#FF005C] mt-0.5">•</span> Contact support if you notice any unauthorized activity</li>
+                    <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Use a strong, unique password for your Apex Vouchers account</li>
+                    <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Never share your voucher codes or account credentials</li>
+                    <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Keep your phone number and email up to date for order notifications</li>
+                    <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Contact support if you notice any unauthorized activity</li>
                   </ul>
                 </div>
               </div>
@@ -1101,8 +1251,8 @@ function Field({ label, value, onChange, type = 'text', disabled, placeholder, r
         disabled={disabled}
         placeholder={placeholder}
         required={required}
-        className={`w-full px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border rounded-2xl text-neutral-900 dark:text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#FF005C]/20 disabled:opacity-60 transition-colors ${
-          error ? 'border-rose-400 dark:border-rose-500 focus:border-rose-400' : 'border-[#EAEAEA] dark:border-[#292929] focus:border-[#FF005C]'
+        className={`w-full px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border rounded-2xl text-neutral-900 dark:text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-pink/20 disabled:opacity-60 transition-colors ${
+          error ? 'border-rose-400 dark:border-rose-500 focus:border-rose-400' : 'border-[#EAEAEA] dark:border-[#292929] focus:border-brand-pink'
         }`}
       />
       {error && <p className="mt-1.5 text-xs font-bold text-rose-500">{error}</p>}
@@ -1123,8 +1273,8 @@ function PasswordField({ label, value, onChange, show, onToggle, error, placehol
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full px-4 py-3 pr-12 bg-neutral-50 dark:bg-[#0E0E0E] border rounded-2xl text-neutral-900 dark:text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#FF005C]/20 transition-colors ${
-            error ? 'border-rose-400 dark:border-rose-500 focus:border-rose-400' : 'border-[#EAEAEA] dark:border-[#292929] focus:border-[#FF005C]'
+          className={`w-full px-4 py-3 pr-12 bg-neutral-50 dark:bg-[#0E0E0E] border rounded-2xl text-neutral-900 dark:text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-pink/20 transition-colors ${
+            error ? 'border-rose-400 dark:border-rose-500 focus:border-rose-400' : 'border-[#EAEAEA] dark:border-[#292929] focus:border-brand-pink'
           }`}
         />
         <button
@@ -1158,16 +1308,16 @@ function QuickAction({ icon, label, desc, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C]/40 hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] transition-all text-left group w-full"
+      className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] transition-all text-left group w-full"
     >
-      <div className="w-10 h-10 rounded-2xl bg-[#FF005C]/10 border border-[#FF005C]/20 flex items-center justify-center text-[#FF005C] group-hover:scale-110 transition-transform flex-shrink-0">
+      <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 border border-brand-pink/20 flex items-center justify-center text-brand-pink group-hover:scale-110 transition-transform shrink-0">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-black text-sm text-neutral-900 dark:text-white">{label}</div>
         <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">{desc}</div>
       </div>
-      <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-[#FF005C] transition flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-brand-pink transition shrink-0" />
     </button>
   );
 }
@@ -1189,7 +1339,7 @@ function OrderRow({ o, detailed = false }) {
       </div>
       <div className="text-right">
         <div className="font-heading font-black text-lg text-neutral-900 dark:text-white tabular-nums">{formatPrice(o.total)}</div>
-        {detailed && o.promoCode && <div className="text-[10px] font-black text-[#FF005C]">Promo: {o.promoCode}</div>}
+        {detailed && o.promoCode && <div className="text-[10px] font-black text-brand-pink">Promo: {o.promoCode}</div>}
       </div>
     </div>
   );

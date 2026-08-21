@@ -29,7 +29,7 @@ export const TrustMarquee = () => {
               key={idx}
               className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm shrink-0 hover:border-violet-300 transition-colors"
             >
-              <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${brand.color}`} />
+              <div className={`w-3 h-3 rounded-full bg-linear-to-r ${brand.color}`} />
               <span className="font-heading font-extrabold text-sm text-gray-800 tracking-wider">
                 {brand.text}
               </span>

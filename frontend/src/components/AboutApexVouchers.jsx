@@ -57,20 +57,20 @@ export const AboutApexVouchers = () => {
                   alt="Apex Vouchers Student Support Team"
                   className="w-full h-full object-cover opacity-80"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <span className="text-xs font-bold text-[#FF005C] uppercase tracking-widest block">Apex Vouchers Desk</span>
+                  <span className="text-xs font-bold text-brand-pink uppercase tracking-widest block">Apex Vouchers Desk</span>
                   <p className="font-heading font-extrabold text-lg">Trusted by Indian Study Abroad Aspirants</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-800 dark:text-slate-200">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#292929] flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#FF005C]" />
+                  <ShieldCheck className="w-4 h-4 text-brand-pink" />
                   <span>100% Genuine Partner</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#292929] flex items-center gap-2">
-                  <Award className="w-4 h-4 text-[#FF005C]" />
+                  <Award className="w-4 h-4 text-brand-pink" />
                   <span>Money-Back Policy</span>
                 </div>
               </div>
@@ -86,7 +86,7 @@ export const AboutApexVouchers = () => {
               <span className="font-heading font-black text-3xl sm:text-4xl text-slate-900 dark:text-white block">
                 {st.number}
               </span>
-              <span className="text-xs font-extrabold text-[#FF005C] uppercase tracking-wider block">
+              <span className="text-xs font-extrabold text-brand-pink uppercase tracking-wider block">
                 {st.label}
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium block">

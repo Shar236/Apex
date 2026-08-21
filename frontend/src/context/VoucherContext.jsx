@@ -27,13 +27,13 @@ const saveCart = (cart) => {
   } catch {}
 };
 
-const adaptProduct = (p) => {
+export const adaptProduct = (p) => {
   const orig = Number(p.originalPrice) || 0;
   const sell = Number(p.sellingPrice != null ? p.sellingPrice : (p.discountedPrice || 0));
   const savings = Math.max(0, orig - sell);
   const discountPercent = orig > 0 ? Math.max(0, Math.min(100, Math.round((savings / orig) * 100))) : 0;
   const avail = p.availability ?? p.availableStock ?? 0;
-  const inStock = p.inStock !== false && avail > 0;
+  const inStock = p.inStock !== undefined ? p.inStock !== false : avail > 0;
   return {
     id: p._id || p.id,
     _id: p._id || p.id,
@@ -92,6 +92,15 @@ const adaptProduct = (p) => {
     redemptionSteps: p.redemptionSteps || [],
     faqs: p.faqs || [],
     relatedProducts: p.relatedProducts || [],
+    badges: Array.isArray(p.badges) ? p.badges : [],
+    officialWebsiteUrl: p.officialWebsiteUrl || '',
+    officialProductUrl: p.officialProductUrl || '',
+    sku: p.sku || '',
+    productCode: p.productCode || '',
+    stockType: p.stockType || 'LIMITED',
+    deliveryType: p.deliveryType || 'Instant Delivery',
+    comingSoon: !!p.comingSoon,
+    archived: !!p.archived,
   };
 };
 
@@ -130,6 +139,8 @@ export const VoucherProvider = ({ children }) => {
   const [selectedProductRelated, setSelectedProductRelated] = useState([]);
   const [checkoutProduct, setCheckoutProduct] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isPTEBookingOpen, setIsPTEBookingOpen] = useState(false);
+  const [pteBookingExamType, setPteBookingExamType] = useState('PTE Academic');
   const [activeTab, setActiveTab] = useState('home');
   const [activeBrandFilter, setActiveBrandFilter] = useState('All');
   const [currency, setCurrency] = useState('INR');
@@ -303,6 +314,14 @@ export const VoucherProvider = ({ children }) => {
     }, 4000);
   }, []);
 
+  const clearCart = useCallback(() => {
+    setCart([]);
+    try {
+      localStorage.removeItem(CART_KEY);
+      localStorage.setItem(CART_KEY, JSON.stringify([]));
+    } catch {}
+  }, []);
+
   const addToCart = useCallback((product) => {
     if (!product.inStock) {
       showToast(`⚠️ ${product.name} is currently out of stock.`);
@@ -334,6 +353,11 @@ export const VoucherProvider = ({ children }) => {
   const startCheckout = useCallback((product) => {
     setCheckoutProduct(product);
     setIsCheckoutOpen(true);
+  }, []);
+
+  const startPTEBooking = useCallback((examType) => {
+    if (examType) setPteBookingExamType(examType);
+    setIsPTEBookingOpen(true);
   }, []);
 
   const toggleProductStock = useCallback((id) =>
@@ -385,11 +409,13 @@ export const VoucherProvider = ({ children }) => {
     );
   }, [isAuthenticated, showToast]);
 
-  const handlePurchaseSuccess = useCallback(async ({ orderId }) => {
-    if (!orderId) return;
-    showToast(`🎉 Order #${orderId} confirmed!`);
+  const handlePurchaseSuccess = useCallback(async ({ orderId } = {}) => {
+    clearCart();
+    if (orderId) {
+      showToast(`🎉 Order #${orderId} confirmed!`);
+    }
     await loadAccountData();
-  }, [loadAccountData, showToast]);
+  }, [clearCart, loadAccountData, showToast]);
 
   const openProductDetail = useCallback(async (product) => {
     if (!product) return;
@@ -470,6 +496,7 @@ export const VoucherProvider = ({ children }) => {
       addToCart,
       removeFromCart,
       updateQuantity,
+      clearCart,
       isCartOpen,
       setIsCartOpen,
       selectedProductDetail,
@@ -480,6 +507,10 @@ export const VoucherProvider = ({ children }) => {
       setCheckoutProduct,
       isCheckoutOpen,
       setIsCheckoutOpen,
+      isPTEBookingOpen,
+      setIsPTEBookingOpen,
+      pteBookingExamType,
+      startPTEBooking,
       activeTab,
       setActiveTab,
       activeBrandFilter,
@@ -530,11 +561,15 @@ export const VoucherProvider = ({ children }) => {
       addToCart,
       removeFromCart,
       updateQuantity,
+      clearCart,
       isCartOpen,
       selectedProductDetail,
       selectedProductRelated,
       checkoutProduct,
       isCheckoutOpen,
+      isPTEBookingOpen,
+      pteBookingExamType,
+      startPTEBooking,
       activeTab,
       activeBrandFilter,
       currency,
