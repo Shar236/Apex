@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApexLogo } from './ApexLogo';
+import { PhoneInput } from './PhoneInput';
 import { Mail, Lock, User, ArrowRight, Phone, ShieldCheck, ShieldAlert, Crown } from 'lucide-react';
 
 const PageShell = ({ title, subtitle, children, badge = null }) => (
@@ -177,7 +178,7 @@ export const AdminLoginPage = () => {
 export const RegisterPage = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', phoneCountry: 'IN', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -211,13 +212,17 @@ export const RegisterPage = () => {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           required
         />
-        <LabeledInput
-          icon={<Phone className="w-4 h-4" />}
-          label="WhatsApp / Phone (optional)"
-          placeholder="+91 90000 00000"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
+            <Phone className="w-3.5 h-3.5" /> WhatsApp / Phone (optional)
+          </span>
+          <PhoneInput
+            value={form.phone}
+            country={form.phoneCountry}
+            onChange={(phone, phoneCountry) => setForm({ ...form, phone, phoneCountry })}
+            onCountryChange={(phoneCountry) => setForm((current) => ({ ...current, phoneCountry }))}
+          />
+        </div>
         <LabeledInput
           icon={<Lock className="w-4 h-4" />}
           label="Password (min 6 chars)"

@@ -21,6 +21,9 @@ export const safeUser = (user) => {
   delete u.passwordHash;
   delete u.resetToken;
   delete u.resetExpires;
+  delete u.pendingEmail;
+  delete u.pendingEmailToken;
+  delete u.pendingEmailExpires;
   delete u.__v;
   return u;
 };

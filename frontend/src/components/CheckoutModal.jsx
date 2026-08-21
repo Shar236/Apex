@@ -166,7 +166,7 @@ export const CheckoutModal = () => {
 
     // 3. Verify Payment Status & Deliver Voucher Atomically from Backend
     setProcessingState('verifying');
-    const statusRes = await paymentApi.getCashfreeStatus(orderId || orderNo, true);
+    const statusRes = await paymentApi.getCashfreeStatus(orderId || orderNo);
 
     setIsProcessing(false);
     setProcessingState('idle');

@@ -1,0 +1,122 @@
+import { v2 as cloudinary } from 'cloudinary';
+import { config } from '../config/index.js';
+
+// Configure Cloudinary credentials if present
+if (config.cloudinary.cloudName) {
+  cloudinary.config({
+    cloud_name: config.cloudinary.cloudName,
+    api_key: config.cloudinary.apiKey,
+    api_secret: config.cloudinary.apiSecret,
+    secure: true,
+  });
+}
+
+export const isCloudinaryConfigured = () => Boolean(config.cloudinary?.cloudName);
+
+
+/**
+ * Constructs direct MP4 delivery URL from Cloudinary public ID or clean name.
+ * e.g. "v1" -> "https://res.cloudinary.com/nbcbpuql/video/upload/v1.mp4"
+ */
+export const buildDirectVideoUrl = (publicId, cloudName = config.cloudinary.cloudName || 'nbcbpuql') => {
+  if (!publicId) return '';
+  if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
+    return publicId;
+  }
+  // Strip extension if included
+  const cleanId = publicId.replace(/\.(mp4|webm|mov|ogg)$/i, '');
+  return `https://res.cloudinary.com/${cloudName}/video/upload/${cleanId}.mp4`;
+};
+
+/**
+ * Constructs auto-generated poster / thumbnail URL from Cloudinary video public ID.
+ * Uses keyframe snapshot (so_0) as JPG.
+ * e.g. "v1" -> "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v1.jpg"
+ */
+export const buildVideoThumbnailUrl = (publicId, cloudName = config.cloudinary.cloudName || 'nbcbpuql') => {
+  if (!publicId) return '';
+  if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
+    // If it's a direct Cloudinary video URL, convert to poster jpg
+    if (publicId.includes('res.cloudinary.com') && publicId.includes('/video/upload/')) {
+      return publicId
+        .replace('/video/upload/', '/video/upload/so_0/')
+        .replace(/\.(mp4|webm|mov|ogg)$/i, '.jpg');
+    }
+    return publicId;
+  }
+  const cleanId = publicId.replace(/\.(mp4|webm|mov|ogg|jpg|png|webp)$/i, '');
+  return `https://res.cloudinary.com/${cloudName}/video/upload/so_0/${cleanId}.jpg`;
+};
+
+/**
+ * Extracts publicId from a Cloudinary URL or returns raw ID.
+ */
+export const extractPublicId = (urlOrId) => {
+  if (!urlOrId) return '';
+  const trimmed = urlOrId.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return trimmed.replace(/\.[^/.]+$/, '');
+  }
+  try {
+    const parsed = new URL(trimmed);
+    const parts = parsed.pathname.split('/upload/');
+    if (parts.length > 1) {
+      let afterUpload = parts[1];
+      // remove version prefix like v1234567/ or transformations like so_0/
+      const segments = afterUpload.split('/').filter(s => !s.startsWith('v') || isNaN(Number(s.substring(1))));
+      const last = segments[segments.length - 1] || afterUpload;
+      return last.replace(/\.[^/.]+$/, '');
+    }
+  } catch {}
+  return trimmed;
+};
+
+/**
+ * Stream Upload Buffer to Cloudinary
+ * Supports videos and images
+ */
+export const uploadBufferToCloudinary = (buffer, options = {}) => {
+  return new Promise((resolve, reject) => {
+    if (!config.cloudinary.cloudName) {
+      return reject(new Error('Cloudinary cloud name is not configured'));
+    }
+
+    const uploadOptions = {
+      resource_type: options.resourceType || 'auto',
+      folder: options.folder || 'apex_reels',
+      ...options,
+    };
+
+    const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+      if (error) return reject(error);
+      resolve(result);
+    });
+
+    stream.end(buffer);
+  });
+};
+
+/**
+ * Safely delete an asset from Cloudinary (video or image)
+ */
+export const deleteCloudinaryAsset = async (publicId, resourceType = 'video') => {
+  if (!publicId || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    return { success: false, reason: 'Credentials not configured or missing publicId' };
+  }
+  try {
+    const cleanId = extractPublicId(publicId);
+    const res = await cloudinary.uploader.destroy(cleanId, { resource_type: resourceType });
+    return { success: true, result: res };
+  } catch (err) {
+    console.warn(`[Cloudinary] Asset deletion warning for ${publicId}:`, err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+export default {
+  buildDirectVideoUrl,
+  buildVideoThumbnailUrl,
+  extractPublicId,
+  uploadBufferToCloudinary,
+  deleteCloudinaryAsset,
+};

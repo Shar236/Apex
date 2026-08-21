@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { comparePassword, hashPassword, signToken } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { sendRegistrationWelcome, sendPasswordReset } from '../services/email.js';
 import { generateResetToken, hashResetToken, safeUser } from '../utils/index.js';
 import { config } from '../config/index.js';
@@ -18,13 +19,30 @@ export const register = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return next(new AppError(errors.array()[0].msg || 'Invalid input', 400, 'VALIDATION'));
     }
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, phoneCountry } = req.body;
     const existing = await User.findOne({ email });
     if (existing) {
       return next(new AppError('Email already registered', 409, 'DUPLICATE_EMAIL'));
     }
+    let normalizedPhone = null;
+    let normalizedPhoneCountry = null;
+    if (phone && String(phone).trim()) {
+      const parsedPhone = parsePhoneNumberFromString(String(phone), phoneCountry || undefined);
+      if (!parsedPhone || !parsedPhone.isValid()) {
+        return next(new AppError('Invalid phone number for the selected country', 400, 'INVALID_PHONE'));
+      }
+      normalizedPhone = parsedPhone.format('E.164');
+      normalizedPhoneCountry = parsedPhone.country || phoneCountry || null;
+    }
     const passwordHash = await hashPassword(password);
-    const user = new User({ name, email, passwordHash, phone, role: 'user' });
+    const user = new User({
+      name,
+      email,
+      passwordHash,
+      phone: normalizedPhone,
+      phoneCountry: normalizedPhoneCountry,
+      role: 'user',
+    });
     await user.save();
 
     await sendRegistrationWelcome(safeUser(user));

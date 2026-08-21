@@ -5,12 +5,13 @@ const auditLogSchema = new mongoose.Schema(
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
       index: true,
     },
     adminEmail: {
       type: String,
-      required: true,
+      default: 'system@apexvouchers.in',
+      index: true,
     },
     action: {
       type: String,
@@ -40,5 +41,6 @@ const auditLogSchema = new mongoose.Schema(
 );
 
 auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1 });
 
 export const AuditLog = mongoose.model('AuditLog', auditLogSchema);

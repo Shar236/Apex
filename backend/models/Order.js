@@ -12,6 +12,13 @@ export const ORDER_STATUSES = [
   'REFUNDED',
   'FAILED',
 ];
+export const FULFILLMENT_STATUSES = [
+  'PENDING',
+  'FULFILLED',
+  'FAILED',
+  'MISMATCH_BLOCKED',
+  'NEEDS_RESTOCK',
+];
 
 const orderSchema = new mongoose.Schema(
   {
@@ -31,6 +38,8 @@ const orderSchema = new mongoose.Schema(
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         productName: { type: String, required: true },
+        voucherType: { type: String, uppercase: true, trim: true, default: 'EXAM', index: true },
+        brand: { type: String, default: '' },
         unitPrice: { type: Number, required: true },
         originalPrice: { type: Number, required: true },
         quantity: { type: Number, min: 1, default: 1, required: true },
@@ -59,6 +68,22 @@ const orderSchema = new mongoose.Schema(
       default: 'PENDING',
       index: true,
     },
+    fulfillmentStatus: {
+      type: String,
+      enum: FULFILLMENT_STATUSES,
+      default: 'PENDING',
+      index: true,
+    },
+    fulfillmentError: { type: String, default: null },
+    allocatedVouchers: [
+      {
+        voucherId: { type: mongoose.Schema.Types.ObjectId, ref: 'VoucherCode' },
+        code: { type: String, uppercase: true, trim: true },
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        voucherType: { type: String, uppercase: true, trim: true },
+        allocatedAt: { type: Date, default: Date.now },
+      },
+    ],
     paymentProvider: { type: String, default: null },
     paymentReference: { type: String, default: null, index: true },
     billingDetails: {
@@ -82,7 +107,7 @@ const orderSchema = new mongoose.Schema(
     paidAt: { type: Date, default: null },
     emailStatus: {
       type: String,
-      enum: ['PENDING', 'SENT', 'FAILED'],
+      enum: ['PENDING', 'SENDING', 'SENT', 'FAILED'],
       default: 'PENDING',
       index: true,
     },
@@ -94,5 +119,6 @@ const orderSchema = new mongoose.Schema(
 
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ fulfillmentStatus: 1, createdAt: -1 });
 
 export const Order = mongoose.model('Order', orderSchema);

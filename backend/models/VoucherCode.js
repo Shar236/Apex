@@ -8,6 +8,7 @@ export const VOUCHER_STATUSES = [
   'USED',
   'EXPIRED',
   'CANCELLED',
+  'INVALID',
 ];
 
 const voucherCodeSchema = new mongoose.Schema(
@@ -24,6 +25,13 @@ const voucherCodeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
+      index: true,
+    },
+    voucherType: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
       index: true,
     },
     status: {
@@ -44,8 +52,17 @@ const voucherCodeSchema = new mongoose.Schema(
       index: true,
       default: null,
     },
+    soldAt: { type: Date, default: null },
+    soldTo: { type: String, default: null },
     assignedAt: { type: Date, default: null },
-    expiryDate: { type: Date, required: true },
+    reservedAt: { type: Date, default: null },
+    reservedForOrderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+      default: null,
+      index: true,
+    },
+    expiryDate: { type: Date, required: true, index: true },
     usedAt: { type: Date, default: null },
     transferredTo: { type: String, default: null },
     transferredAt: { type: Date, default: null },
@@ -53,7 +70,8 @@ const voucherCodeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-voucherCodeSchema.index({ status: 1, productId: 1 });
+voucherCodeSchema.index({ productId: 1, voucherType: 1, status: 1 });
+voucherCodeSchema.index({ status: 1, expiryDate: 1 });
 voucherCodeSchema.index({ userId: 1, status: 1 });
 
 export const VoucherCode = mongoose.model('VoucherCode', voucherCodeSchema);

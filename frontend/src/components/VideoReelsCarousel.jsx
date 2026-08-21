@@ -55,76 +55,117 @@ export const sanitizeEmbedUrl = formatYouTubeEmbedUrl;
 
 export const REEL_VIDEOS = [
   {
-    id: 1,
+    id: 'v1',
+    _id: 'v1',
     title: "How to Buy an Exam Voucher",
     category: "Step-By-Step Guide",
     duration: "15s",
     desc: "Watch how to select your exam, apply discount promo codes, and receive your voucher code in 10 seconds.",
-    poster: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    poster: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v1.jpg",
+    thumbnailUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v1.jpg",
+    videoStream: "https://res.cloudinary.com/nbcbpuql/video/upload/v1.mp4",
+    videoUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/v1.mp4",
+    cloudinaryPublicId: "v1",
+    youtubeEmbed: "",
     instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🛒",
-    views: "14.2K views"
+    views: "14.2K views",
+    viewsCount: 14200,
+    order: 1,
+    displayOrder: 1,
+    featured: true,
   },
   {
-    id: 2,
+    id: 'v2',
+    _id: 'v2',
     title: "How Does a PTE Voucher Work?",
     category: "PTE Voucher",
     duration: "18s",
     desc: "Official Pearson PTE Academic & Core vouchers waive off registration fees instantly at checkout.",
-    poster: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    poster: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v2.jpg",
+    thumbnailUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v2.jpg",
+    videoStream: "https://res.cloudinary.com/nbcbpuql/video/upload/v2.mp4",
+    videoUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/v2.mp4",
+    cloudinaryPublicId: "v2",
+    youtubeEmbed: "",
     instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🎓",
-    views: "22.8K views"
+    views: "22.8K views",
+    viewsCount: 22800,
+    order: 2,
+    displayOrder: 2,
+    featured: false,
   },
   {
-    id: 3,
+    id: 'v3',
+    _id: 'v3',
     title: "How to Redeem Your Voucher",
     category: "Redemption Guide",
     duration: "14s",
     desc: "Paste your unique voucher code in the Promo Code field on Pearson, ETS, or Duolingo portals.",
-    poster: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    poster: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v3.jpg",
+    thumbnailUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v3.jpg",
+    videoStream: "https://res.cloudinary.com/nbcbpuql/video/upload/v3.mp4",
+    videoUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/v3.mp4",
+    cloudinaryPublicId: "v3",
+    youtubeEmbed: "",
     instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🔑",
-    views: "18.5K views"
+    views: "18.5K views",
+    viewsCount: 18500,
+    order: 3,
+    displayOrder: 3,
+    featured: false,
   },
   {
-    id: 4,
+    id: 'v4',
+    _id: 'v4',
     title: "How Much Can You Save?",
     category: "Save Money",
     duration: "16s",
     desc: "Compare regular official exam prices vs Apex bulk discounted prices for PTE, GRE, TOEFL, and Duolingo.",
-    poster: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoypasses.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    poster: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v4.jpg",
+    thumbnailUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v4.jpg",
+    videoStream: "https://res.cloudinary.com/nbcbpuql/video/upload/v4.mp4",
+    videoUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/v4.mp4",
+    cloudinaryPublicId: "v4",
+    youtubeEmbed: "",
     instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "💰",
-    views: "31.9K views"
+    views: "31.9K views",
+    viewsCount: 31900,
+    order: 4,
+    displayOrder: 4,
+    featured: false,
   },
   {
-    id: 5,
+    id: 'v5',
+    _id: 'v5',
     title: "IELTS Voucher Explained",
     category: "IELTS",
     duration: "20s",
     desc: "Everything about IELTS Academic & General discount codes for IDP registration across India.",
-    poster: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80",
-    videoStream: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-    youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    poster: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v5.jpg",
+    thumbnailUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v5.jpg",
+    videoStream: "https://res.cloudinary.com/nbcbpuql/video/upload/v5.mp4",
+    videoUrl: "https://res.cloudinary.com/nbcbpuql/video/upload/v5.mp4",
+    cloudinaryPublicId: "v5",
+    youtubeEmbed: "",
     instagramUrl: "",
     badgeColor: "bg-amber-400 text-slate-950",
     icon: "🇬🇧",
-    views: "11.7K views"
+    views: "11.7K views",
+    viewsCount: 11700,
+    order: 5,
+    displayOrder: 5,
+    featured: false,
   }
 ];
+
 
 export const VideoReelsCarousel = () => {
   const [videoList, setVideoList] = useState(REEL_VIDEOS);
@@ -133,6 +174,7 @@ export const VideoReelsCarousel = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [showControls, setShowControls] = useState(true);
   const [isMovieMode, setIsMovieMode] = useState(false);
   const [useIframeFallback, setUseIframeFallback] = useState(false);
   const [activeModalVideo, setActiveModalVideo] = useState(null);
@@ -141,33 +183,73 @@ export const VideoReelsCarousel = () => {
   const desktopVideoRef = useRef(null);
   const mobileVideoRef = useRef(null);
   const modalVideoRef = useRef(null);
+  const controlsTimeoutRef = useRef(null);
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
   const playedVideoIds = useRef(new Set());
+
+  const resetControlsTimer = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2500);
+    }
+  };
+
+  useEffect(() => {
+    if (isPlaying) {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2500);
+    } else {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [isPlaying]);
 
   useEffect(() => {
     let isMounted = true;
     videoApi.list().then((res) => {
       if (!isMounted) return;
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-        const formatted = res.data.map((v, i) => ({
-          _id: v._id,
-          id: v._id || i + 1,
-          title: v.title,
-          category: v.category || 'Step-By-Step Guide',
-          duration: v.duration || '15s',
-          desc: v.description || v.desc || '',
-          poster: v.thumbnail || v.poster || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80',
-          videoStream: v.videoUrl,
-          youtubeEmbed: v.youtubeEmbed || v.videoUrl,
-          instagramUrl: v.instagramUrl || (isInstagramUrl(v.videoUrl) ? v.videoUrl : ''),
-          badgeColor: v.badgeColor || 'bg-amber-400 text-slate-950',
-          icon: v.icon || '🎬',
-          viewsCount: v.viewsCount || 0,
-          views: v.viewsCount >= 1000 ? `${(v.viewsCount / 1000).toFixed(1)}K views` : `${v.viewsCount || 0} views`,
-          featured: !!v.featured,
-        }));
+        const formatted = res.data.map((v, i) => {
+          const publicId = v.cloudinaryPublicId;
+          const directVideo = v.videoUrl || (publicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/${publicId}.mp4` : '');
+          const cleanThumbnail = (v.thumbnailUrl && !v.thumbnailUrl.includes('unsplash')) ? v.thumbnailUrl : ((v.thumbnail && !v.thumbnail.includes('unsplash')) ? v.thumbnail : '');
+          const posterImg = (publicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${publicId}.jpg` : '') || cleanThumbnail || `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v${(i % 5) + 1}.jpg`;
+          const viewsNum = Number(v.viewsCount ?? v.views) || 0;
+          return {
+            _id: v._id,
+            id: v._id || publicId || i + 1,
+            title: v.title,
+            category: v.category || 'Step-By-Step Guide',
+            duration: v.duration || '15s',
+            desc: v.description || v.desc || '',
+            poster: posterImg,
+            thumbnailUrl: posterImg,
+            videoStream: directVideo,
+            videoUrl: directVideo,
+            cloudinaryPublicId: publicId || '',
+            youtubeEmbed: v.youtubeEmbed || directVideo,
+            instagramUrl: v.instagramUrl || (isInstagramUrl(directVideo) ? directVideo : ''),
+            badgeColor: v.badgeColor || 'bg-amber-400 text-slate-950',
+            icon: v.icon || '🎬',
+            viewsCount: viewsNum,
+            views: viewsNum >= 1000 ? `${(viewsNum / 1000).toFixed(1)}K views` : `${viewsNum} views`,
+            order: v.order ?? v.displayOrder ?? i + 1,
+            featured: !!v.featured,
+          };
+        });
         setVideoList(formatted);
         const featIdx = formatted.findIndex((x) => x.featured);
         if (featIdx !== -1) setActiveIndex(featIdx);
@@ -178,6 +260,7 @@ export const VideoReelsCarousel = () => {
       }
       setLoading(false);
     });
+
     return () => { isMounted = false; };
   }, []);
 
@@ -221,12 +304,14 @@ export const VideoReelsCarousel = () => {
   const handleVideoEnded = () => {
     setIsPlaying(false);
     setUserInitiatedPlay(false);
+    setShowControls(true);
   };
 
   const handleNext = () => {
     pauseVisibleVideo();
     setIsPlaying(false);
     setUserInitiatedPlay(false);
+    setShowControls(true);
     setUseIframeFallback(false);
     setActiveIndex((prev) => (prev + 1) % total);
   };
@@ -235,6 +320,7 @@ export const VideoReelsCarousel = () => {
     pauseVisibleVideo();
     setIsPlaying(false);
     setUserInitiatedPlay(false);
+    setShowControls(true);
     setUseIframeFallback(false);
     setActiveIndex((prev) => (prev - 1 + total) % total);
   };
@@ -243,6 +329,7 @@ export const VideoReelsCarousel = () => {
     setUseIframeFallback(false);
     setIsPlaying(false);
     setUserInitiatedPlay(false);
+    setShowControls(true);
 
     const currentVideoEl = getCurrentVideoElement();
     if (currentVideoEl) {
@@ -261,6 +348,7 @@ export const VideoReelsCarousel = () => {
           currentVideoEl.pause();
           setIsPlaying(false);
           setUserInitiatedPlay(false);
+          setShowControls(true);
         }
       },
       { threshold: [0, 0.25, 0.5, 0.75, 1] }
@@ -314,6 +402,7 @@ export const VideoReelsCarousel = () => {
           .then(() => {
             setIsPlaying(true);
             setUserInitiatedPlay(true);
+            resetControlsTimer();
           })
           .catch((error) => {
             console.warn("Playback error, enabling iframe player:", error);
@@ -322,10 +411,12 @@ export const VideoReelsCarousel = () => {
       } else {
         setIsPlaying(true);
         setUserInitiatedPlay(true);
+        resetControlsTimer();
       }
     } else {
       currentVideoEl.pause();
       setIsPlaying(false);
+      setShowControls(true);
     }
   };
 
@@ -337,6 +428,7 @@ export const VideoReelsCarousel = () => {
       return nextMuted;
     });
   };
+
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
@@ -430,8 +522,20 @@ export const VideoReelsCarousel = () => {
             }}
             className="w-[200px] h-[370px] rounded-[20px] bg-slate-900 border border-amber-500/20 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
-            <img src={getVideoAt(-2).poster} alt={getVideoAt(-2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            {/* Real Video Frame Preview */}
+            {getVideoAt(-2).videoStream && isDirectVideoFile(getVideoAt(-2).videoStream) ? (
+              <video
+                src={getVideoAt(-2).videoStream || getVideoAt(-2).videoUrl}
+                poster={getVideoAt(-2).poster || getVideoAt(-2).thumbnailUrl}
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform pointer-events-none"
+              />
+            ) : (
+              <img src={getVideoAt(-2).poster || getVideoAt(-2).thumbnailUrl} alt={getVideoAt(-2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2 py-0.5 rounded bg-black/70 text-[9px] font-bold text-amber-400 border border-amber-500/30">
@@ -463,8 +567,20 @@ export const VideoReelsCarousel = () => {
             }}
             className="w-[240px] h-[440px] rounded-[22px] bg-slate-900 border border-amber-500/30 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
-            <img src={getVideoAt(-1).poster} alt={getVideoAt(-1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            {/* Real Video Frame Preview */}
+            {getVideoAt(-1).videoStream && isDirectVideoFile(getVideoAt(-1).videoStream) ? (
+              <video
+                src={getVideoAt(-1).videoStream || getVideoAt(-1).videoUrl}
+                poster={getVideoAt(-1).poster || getVideoAt(-1).thumbnailUrl}
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform pointer-events-none"
+              />
+            ) : (
+              <img src={getVideoAt(-1).poster || getVideoAt(-1).thumbnailUrl} alt={getVideoAt(-1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-bold text-amber-400 border border-amber-500/30">
@@ -486,12 +602,14 @@ export const VideoReelsCarousel = () => {
           </div>
 
           {/* CENTER FEATURED INLINE VIDEO PLAYER CARD (9:16 Aspect Ratio) */}
-          <div className="w-[300px] lg:w-[320px] h-[530px] lg:h-[560px] rounded-[24px] bg-[#161616] border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative overflow-hidden shrink-0 transition-all duration-500 flex flex-col justify-between p-6 z-20 group">
-            
-            {/* Poster Thumbnail Background */}
-            <img src={currentVideo.poster} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
-
-            {/* Video Stream Render Logic */}
+          <div 
+            onMouseMove={resetControlsTimer}
+            onMouseEnter={resetControlsTimer}
+            onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
+            onTouchStart={resetControlsTimer}
+            className="w-[300px] lg:w-[320px] h-[530px] lg:h-[560px] rounded-[24px] bg-[#161616] border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative overflow-hidden shrink-0 transition-all duration-500 flex flex-col justify-between p-6 z-20 group"
+          >
+            {/* Direct HTML5 Video Player (Serves as Visual Content and Thumbnail Preview) */}
             {currentIsInsta ? (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 flex items-center justify-center text-white shadow-xl animate-pulse">
@@ -514,16 +632,25 @@ export const VideoReelsCarousel = () => {
             ) : !useIframeFallback && isDirectVideoFile(currentVideo.videoStream) ? (
               <video
                 ref={desktopVideoRef}
-                src={currentVideo.videoStream}
-                poster={currentVideo.poster}
+                src={currentVideo.videoStream || currentVideo.videoUrl}
+                poster={currentVideo.poster || currentVideo.thumbnailUrl}
                 muted={isMuted}
                 playsInline
+                preload="auto"
+                loop={isMovieMode || true}
                 crossOrigin="anonymous"
                 onEnded={handleVideoEnded}
                 onError={() => setUseIframeFallback(true)}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                className="absolute inset-0 w-full h-full object-cover"
+                onPlay={() => {
+                  setIsPlaying(true);
+                  resetControlsTimer();
+                }}
+                onPause={() => {
+                  setIsPlaying(false);
+                  setShowControls(true);
+                }}
+                onClick={togglePlay}
+                className="absolute inset-0 w-full h-full object-cover cursor-pointer"
               />
             ) : currentIsYouTube ? (
               <iframe
@@ -534,22 +661,23 @@ export const VideoReelsCarousel = () => {
                 allowFullScreen
               />
             ) : (
-              /* Safe Poster Fallback (Never Iframe Instagram) */
-              <div className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center p-6 text-center">
-                <button
-                  onClick={() => setActiveModalVideo(currentVideo)}
-                  className="w-16 h-16 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-110 transition-transform cursor-pointer"
-                >
-                  <Play className="w-7 h-7 fill-slate-950 ml-1" />
-                </button>
-              </div>
+              /* Fallback Poster */
+              <img src={currentVideo.poster || currentVideo.thumbnailUrl} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
             )}
 
-            {/* Gradient Dark Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/70 pointer-events-none" />
+            {/* Gradient Dark Overlay (Fades out when playing so 100% of video is crystal clear) */}
+            <div 
+              className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
+                isPlaying ? 'opacity-0' : 'opacity-100'
+              }`} 
+            />
 
-            {/* Top Branding Bar */}
-            <div className="relative z-10 flex justify-between items-center">
+            {/* Top Branding Bar & Audio Controls */}
+            <div 
+              className={`relative z-10 flex justify-between items-center transition-all duration-500 ${
+                isPlaying && !showControls ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
+              }`}
+            >
               <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shadow-md ${currentVideo.badgeColor}`}>
                 {currentVideo.category}
               </span>
@@ -557,42 +685,78 @@ export const VideoReelsCarousel = () => {
               <div className="flex items-center gap-2">
                 {!currentIsInsta && (
                   <button
-                    onClick={toggleMute}
-                    className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-amber-400 border border-white/10 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMute();
+                      resetControlsTimer();
+                    }}
+                    className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-amber-400 border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-105"
                     title={isMuted ? 'Unmute sound' : 'Mute sound'}
+                    aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
                   >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
                   </button>
                 )}
-                <div className="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
+                <div className="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 shadow-lg">
                   <ApexLogo className="h-4" whiteText={true} />
                 </div>
               </div>
             </div>
 
-            {/* Center Controls (Play/Pause Button Overlay) */}
+            {/* Center Play Button Overlay (Shown ONLY when Paused) */}
             {!currentIsInsta && (
-              <div className="relative z-10 text-center my-auto">
+              <div 
+                className={`relative z-10 text-center my-auto transition-all duration-500 ${
+                  isPlaying 
+                    ? 'opacity-0 scale-90 pointer-events-none' 
+                    : 'opacity-100 scale-100 pointer-events-auto'
+                }`}
+              >
                 <button
-                  onClick={togglePlay}
-                  className="w-16 h-16 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-2xl transition-all transform group-hover:scale-110 border-2 border-white cursor-pointer"
-                  aria-label={isPlaying ? 'Pause video' : 'Play video'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  className="w-16 h-16 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-[0_0_35px_rgba(245,158,11,0.5)] transition-all transform hover:scale-110 border-2 border-white cursor-pointer"
+                  aria-label="Play video"
                 >
-                  {isPlaying ? (
-                    <Pause className="w-7 h-7 fill-slate-950" />
-                  ) : (
-                    <Play className="w-7 h-7 fill-slate-950 ml-1" />
-                  )}
+                  <Play className="w-7 h-7 fill-slate-950 ml-1" />
                 </button>
                 
-                <span className="inline-block mt-3 text-[11px] font-extrabold text-amber-400 uppercase tracking-widest bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/30">
-                  {isPlaying ? '⚡ Playing Reel Stream' : `${currentVideo.duration} • Click to Play`}
+                <span className="inline-block mt-3 text-[11px] font-extrabold text-amber-400 uppercase tracking-widest bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/40 shadow-lg">
+                  {currentVideo.duration} • Click to Play
                 </span>
               </div>
             )}
 
-            {/* Bottom Card Title & Controls */}
-            <div className="relative z-10 text-left space-y-2 bg-slate-950/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg">
+            {/* Floating Minimal In-Playback Pause Overlay (Appears on hover/tap when playing) */}
+            {!currentIsInsta && isPlaying && (
+              <div 
+                className={`absolute inset-0 z-15 flex flex-col items-center justify-center pointer-events-none transition-all duration-300 ${
+                  showControls ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                }`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  className="pointer-events-auto w-14 h-14 rounded-full bg-black/70 hover:bg-amber-400 text-white hover:text-slate-950 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 transition-all transform hover:scale-110 cursor-pointer"
+                  aria-label="Pause video"
+                >
+                  <Pause className="w-6 h-6 fill-current" />
+                </button>
+              </div>
+            )}
+
+            {/* Bottom Information Card (Fades out when playing for clean full vertical view) */}
+            <div 
+              className={`relative z-10 text-left space-y-2 bg-slate-950/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl transition-all duration-500 ${
+                isPlaying 
+                  ? 'opacity-0 translate-y-4 pointer-events-none' 
+                  : 'opacity-100 translate-y-0 pointer-events-auto'
+              }`}
+            >
               <div className="flex justify-between items-start gap-2">
                 <h3 className="font-heading font-black text-lg text-white leading-tight">
                   {currentVideo.title}
@@ -617,17 +781,23 @@ export const VideoReelsCarousel = () => {
                   </a>
                 ) : (
                   <button
-                    onClick={togglePlay}
-                    className="flex-1 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePlay();
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-md"
                   >
-                    {isPlaying ? <Pause className="w-3.5 h-3.5 fill-slate-950" /> : <Play className="w-3.5 h-3.5 fill-slate-950" />}
-                    <span>{isPlaying ? 'Pause Reel' : 'Play Inline Reel'}</span>
+                    <Play className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>Play Reel</span>
                   </button>
                 )}
 
                 <button
-                  onClick={() => setActiveModalVideo(currentVideo)}
-                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/10 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveModalVideo(currentVideo);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/10 cursor-pointer transition-colors"
                   title="Expand Video Details"
                 >
                   <Film className="w-3.5 h-3.5" />
@@ -648,8 +818,20 @@ export const VideoReelsCarousel = () => {
             }}
             className="w-[240px] h-[440px] rounded-[22px] bg-slate-900 border border-amber-500/30 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
-            <img src={getVideoAt(1).poster} alt={getVideoAt(1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            {/* Real Video Frame Preview */}
+            {getVideoAt(1).videoStream && isDirectVideoFile(getVideoAt(1).videoStream) ? (
+              <video
+                src={getVideoAt(1).videoStream || getVideoAt(1).videoUrl}
+                poster={getVideoAt(1).poster || getVideoAt(1).thumbnailUrl}
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform pointer-events-none"
+              />
+            ) : (
+              <img src={getVideoAt(1).poster || getVideoAt(1).thumbnailUrl} alt={getVideoAt(1).title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-bold text-amber-400 border border-amber-500/30">
@@ -681,8 +863,20 @@ export const VideoReelsCarousel = () => {
             }}
             className="w-[200px] h-[370px] rounded-[20px] bg-slate-900 border border-amber-500/20 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
-            <img src={getVideoAt(2).poster} alt={getVideoAt(2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            {/* Real Video Frame Preview */}
+            {getVideoAt(2).videoStream && isDirectVideoFile(getVideoAt(2).videoStream) ? (
+              <video
+                src={getVideoAt(2).videoStream || getVideoAt(2).videoUrl}
+                poster={getVideoAt(2).poster || getVideoAt(2).thumbnailUrl}
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform pointer-events-none"
+              />
+            ) : (
+              <img src={getVideoAt(2).poster || getVideoAt(2).thumbnailUrl} alt={getVideoAt(2).title} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2 py-0.5 rounded bg-black/60 text-[9px] font-bold text-amber-400 border border-amber-500/30">
@@ -707,9 +901,11 @@ export const VideoReelsCarousel = () => {
 
         {/* Mobile Viewport Reel Card */}
         <div className="md:hidden space-y-6">
-          <div className="w-full max-w-xs mx-auto aspect-[9/16] rounded-[22px] bg-[#161616] border-2 border-amber-400 shadow-xl relative overflow-hidden flex flex-col justify-between p-5">
-            <img src={currentVideo.poster} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
-            
+          <div 
+            onTouchStart={resetControlsTimer}
+            className="w-full max-w-xs mx-auto aspect-[9/16] rounded-[22px] bg-[#161616] border-2 border-amber-400 shadow-xl relative overflow-hidden flex flex-col justify-between p-5"
+          >
+            {/* Direct HTML5 Video Player */}
             {currentIsInsta ? (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
                 <Instagram className="w-10 h-10 text-amber-400" />
@@ -727,14 +923,25 @@ export const VideoReelsCarousel = () => {
             ) : !useIframeFallback && isDirectVideoFile(currentVideo.videoStream) ? (
               <video
                 ref={mobileVideoRef}
-                src={currentVideo.videoStream}
-                poster={currentVideo.poster}
+                src={currentVideo.videoStream || currentVideo.videoUrl}
+                poster={currentVideo.poster || currentVideo.thumbnailUrl}
                 muted={isMuted}
                 playsInline
+                preload="auto"
+                loop={isMovieMode || true}
+                crossOrigin="anonymous"
+                onEnded={handleVideoEnded}
                 onError={() => setUseIframeFallback(true)}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                className="absolute inset-0 w-full h-full object-cover"
+                onPlay={() => {
+                  setIsPlaying(true);
+                  resetControlsTimer();
+                }}
+                onPause={() => {
+                  setIsPlaying(false);
+                  setShowControls(true);
+                }}
+                onClick={togglePlay}
+                className="absolute inset-0 w-full h-full object-cover cursor-pointer"
               />
             ) : currentIsYouTube ? (
               <iframe
@@ -744,30 +951,98 @@ export const VideoReelsCarousel = () => {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
-            ) : null}
+            ) : (
+              <img src={currentVideo.poster || currentVideo.thumbnailUrl} alt={currentVideo.title} className="absolute inset-0 w-full h-full object-cover" />
+            )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/70 pointer-events-none" />
+            {/* Gradient Overlay */}
+            <div 
+              className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-slate-950/70 transition-opacity duration-500 pointer-events-none ${
+                isPlaying ? 'opacity-0' : 'opacity-100'
+              }`} 
+            />
 
-            <div className="relative z-10 flex justify-between items-center">
+            {/* Top Branding & Sound Bar */}
+            <div 
+              className={`relative z-10 flex justify-between items-center transition-all duration-500 ${
+                isPlaying && !showControls ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
+              }`}
+            >
               <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
                 {currentVideo.category}
               </span>
-              <ApexLogo className="h-4" whiteText={true} />
+
+              <div className="flex items-center gap-2">
+                {!currentIsInsta && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMute();
+                      resetControlsTimer();
+                    }}
+                    className="p-1 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-amber-400 border border-white/20 cursor-pointer"
+                    title={isMuted ? 'Unmute' : 'Mute'}
+                  >
+                    {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-amber-400" />}
+                  </button>
+                )}
+                <ApexLogo className="h-4" whiteText={true} />
+              </div>
             </div>
 
+            {/* Center Controls (Paused State) */}
             {!currentIsInsta && (
-              <div className="relative z-10 text-center my-auto">
+              <div 
+                className={`relative z-10 text-center my-auto transition-all duration-500 ${
+                  isPlaying 
+                    ? 'opacity-0 scale-90 pointer-events-none' 
+                    : 'opacity-100 scale-100 pointer-events-auto'
+                }`}
+              >
                 <button
-                  onClick={togglePlay}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
                   className="w-14 h-14 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center mx-auto shadow-xl border-2 border-white cursor-pointer"
                   aria-label="Play video"
                 >
-                  {isPlaying ? <Pause className="w-6 h-6 fill-slate-950" /> : <Play className="w-6 h-6 fill-slate-950 ml-1" />}
+                  <Play className="w-6 h-6 fill-slate-950 ml-1" />
+                </button>
+                <span className="inline-block mt-2 text-[10px] font-extrabold text-amber-400 uppercase tracking-widest bg-black/80 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-amber-400/40">
+                  {currentVideo.duration} • Click to Play
+                </span>
+              </div>
+            )}
+
+            {/* Floating Minimal In-Playback Pause Overlay (Mobile) */}
+            {!currentIsInsta && isPlaying && (
+              <div 
+                className={`absolute inset-0 z-15 flex flex-col items-center justify-center pointer-events-none transition-all duration-300 ${
+                  showControls ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                }`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  className="pointer-events-auto w-12 h-12 rounded-full bg-black/70 hover:bg-amber-400 text-white hover:text-slate-950 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 cursor-pointer"
+                  aria-label="Pause video"
+                >
+                  <Pause className="w-5 h-5 fill-current" />
                 </button>
               </div>
             )}
 
-            <div className="relative z-10 text-left space-y-1.5 bg-slate-950/80 p-3.5 rounded-xl border border-white/10">
+            {/* Bottom Card (Mobile) */}
+            <div 
+              className={`relative z-10 text-left space-y-1.5 bg-slate-950/85 backdrop-blur-md p-3.5 rounded-xl border border-white/10 transition-all duration-500 ${
+                isPlaying 
+                  ? 'opacity-0 translate-y-4 pointer-events-none' 
+                  : 'opacity-100 translate-y-0 pointer-events-auto'
+              }`}
+            >
               <h3 className="font-heading font-black text-sm text-white leading-tight">{currentVideo.title}</h3>
               {currentIsInsta ? (
                 <a
@@ -781,16 +1056,20 @@ export const VideoReelsCarousel = () => {
                 </a>
               ) : (
                 <button
-                  onClick={togglePlay}
-                  className="w-full py-2 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  className="w-full py-2 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1 cursor-pointer shadow-md"
                 >
-                  {isPlaying ? <Pause className="w-3 h-3 fill-slate-950" /> : <Play className="w-3 h-3 fill-slate-950" />}
-                  <span>{isPlaying ? 'Pause' : 'Play Stream'}</span>
+                  <Play className="w-3 h-3 fill-slate-950" />
+                  <span>Play Reel</span>
                 </button>
               )}
             </div>
           </div>
         </div>
+
 
         {/* Controls Bar (Left to Right Navigation Buttons & Dots) */}
         <div className="flex flex-col items-center gap-4 pt-2">
@@ -806,7 +1085,7 @@ export const VideoReelsCarousel = () => {
 
             {/* Pagination Indicators */}
             <div className="flex items-center gap-2 overflow-x-auto max-w-[220px] sm:max-w-none px-2 py-1">
-              {REEL_VIDEOS.map((_, idx) => (
+              {videoList.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveIndex(idx)}
@@ -819,6 +1098,7 @@ export const VideoReelsCarousel = () => {
                 />
               ))}
             </div>
+
 
             <button
               onClick={handleNext}

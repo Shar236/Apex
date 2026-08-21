@@ -9,9 +9,10 @@ const __dirname = path.dirname(__filename);
 const uploadsBaseDir = path.join(__dirname, '../public/uploads');
 const videosDir = path.join(uploadsBaseDir, 'videos');
 const thumbnailsDir = path.join(uploadsBaseDir, 'thumbnails');
+const avatarsDir = path.join(uploadsBaseDir, 'avatars');
 
 // Ensure upload directories exist
-[uploadsBaseDir, videosDir, thumbnailsDir].forEach((dir) => {
+[uploadsBaseDir, videosDir, thumbnailsDir, avatarsDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -66,3 +67,33 @@ export const mediaUpload = multer({
     fileSize: 100 * 1024 * 1024, // 100MB max video size
   },
 });
+
+// ── Profile Image Upload ──────────────────────────────────────────────────────
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, avatarsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+    cb(null, `avatar_${uniqueSuffix}${ext}`);
+  },
+});
+
+const avatarFileFilter = (_req, file, cb) => {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid image format. Supported: JPG, JPEG, PNG, WebP'), false);
+  }
+};
+
+export const profileImageUpload = multer({
+  storage: avatarStorage,
+  fileFilter: avatarFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+});
+

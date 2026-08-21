@@ -43,7 +43,7 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Provider required'],
       trim: true,
       default: function () {
-        return this.brand || 'Duolingo';
+        return this?.brand || 'Duolingo';
       },
       index: true,
     },
@@ -57,6 +57,15 @@ const productSchema = new mongoose.Schema(
       required: true,
       trim: true,
       index: true,
+    },
+    voucherType: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+      default: function () {
+        return (this?.brand || this?.provider || 'EXAM').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      },
     },
     category: {
       type: String,
@@ -130,6 +139,9 @@ function slugify(text) {
 productSchema.pre('save', function (next) {
   if (!this.provider) {
     this.provider = this.brand || 'Duolingo';
+  }
+  if (!this.voucherType) {
+    this.voucherType = (this.brand || this.provider || 'EXAM').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   }
   if (!this.slug && this.name) {
     this.slug = slugify(this.name);

@@ -1,9 +1,19 @@
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Setting, Campaign } from '../models/index.js';
+import fs from 'fs';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign } from '../models/index.js';
+import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { hashPassword } from '../middleware/auth.js';
 import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
 import { sendOrderConfirmation } from '../services/email.js';
+import {
+  buildDirectVideoUrl,
+  buildVideoThumbnailUrl,
+  extractPublicId,
+  uploadBufferToCloudinary,
+  deleteCloudinaryAsset,
+} from '../services/cloudinaryService.js';
+
 
 const PAID_ORDER_STATUSES = ['PAID', 'FULFILLED'];
 
@@ -752,11 +762,15 @@ export const getProductInventory = async (req, res, next) => {
 
 export const listVouchers = async (req, res, next) => {
   try {
-    const { status, productId, search, page = 1, limit = 100 } = req.query;
+    const { status, productId, voucherType, search, unmasked, page = 1, limit = 100 } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (productId) filter.productId = productId;
-    if (search) filter.code = searchRegex(search);
+    if (voucherType) filter.voucherType = voucherType.toUpperCase();
+    if (search) {
+      const s = searchRegex(search);
+      filter.$or = [{ code: s }, { soldTo: s }];
+    }
 
     const p = Math.max(1, parseInt(page, 10) || 1);
     const l = Math.min(500, Math.max(1, parseInt(limit, 10) || 100));
@@ -764,16 +778,204 @@ export const listVouchers = async (req, res, next) => {
 
     const [vouchers, total] = await Promise.all([
       VoucherCode.find(filter)
-        .populate('productId', 'name brand')
+        .populate('productId', 'name brand provider voucherType')
         .populate('userId', 'name email')
         .populate('orderId', 'orderNo total orderStatus')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(l),
+        .limit(l)
+        .lean(),
       VoucherCode.countDocuments(filter),
     ]);
 
-    res.json({ success: true, count: vouchers.length, total, page: p, pages: Math.ceil(total / l), data: vouchers });
+    // Mask voucher codes by default unless unmasked=true is explicitly requested by authenticated admin
+    const processedVouchers = vouchers.map((v) => {
+      let codeDisplay = v.code;
+      if (unmasked !== 'true') {
+        const parts = String(v.code || '').split('-');
+        if (parts.length >= 3) {
+          codeDisplay = `${parts[0]}-****-****-${parts[parts.length - 1]}`;
+        } else if (v.code && v.code.length > 8) {
+          codeDisplay = `${v.code.slice(0, 4)}-****-${v.code.slice(-4)}`;
+        } else {
+          codeDisplay = '****-****-****';
+        }
+      }
+      return {
+        ...v,
+        codeDisplay,
+        isMasked: unmasked !== 'true',
+      };
+    });
+
+    res.json({
+      success: true,
+      count: processedVouchers.length,
+      total,
+      page: p,
+      pages: Math.ceil(total / l),
+      data: processedVouchers,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getVoucherInventoryByProduct = async (req, res, next) => {
+  try {
+    const products = await Product.find({}).sort({ displayOrder: 1, name: 1 }).lean();
+    const productIds = products.map((p) => p._id);
+    const stockStats = await aggregateVoucherStatsByProduct(productIds);
+
+    const summary = products.map((p) => {
+      const stats = getVoucherStats(stockStats, p._id);
+      const isLowStock = stats.available <= (p.lowStockThreshold || 10) && stats.available > 0;
+      const isOutOfStock = stats.available === 0;
+      return {
+        product: {
+          _id: p._id,
+          name: p.name,
+          brand: p.brand,
+          provider: p.provider,
+          voucherType: p.voucherType || normalizeVoucherType(p.voucherType, p),
+          sellingPrice: p.sellingPrice,
+          originalPrice: p.originalPrice,
+          active: p.active,
+          lowStockThreshold: p.lowStockThreshold || 10,
+        },
+        counts: stats,
+        isLowStock,
+        isOutOfStock,
+      };
+    });
+
+    res.json({ success: true, data: summary });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getVoucherCodeUnmasked = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const voucher = await VoucherCode.findById(id).populate('productId', 'name brand voucherType').lean();
+    if (!voucher) return next(new AppError('Voucher not found', 404));
+
+    await recordAudit(req, 'VOUCHER_VIEW_CODE', 'VoucherCode', voucher._id, {
+      codeMasked: `${voucher.code.slice(0, 4)}-****-${voucher.code.slice(-4)}`,
+      productId: voucher.productId?._id || voucher.productId,
+      productName: voucher.productId?.name || '',
+      voucherType: voucher.voucherType,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        _id: voucher._id,
+        code: voucher.code,
+        voucherType: voucher.voucherType,
+        status: voucher.status,
+        expiryDate: voucher.expiryDate,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAdminNotifications = async (req, res, next) => {
+  try {
+    // 1. Recently Sold Vouchers (Last 20)
+    const recentlySold = await VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
+      .populate('productId', 'name brand voucherType')
+      .populate('orderId', 'orderNo total')
+      .populate('userId', 'name email')
+      .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
+      .limit(15)
+      .lean();
+
+    // 2. Mismatch Alerts / Failures from AuditLog
+    const mismatchLogs = await AuditLog.find({
+      action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED'] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    // 3. Low stock and out-of-stock products
+    const products = await Product.find({ active: true }).lean();
+    const productIds = products.map((p) => p._id);
+    const stockStats = await aggregateVoucherStatsByProduct(productIds);
+
+    const stockAlerts = [];
+    for (const p of products) {
+      const stats = getVoucherStats(stockStats, p._id);
+      const threshold = p.lowStockThreshold || 10;
+      if (stats.available === 0) {
+        stockAlerts.push({
+          id: `oos_${p._id}`,
+          type: 'OUT_OF_STOCK',
+          severity: 'error',
+          title: '🔴 Out of Stock Alert',
+          message: `${p.name} is completely OUT OF STOCK!`,
+          product: { _id: p._id, name: p.name, voucherType: p.voucherType },
+          available: 0,
+          timestamp: new Date(),
+        });
+      } else if (stats.available <= threshold) {
+        stockAlerts.push({
+          id: `low_${p._id}`,
+          type: 'LOW_STOCK',
+          severity: 'warning',
+          title: '⚠️ Low Inventory Warning',
+          message: `${p.name} has only ${stats.available} voucher(s) remaining (Threshold: ${threshold}).`,
+          product: { _id: p._id, name: p.name, voucherType: p.voucherType },
+          available: stats.available,
+          timestamp: new Date(),
+        });
+      }
+    }
+
+    const notifications = [
+      ...mismatchLogs.map((log) => ({
+        id: log._id,
+        type: 'MISMATCH_BLOCKED',
+        severity: 'critical',
+        title: '🚨 Voucher Product Mismatch Blocked',
+        message: `Order #${log.details?.orderNo || 'Unknown'}: Expected ${log.details?.expectedVoucherType || 'N/A'}, Received ${log.details?.actualVoucherType || 'N/A'}. Delivery blocked.`,
+        timestamp: log.createdAt,
+        details: log.details,
+      })),
+      ...stockAlerts,
+      ...recentlySold.map((v) => ({
+        id: v._id,
+        type: 'VOUCHER_SOLD',
+        severity: 'success',
+        title: '🔔 Voucher Sold',
+        message: `${v.productId?.name || 'Voucher'} (${v.voucherType || 'EXAM'}) sold for Order #${v.orderId?.orderNo || 'Direct'}`,
+        timestamp: v.soldAt || v.assignedAt || v.updatedAt,
+        data: {
+          codeMasked: `${v.code.slice(0, 4)}-****-${v.code.slice(-4)}`,
+          productName: v.productId?.name,
+          voucherType: v.voucherType,
+          orderNo: v.orderId?.orderNo,
+          customerEmail: v.soldTo || v.userId?.email || 'Customer',
+          soldAt: v.soldAt || v.assignedAt || v.updatedAt,
+          status: v.status,
+        },
+      })),
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json({
+      success: true,
+      data: notifications,
+      counts: {
+        total: notifications.length,
+        critical: notifications.filter((n) => n.severity === 'critical' || n.severity === 'error').length,
+        sales: recentlySold.length,
+        stockAlerts: stockAlerts.length,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -785,13 +987,20 @@ export const addVouchers = async (req, res, next) => {
     if (!productId || !Array.isArray(codes) || codes.length === 0 || !expiryDate) {
       return next(new AppError('productId, codes[], and expiryDate required', 400));
     }
+    const product = await Product.findById(productId).lean();
+    if (!product) {
+      return next(new AppError('Product not found', 404));
+    }
+    const voucherType = normalizeVoucherType(product.voucherType, product);
+
     const docs = codes
       .filter((c) => typeof c === 'string' && c.trim().length > 0)
       .map((c) => ({
         code: c.trim().toUpperCase(),
-        productId,
+        productId: product._id,
+        voucherType,
         status: 'AVAILABLE',
-        expiryDate,
+        expiryDate: new Date(expiryDate),
       }));
 
     const inserted = await VoucherCode.insertMany(docs, { ordered: false }).catch((err) => {
@@ -800,10 +1009,16 @@ export const addVouchers = async (req, res, next) => {
 
     await recordAudit(req, 'VOUCHERS_ADDED', 'VoucherCode', productId, {
       countAdded: inserted.length || 0,
+      voucherType,
+      productName: product.name,
       expiryDate,
     });
 
-    res.status(201).json({ success: true, added: inserted.length || 0 });
+    res.status(201).json({
+      success: true,
+      added: inserted.length || 0,
+      product: { _id: product._id, name: product.name, voucherType },
+    });
   } catch (err) {
     next(err);
   }
@@ -818,6 +1033,7 @@ export const updateVoucher = async (req, res, next) => {
     await recordAudit(req, 'VOUCHER_UPDATED', 'VoucherCode', voucher._id, {
       code: voucher.code,
       status: voucher.status,
+      voucherType: voucher.voucherType,
     });
 
     res.json({ success: true, data: voucher });
@@ -1071,6 +1287,7 @@ export const seedAdmin = async () => {
 
 const formatYoutubeEmbed = (url) => {
   if (!url) return '';
+  if (!url) return '';
   if (url.includes('embed/')) return url;
   const ytReg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
   const match = String(url).match(ytReg);
@@ -1084,17 +1301,27 @@ export const listAdminVideos = async (req, res, next) => {
   try {
     const { search, category, status } = req.query;
     const filter = {};
-    if (status === 'published') filter.published = true;
-    if (status === 'draft') filter.published = false;
-    if (status === 'featured') filter.featured = true;
+    if (status === 'published' || status === 'active') {
+      filter.$or = [{ published: true }, { isActive: true }];
+    } else if (status === 'draft' || status === 'inactive') {
+      filter.$and = [{ published: { $ne: true } }, { isActive: { $ne: true } }];
+    } else if (status === 'featured') {
+      filter.featured = true;
+    }
     if (category) filter.category = category;
 
     if (search) {
       const s = searchRegex(search);
-      filter.$or = [{ title: s }, { description: s }, { category: s }];
+      const searchConditions = [{ title: s }, { description: s }, { category: s }, { cloudinaryPublicId: s }];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchConditions }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchConditions;
+      }
     }
 
-    const videos = await Video.find(filter).sort({ displayOrder: 1, createdAt: -1 }).lean();
+    const videos = await Video.find(filter).sort({ order: 1, displayOrder: 1, createdAt: -1 }).lean();
     const allVideos = await Video.find().lean();
 
     let totalVideos = allVideos.length;
@@ -1104,10 +1331,10 @@ export const listAdminVideos = async (req, res, next) => {
     let totalViews = 0;
 
     for (const v of allVideos) {
-      if (v.published) publishedVideos++;
+      if (v.published || v.isActive) publishedVideos++;
       else draftVideos++;
       if (v.featured) featuredVideos++;
-      totalViews += v.viewsCount || 0;
+      totalViews += v.viewsCount || v.views || 0;
     }
 
     const [sectionSetting, modeSetting] = await Promise.all([
@@ -1115,9 +1342,20 @@ export const listAdminVideos = async (req, res, next) => {
       Setting.findOne({ key: 'movieReelModeEnabled' }).lean(),
     ]);
 
+    const formatted = videos.map((v, index) => ({
+      ...v,
+      order: v.order ?? v.displayOrder ?? index + 1,
+      displayOrder: v.displayOrder ?? v.order ?? index + 1,
+      isActive: v.isActive ?? v.published ?? true,
+      published: v.published ?? v.isActive ?? true,
+      views: v.views ?? v.viewsCount ?? 0,
+      viewsCount: v.viewsCount ?? v.views ?? 0,
+      thumbnailUrl: v.thumbnailUrl || v.thumbnail || '',
+    }));
+
     res.json({
       success: true,
-      count: videos.length,
+      count: formatted.length,
       kpis: {
         totalVideos,
         publishedVideos,
@@ -1129,7 +1367,29 @@ export const listAdminVideos = async (req, res, next) => {
         videoSectionEnabled: sectionSetting?.value !== false,
         movieReelModeEnabled: modeSetting?.value !== false,
       },
-      data: videos,
+      data: formatted,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAdminVideo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const video = await Video.findById(id).lean();
+    if (!video) return next(new AppError('Video/Reel not found', 404));
+
+    res.json({
+      success: true,
+      data: {
+        ...video,
+        order: video.order ?? video.displayOrder ?? 0,
+        displayOrder: video.displayOrder ?? video.order ?? 0,
+        isActive: video.isActive ?? video.published ?? true,
+        published: video.published ?? video.isActive ?? true,
+        thumbnailUrl: video.thumbnailUrl || video.thumbnail || '',
+      },
     });
   } catch (err) {
     next(err);
@@ -1138,29 +1398,85 @@ export const listAdminVideos = async (req, res, next) => {
 
 export const createVideo = async (req, res, next) => {
   try {
-    const { title, videoUrl, youtubeEmbed, featured } = req.body;
-    if (!title || !videoUrl) {
-      return next(new AppError('Video title and videoUrl are required', 400));
+    let {
+      title,
+      description,
+      videoUrl,
+      cloudinaryPublicId,
+      cloudinaryResourceType = 'video',
+      thumbnailUrl,
+      thumbnail,
+      category,
+      duration = '15s',
+      badgeColor,
+      icon,
+      views = 0,
+      viewsCount,
+      order,
+      displayOrder,
+      isActive = true,
+      published,
+      featured = false,
+      youtubeEmbed,
+      instagramUrl,
+    } = req.body;
+
+    if (!title) {
+      return next(new AppError('Reel title is required', 400));
+    }
+
+    // Auto-resolve Cloudinary public ID and delivery URLs
+    if (cloudinaryPublicId) {
+      if (!videoUrl) videoUrl = buildDirectVideoUrl(cloudinaryPublicId);
+      if (!thumbnailUrl && !thumbnail) thumbnailUrl = buildVideoThumbnailUrl(cloudinaryPublicId);
+    } else if (videoUrl && videoUrl.includes('cloudinary.com')) {
+      cloudinaryPublicId = extractPublicId(videoUrl);
+      if (!thumbnailUrl && !thumbnail) thumbnailUrl = buildVideoThumbnailUrl(cloudinaryPublicId);
+    }
+
+    if (!videoUrl && !cloudinaryPublicId) {
+      return next(new AppError('Video URL or Cloudinary Public ID is required', 400));
     }
 
     if (featured) {
       await Video.updateMany({}, { featured: false });
     }
 
+    const resolvedOrder = Number(order ?? displayOrder) || (await Video.countDocuments()) + 1;
+    const resolvedViews = Number(views ?? viewsCount) || 0;
+    const resolvedActive = isActive !== undefined ? !!isActive : published !== undefined ? !!published : true;
+
     const payload = {
-      ...req.body,
-      youtubeEmbed: youtubeEmbed ? formatYoutubeEmbed(youtubeEmbed) : formatYoutubeEmbed(videoUrl),
+      title: title.trim(),
+      description: (description || '').trim(),
+      videoUrl: (videoUrl || '').trim(),
+      cloudinaryPublicId: (cloudinaryPublicId || '').trim(),
+      cloudinaryResourceType,
+      thumbnailUrl: (thumbnailUrl || thumbnail || '').trim(),
+      thumbnail: (thumbnail || thumbnailUrl || '').trim(),
+      category: (category || 'Step-By-Step Guide').trim(),
+      duration: (duration || '15s').trim(),
+      badgeColor: badgeColor || 'bg-amber-400 text-slate-950',
+      icon: icon || '🎬',
+      views: resolvedViews,
+      viewsCount: resolvedViews,
+      order: resolvedOrder,
+      displayOrder: resolvedOrder,
+      isActive: resolvedActive,
+      published: resolvedActive,
       featured: !!featured,
+      youtubeEmbed: youtubeEmbed ? formatYoutubeEmbed(youtubeEmbed) : '',
+      instagramUrl: (instagramUrl || '').trim(),
     };
 
     const video = new Video(payload);
     await video.save();
 
-    await recordAudit(req, 'VIDEO_CREATED', 'Video', video._id, {
+    await recordAudit(req, 'REEL_CREATED', 'Video', video._id, {
       title: video.title,
-      category: video.category,
+      cloudinaryPublicId: video.cloudinaryPublicId,
       featured: video.featured,
-      published: video.published,
+      isActive: video.isActive,
     });
 
     res.status(201).json({ success: true, data: video });
@@ -1173,26 +1489,56 @@ export const updateVideo = async (req, res, next) => {
   try {
     const { id } = req.params;
     const oldVideo = await Video.findById(id).lean();
-    if (!oldVideo) return next(new AppError('Video not found', 404));
+    if (!oldVideo) return next(new AppError('Video/Reel not found', 404));
 
     if (req.body.featured) {
       await Video.updateMany({ _id: { $ne: id } }, { featured: false });
     }
 
     const payload = { ...req.body };
-    if (payload.videoUrl || payload.youtubeEmbed) {
-      payload.youtubeEmbed = formatYoutubeEmbed(payload.youtubeEmbed || payload.videoUrl);
+
+    // Auto-resolve Cloudinary public ID and delivery URLs
+    if (payload.cloudinaryPublicId) {
+      if (!payload.videoUrl || payload.videoUrl.includes('sample/ForBigger')) {
+        payload.videoUrl = buildDirectVideoUrl(payload.cloudinaryPublicId);
+      }
+      if (!payload.thumbnailUrl && !payload.thumbnail) {
+        payload.thumbnailUrl = buildVideoThumbnailUrl(payload.cloudinaryPublicId);
+      }
+    } else if (payload.videoUrl && payload.videoUrl.includes('cloudinary.com')) {
+      payload.cloudinaryPublicId = extractPublicId(payload.videoUrl);
     }
+
+    if (payload.thumbnailUrl) payload.thumbnail = payload.thumbnailUrl;
+    if (payload.thumbnail && !payload.thumbnailUrl) payload.thumbnailUrl = payload.thumbnail;
+    if (payload.order !== undefined) payload.displayOrder = Number(payload.order);
+    if (payload.displayOrder !== undefined && payload.order === undefined) payload.order = Number(payload.displayOrder);
+    if (payload.isActive !== undefined) payload.published = !!payload.isActive;
+    if (payload.published !== undefined && payload.isActive === undefined) payload.isActive = !!payload.published;
+    if (payload.views !== undefined) payload.viewsCount = Number(payload.views);
+    if (payload.viewsCount !== undefined && payload.views === undefined) payload.views = Number(payload.viewsCount);
+    if (payload.youtubeEmbed) payload.youtubeEmbed = formatYoutubeEmbed(payload.youtubeEmbed);
 
     const video = await Video.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
 
-    await recordAudit(req, 'VIDEO_UPDATED', 'Video', video._id, {
+    // Clean up old Cloudinary asset if replaced with a new one
+    if (
+      oldVideo.cloudinaryPublicId &&
+      payload.cloudinaryPublicId &&
+      oldVideo.cloudinaryPublicId !== payload.cloudinaryPublicId &&
+      !['v1', 'v2', 'v3', 'v4', 'v5'].includes(oldVideo.cloudinaryPublicId)
+    ) {
+      deleteCloudinaryAsset(oldVideo.cloudinaryPublicId, 'video').catch(() => {});
+    }
+
+    await recordAudit(req, 'REEL_UPDATED', 'Video', video._id, {
       title: video.title,
+      cloudinaryPublicId: video.cloudinaryPublicId,
       diffs: {
         oldFeatured: oldVideo.featured,
         newFeatured: video.featured,
-        oldPublished: oldVideo.published,
-        newPublished: video.published,
+        oldActive: oldVideo.isActive ?? oldVideo.published,
+        newActive: video.isActive ?? video.published,
       },
     });
 
@@ -1212,9 +1558,9 @@ export const quickToggleFeaturedVideo = async (req, res, next) => {
     }
 
     const video = await Video.findByIdAndUpdate(id, { featured: !!featured }, { new: true });
-    if (!video) return next(new AppError('Video not found', 404));
+    if (!video) return next(new AppError('Video/Reel not found', 404));
 
-    await recordAudit(req, 'VIDEO_FEATURED_CHANGED', 'Video', video._id, {
+    await recordAudit(req, 'REEL_FEATURED_CHANGED', 'Video', video._id, {
       title: video.title,
       featured: video.featured,
     });
@@ -1228,16 +1574,63 @@ export const quickToggleFeaturedVideo = async (req, res, next) => {
 export const quickTogglePublishVideo = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { published } = req.body;
-    const video = await Video.findByIdAndUpdate(id, { published: !!published }, { new: true });
-    if (!video) return next(new AppError('Video not found', 404));
+    const isPub = req.body.published !== undefined ? !!req.body.published : !!req.body.isActive;
+    const video = await Video.findByIdAndUpdate(
+      id,
+      { published: isPub, isActive: isPub },
+      { new: true }
+    );
+    if (!video) return next(new AppError('Video/Reel not found', 404));
 
-    await recordAudit(req, 'VIDEO_PUBLISH_CHANGED', 'Video', video._id, {
+    await recordAudit(req, 'REEL_STATUS_CHANGED', 'Video', video._id, {
       title: video.title,
       published: video.published,
+      isActive: video.isActive,
     });
 
     res.json({ success: true, data: video });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const quickUpdateOrderVideo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const orderNum = Number(req.body.order ?? req.body.displayOrder) || 0;
+    const video = await Video.findByIdAndUpdate(
+      id,
+      { order: orderNum, displayOrder: orderNum },
+      { new: true }
+    );
+    if (!video) return next(new AppError('Video/Reel not found', 404));
+
+    res.json({ success: true, data: video });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const bulkReorderVideos = async (req, res, next) => {
+  try {
+    const { items } = req.body; // Array of { id, order }
+    if (!Array.isArray(items)) {
+      return next(new AppError('Items array is required for bulk reordering', 400));
+    }
+
+    const updates = items.map((item, index) => {
+      const orderNum = Number(item.order) || index + 1;
+      return Video.findByIdAndUpdate(item.id || item._id, {
+        order: orderNum,
+        displayOrder: orderNum,
+      });
+    });
+
+    await Promise.all(updates);
+
+    await recordAudit(req, 'REELS_BULK_REORDERED', 'Video', null, { count: items.length });
+
+    res.json({ success: true, message: 'Reels order updated successfully.' });
   } catch (err) {
     next(err);
   }
@@ -1247,11 +1640,18 @@ export const deleteVideo = async (req, res, next) => {
   try {
     const { id } = req.params;
     const video = await Video.findByIdAndDelete(id);
-    if (!video) return next(new AppError('Video not found', 404));
+    if (!video) return next(new AppError('Video/Reel not found', 404));
 
-    await recordAudit(req, 'VIDEO_DELETED', 'Video', id, { title: video.title });
+    if (
+      video.cloudinaryPublicId &&
+      !['v1', 'v2', 'v3', 'v4', 'v5'].includes(video.cloudinaryPublicId)
+    ) {
+      deleteCloudinaryAsset(video.cloudinaryPublicId, 'video').catch(() => {});
+    }
 
-    res.json({ success: true, deleted: true, message: 'Video permanently deleted.' });
+    await recordAudit(req, 'REEL_DELETED', 'Video', id, { title: video.title });
+
+    res.json({ success: true, deleted: true, message: 'Reel permanently deleted.' });
   } catch (err) {
     next(err);
   }
@@ -1277,7 +1677,7 @@ export const updateVideoSettings = async (req, res, next) => {
       );
     }
 
-    await recordAudit(req, 'VIDEO_SETTINGS_UPDATED', 'Setting', null, {
+    await recordAudit(req, 'REEL_SETTINGS_UPDATED', 'Setting', null, {
       videoSectionEnabled,
       movieReelModeEnabled,
     });
@@ -1297,7 +1697,8 @@ export const updateVideoSettings = async (req, res, next) => {
 
 /**
  * Handle Media File Upload (Video & Thumbnail)
- * POST /api/admin/videos/upload
+ * Supports direct Cloudinary streaming upload with local fallback
+ * POST /api/admin/videos/upload or POST /api/admin/reels/upload
  */
 export const uploadMedia = async (req, res, next) => {
   try {
@@ -1305,12 +1706,53 @@ export const uploadMedia = async (req, res, next) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     let videoUrl = '';
     let thumbnailUrl = '';
+    let cloudinaryPublicId = '';
+    let resourceType = 'video';
+    let duration = '';
 
+    // Handle Video File Upload
     if (files.video && files.video[0]) {
-      videoUrl = `${baseUrl}/uploads/videos/${files.video[0].filename}`;
+      const videoFile = files.video[0];
+      try {
+        const buffer = fs.readFileSync(videoFile.path);
+        const cloudRes = await uploadBufferToCloudinary(buffer, {
+          resource_type: 'video',
+          folder: 'apex_reels',
+        });
+        if (cloudRes && cloudRes.secure_url) {
+          videoUrl = cloudRes.secure_url;
+          cloudinaryPublicId = cloudRes.public_id;
+          resourceType = cloudRes.resource_type || 'video';
+          thumbnailUrl = buildVideoThumbnailUrl(cloudRes.public_id);
+          if (cloudRes.duration) {
+            duration = `${Math.round(cloudRes.duration)}s`;
+          }
+          // Clean up local disk file after upload to Cloudinary
+          try { fs.unlinkSync(videoFile.path); } catch {}
+        }
+      } catch (cloudErr) {
+        console.warn('[Upload] Cloudinary upload fallback to local storage:', cloudErr.message);
+        videoUrl = `${baseUrl}/uploads/videos/${videoFile.filename}`;
+      }
     }
+
+    // Handle Thumbnail Image Upload
     if (files.thumbnail && files.thumbnail[0]) {
-      thumbnailUrl = `${baseUrl}/uploads/thumbnails/${files.thumbnail[0].filename}`;
+      const thumbFile = files.thumbnail[0];
+      try {
+        const buffer = fs.readFileSync(thumbFile.path);
+        const cloudRes = await uploadBufferToCloudinary(buffer, {
+          resource_type: 'image',
+          folder: 'apex_reels/thumbnails',
+        });
+        if (cloudRes && cloudRes.secure_url) {
+          thumbnailUrl = cloudRes.secure_url;
+          try { fs.unlinkSync(thumbFile.path); } catch {}
+        }
+      } catch (cloudErr) {
+        console.warn('[Upload] Thumbnail Cloudinary fallback to local storage:', cloudErr.message);
+        thumbnailUrl = `${baseUrl}/uploads/thumbnails/${thumbFile.filename}`;
+      }
     }
 
     if (!videoUrl && !thumbnailUrl) {
@@ -1322,6 +1764,9 @@ export const uploadMedia = async (req, res, next) => {
       message: 'Media uploaded successfully',
       videoUrl,
       thumbnailUrl,
+      cloudinaryPublicId,
+      resourceType,
+      duration,
       fileInfo: {
         video: files.video ? files.video[0] : null,
         thumbnail: files.thumbnail ? files.thumbnail[0] : null,
@@ -1331,6 +1776,19 @@ export const uploadMedia = async (req, res, next) => {
     next(err);
   }
 };
+
+// Aliases for Reels endpoints
+export const listAdminReels = listAdminVideos;
+export const getAdminReel = getAdminVideo;
+export const createReel = createVideo;
+export const updateReel = updateVideo;
+export const deleteReel = deleteVideo;
+export const quickToggleFeaturedReel = quickToggleFeaturedVideo;
+export const quickTogglePublishReel = quickTogglePublishVideo;
+export const quickUpdateOrderReel = quickUpdateOrderVideo;
+export const bulkReorderReels = bulkReorderVideos;
+export const updateReelSettings = updateVideoSettings;
+
 
 export const resendOrderEmail = async (req, res, next) => {
   try {

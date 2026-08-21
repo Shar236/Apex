@@ -6,7 +6,8 @@ import { AuditLog } from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateOrderNo } from '../utils/index.js';
 import { applyPromotion } from '../services/promotions.js';
-import { sendOrderConfirmation } from '../services/email.js';
+import { sendOrderConfirmation, sendAdminVoucherAssignmentFailureAlert } from '../services/email.js';
+import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { isValidObjectId } from '../config/db.js';
 
 const MAX_LINE_ITEMS = 20;
@@ -27,49 +28,18 @@ const getProductsWithPrices = async (lineItems) => {
     if (qty > MAX_LINE_ITEM_QUANTITY) {
       throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
     }
+    const voucherType = normalizeVoucherType(product.voucherType, product);
     items.push({
       productId: product._id,
       productName: product.name,
+      voucherType,
+      brand: product.brand || '',
       unitPrice: product.sellingPrice,
       originalPrice: product.originalPrice,
       quantity: qty,
     });
   }
   return items;
-};
-
-const assignVouchers = async (userId, orderId, items, session) => {
-  const assigned = [];
-  for (const it of items) {
-    const qty = it.quantity;
-    for (let i = 0; i < qty; i++) {
-      const available = await VoucherCode.findOneAndUpdate(
-        {
-          productId: it.productId,
-          status: 'AVAILABLE',
-          expiryDate: { $gt: new Date() },
-        },
-        {
-          $set: {
-            status: 'ASSIGNED',
-            userId,
-            orderId,
-            assignedAt: new Date(),
-          },
-        },
-        { new: true, session }
-      );
-      if (!available) {
-        throw new AppError(
-          `Insufficient voucher inventory for ${it.productName}.`,
-          400,
-          'OUT_OF_STOCK'
-        );
-      }
-      assigned.push(available);
-    }
-  }
-  return assigned;
 };
 
 export const createOrder = async (req, res, next) => {
@@ -85,7 +55,7 @@ export const createOrder = async (req, res, next) => {
         throw new AppError(`Maximum ${MAX_LINE_ITEMS} line items per order`, 400, 'TOO_MANY_ITEMS');
       }
 
-      // Server-side price calculation
+      // Server-side price calculation & exact product voucher type resolution
       const lineItems = await getProductsWithPrices(items);
       const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
       const productIds = lineItems.map((it) => it.productId);
@@ -107,6 +77,7 @@ export const createOrder = async (req, res, next) => {
         promoCode: promoResult.promotion?.code || null,
         paymentStatus: 'PENDING',
         orderStatus: 'PAYMENT_PENDING',
+        fulfillmentStatus: 'PENDING',
         billingDetails: billing || {},
         customerSnapshot: {
           email: req.user.email,
@@ -144,7 +115,7 @@ export const getOrder = async (req, res, next) => {
     const order = await Order.findOne({ ...q, userId: req.user.id }).lean();
     if (!order) return next(new AppError('Order not found', 404));
     const vouchers = await VoucherCode.find({ orderId: order._id, userId: req.user.id })
-      .populate('productId', 'name brand')
+      .populate('productId', 'name brand provider')
       .lean();
     res.json({ success: true, data: order, vouchers });
   } catch (err) {
@@ -162,9 +133,11 @@ export const simulatePaymentSuccess = async (req, res, next) => {
     if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
       return next(new AppError('Not allowed', 403));
     }
+
+    // Idempotency check: if order is already paid & fulfilled, return existing vouchers
     if (order.paymentStatus === 'PAID' && order.orderStatus === 'FULFILLED') {
       const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-        .populate('productId', 'name brand')
+        .populate('productId', 'name brand provider')
         .lean();
       return res.json({ success: true, data: order.toObject(), vouchers });
     }
@@ -173,50 +146,61 @@ export const simulatePaymentSuccess = async (req, res, next) => {
     order.orderStatus = 'PROCESSING';
     order.paymentReference = paymentReference || order.paymentReference || `SIM-${Date.now()}`;
     order.paymentProvider = provider || 'simulated';
+    order.paidAt = new Date();
     await order.save();
 
     let vouchers = [];
     let allocationFailed = false;
+    let allocationError = null;
+
     try {
       const session = await Order.startSession();
       try {
         await session.withTransaction(async () => {
-          vouchers = await assignVouchers(order.userId, order._id, order.items, session);
+          const allocRes = await allocateVouchersForOrder({
+            order,
+            user: req.user,
+            session,
+          });
+          vouchers = allocRes.vouchers;
         });
       } finally {
         await session.endSession();
       }
     } catch (allocErr) {
       allocationFailed = true;
+      allocationError = allocErr.message;
       order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
+      order.fulfillmentStatus = allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
+      order.fulfillmentError = allocErr.message;
       await order.save();
 
       // Log audit entry for allocation failure
-      if (req.user?.role === 'admin' || req.user) {
-        await AuditLog.create({
-          adminId: req.user._id,
-          adminEmail: req.user.email,
-          action: 'ORDER_ALLOCATION_FAILED',
-          resourceType: 'Order',
-          resourceId: order._id.toString(),
-          details: {
-            orderNo: order.orderNo,
-            error: allocErr.message,
-          },
-        }).catch(() => {});
-      }
+      await AuditLog.create({
+        adminEmail: req.user.email || 'system@apexvouchers.in',
+        action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
+        resourceType: 'Order',
+        resourceId: order._id.toString(),
+        details: {
+          orderNo: order.orderNo,
+          error: allocErr.message,
+          code: allocErr.code,
+        },
+      }).catch(() => {});
+
+      try {
+        await sendAdminVoucherAssignmentFailureAlert(order, allocErr.message);
+      } catch {}
     }
 
     if (!allocationFailed) {
-      order.orderStatus = 'FULFILLED';
-      await order.save();
-
       const enriched = vouchers.map((v) => {
-        const match = order.items.find((it) => it.productId.toString() === v.productId.toString());
+        const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
         return {
           code: v.code,
           expiryDate: v.expiryDate,
-          productName: match?.productName || '',
+          productName: match?.productName || v.productId?.name || '',
+          voucherType: v.voucherType || match?.voucherType || '',
         };
       });
 
@@ -248,7 +232,9 @@ export const simulatePaymentSuccess = async (req, res, next) => {
       success: true,
       data: order.toObject(),
       needsAllocation: true,
-      message: 'Payment received successfully. Voucher allocation is pending manual restock.',
+      fulfillmentStatus: order.fulfillmentStatus,
+      message: 'Payment received successfully. Voucher allocation is pending manual restock or verification.',
+      error: allocationError,
       vouchers: [],
     });
   } catch (err) {
@@ -263,7 +249,7 @@ export const getOrderByIdAdmin = async (req, res, next) => {
     const order = await Order.findOne(q).populate('userId', 'name email phone').lean();
     if (!order) return next(new AppError('Order not found', 404));
     const vouchers = await VoucherCode.find({ orderId: order._id })
-      .populate('productId', 'name brand')
+      .populate('productId', 'name brand provider')
       .lean();
     res.json({ success: true, data: order, vouchers });
   } catch (err) {

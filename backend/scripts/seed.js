@@ -163,69 +163,109 @@ export default async function seed() {
 
   const SAMPLE_VIDEOS = [
     {
-      title: "How to Buy an Exam Voucher",
-      category: "Step-By-Step Guide",
-      duration: "15s",
-      description: "Watch how to select your exam, apply discount promo codes, and receive your voucher code in 10 seconds.",
-      thumbnail: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      title: 'How to Buy an Exam Voucher',
+      category: 'Step-By-Step Guide',
+      duration: '15s',
+      description: 'Watch how to select your exam, apply discount promo codes, and receive your voucher code in 10 seconds.',
+      thumbnail: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v1.jpg',
+      thumbnailUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v1.jpg',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v1.mp4',
+      cloudinaryPublicId: 'v1',
+      cloudinaryResourceType: 'video',
+      youtubeEmbed: '',
+      views: 14200,
       viewsCount: 14200,
       featured: true,
       published: true,
+      isActive: true,
+      order: 1,
       displayOrder: 1,
+      badgeColor: 'bg-amber-400 text-slate-950',
+      icon: '🛒',
     },
     {
-      title: "How Does a PTE Voucher Work?",
-      category: "PTE Voucher",
-      duration: "18s",
-      description: "Official Pearson PTE Academic & Core vouchers waive off registration fees instantly at checkout.",
-      thumbnail: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&auto=format&fit=crop&q=80",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      title: 'How Does a PTE Voucher Work?',
+      category: 'PTE Voucher',
+      duration: '18s',
+      description: 'Official Pearson PTE Academic & Core vouchers waive off registration fees instantly at checkout.',
+      thumbnail: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v2.jpg',
+      thumbnailUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v2.jpg',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v2.mp4',
+      cloudinaryPublicId: 'v2',
+      cloudinaryResourceType: 'video',
+      youtubeEmbed: '',
+      views: 22800,
       viewsCount: 22800,
       featured: false,
       published: true,
+      isActive: true,
+      order: 2,
       displayOrder: 2,
+      badgeColor: 'bg-amber-400 text-slate-950',
+      icon: '🎓',
     },
     {
-      title: "How to Redeem Your Voucher",
-      category: "Redemption Guide",
-      duration: "14s",
-      description: "Paste your unique voucher code in the Promo Code field on Pearson, ETS, or Duolingo portals.",
-      thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-      youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      title: 'How to Redeem Your Voucher',
+      category: 'Redemption Guide',
+      duration: '14s',
+      description: 'Paste your unique voucher code in the Promo Code field on Pearson, ETS, or Duolingo portals.',
+      thumbnail: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v3.jpg',
+      thumbnailUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v3.jpg',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v3.mp4',
+      cloudinaryPublicId: 'v3',
+      cloudinaryResourceType: 'video',
+      youtubeEmbed: '',
+      views: 18500,
       viewsCount: 18500,
       featured: false,
       published: true,
+      isActive: true,
+      order: 3,
       displayOrder: 3,
+      badgeColor: 'bg-amber-400 text-slate-950',
+      icon: '🔑',
     },
     {
-      title: "How Much Can You Save?",
-      category: "Offers",
-      duration: "16s",
-      description: "Compare regular official exam prices vs Apex bulk discounted prices for PTE, GRE, TOEFL, and Duolingo.",
-      thumbnail: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoypasses.mp4",
-      youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      title: 'How Much Can You Save?',
+      category: 'Save Money',
+      duration: '16s',
+      description: 'Compare regular official exam prices vs Apex bulk discounted prices for PTE, GRE, TOEFL, and Duolingo.',
+      thumbnail: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v4.jpg',
+      thumbnailUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v4.jpg',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v4.mp4',
+      cloudinaryPublicId: 'v4',
+      cloudinaryResourceType: 'video',
+      youtubeEmbed: '',
+      views: 31900,
       viewsCount: 31900,
       featured: false,
       published: true,
+      isActive: true,
+      order: 4,
       displayOrder: 4,
+      badgeColor: 'bg-amber-400 text-slate-950',
+      icon: '💰',
     },
     {
-      title: "IELTS Voucher Explained",
-      category: "IELTS",
-      duration: "20s",
-      description: "Everything about IELTS Academic & General discount codes for IDP registration across India.",
-      thumbnail: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-      youtubeEmbed: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      title: 'IELTS Voucher Explained',
+      category: 'IELTS',
+      duration: '20s',
+      description: 'Everything about IELTS Academic & General discount codes for IDP registration across India.',
+      thumbnail: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v5.jpg',
+      thumbnailUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/so_0/v5.jpg',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v5.mp4',
+      cloudinaryPublicId: 'v5',
+      cloudinaryResourceType: 'video',
+      youtubeEmbed: '',
+      views: 11700,
       viewsCount: 11700,
       featured: false,
       published: true,
+      isActive: true,
+      order: 5,
       displayOrder: 5,
+      badgeColor: 'bg-amber-400 text-slate-950',
+      icon: '🇬🇧',
     },
   ];
 
@@ -233,12 +273,48 @@ export default async function seed() {
   const videoCount = await Video.countDocuments();
   if (videoCount === 0) {
     await Video.insertMany(SAMPLE_VIDEOS);
-    console.log('[seed] sample videos initialized');
+    console.log('[seed] sample Cloudinary reels initialized (v1-v5)');
+  } else {
+    // Upgrade existing seed videos to use real Cloudinary video URLs and keyframe snapshots
+    for (const sample of SAMPLE_VIDEOS) {
+      const match = await Video.findOne({
+        $or: [
+          { cloudinaryPublicId: sample.cloudinaryPublicId },
+          { title: sample.title },
+        ],
+      });
+      if (match) {
+        let changed = false;
+        if (!match.cloudinaryPublicId || match.videoUrl.includes('sample/ForBigger')) {
+          match.cloudinaryPublicId = sample.cloudinaryPublicId;
+          match.videoUrl = sample.videoUrl;
+          changed = true;
+        }
+        if (!match.thumbnailUrl || match.thumbnailUrl.includes('unsplash') || !match.thumbnail || match.thumbnail.includes('unsplash')) {
+          match.thumbnailUrl = sample.thumbnailUrl;
+          match.thumbnail = sample.thumbnail;
+          changed = true;
+        }
+        if (match.order == null) {
+          match.order = sample.order;
+          match.displayOrder = sample.displayOrder;
+          changed = true;
+        }
+        if (changed) {
+          await match.save();
+          console.log(`[seed] updated reel thumbnail and public ID: ${match.title} -> ${sample.thumbnailUrl}`);
+        }
+      } else {
+        await new Video(sample).save();
+        console.log(`[seed] inserted missing Cloudinary reel: ${sample.title}`);
+      }
+    }
   }
 
   console.log('[seed] done');
   process.exit(0);
 }
+
 
 if (process.argv[1]?.endsWith('seed.js')) {
   seed().catch((e) => {

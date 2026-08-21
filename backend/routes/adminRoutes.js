@@ -14,8 +14,11 @@ import {
   deleteProduct,
   getProductInventory,
   listVouchers,
+  getVoucherInventoryByProduct,
+  getVoucherCodeUnmasked,
   addVouchers,
   updateVoucher,
+  getAdminNotifications,
   listOrdersAdmin,
   updateOrderStatus,
   resendOrderEmail,
@@ -33,10 +36,13 @@ import {
   listAuditLogs,
   exportCSV,
   listAdminVideos,
+  getAdminVideo,
   createVideo,
   updateVideo,
   quickToggleFeaturedVideo,
   quickTogglePublishVideo,
+  quickUpdateOrderVideo,
+  bulkReorderVideos,
   deleteVideo,
   updateVideoSettings,
   uploadMedia,
@@ -66,9 +72,13 @@ r.delete('/products/:id', deleteProduct);
 r.get('/products/:id/inventory', getProductInventory);
 
 r.get('/vouchers', listVouchers);
+r.get('/vouchers/summary-by-product', getVoucherInventoryByProduct);
+r.get('/vouchers/:id/reveal', getVoucherCodeUnmasked);
 r.post('/vouchers', addVouchers);
 r.post('/vouchers/bulk', addVouchers);
 r.patch('/vouchers/:id', updateVoucher);
+
+r.get('/notifications', getAdminNotifications);
 
 r.get('/orders', listOrdersAdmin);
 r.get('/orders/:id', getOrderByIdAdmin);
@@ -89,14 +99,41 @@ r.post('/campaigns/:id/toggle', toggleCampaignStatus);
 r.get('/website-settings', getWebsiteSettings);
 r.patch('/website-settings', updateWebsiteSettings);
 
+// ── Videos & Reels Management Endpoints ──────────────────────────────────────────
+const uploadHandler = mediaUpload.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 },
+]);
+
+// /api/admin/videos
 r.get('/videos', listAdminVideos);
+r.get('/videos/:id', getAdminVideo);
 r.post('/videos', createVideo);
-r.post('/videos/upload', mediaUpload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), uploadMedia);
+r.post('/videos/upload', uploadHandler, uploadMedia);
 r.patch('/videos/settings', updateVideoSettings);
+r.patch('/videos/reorder', bulkReorderVideos);
 r.patch('/videos/:id', updateVideo);
+r.put('/videos/:id', updateVideo);
 r.patch('/videos/:id/featured', quickToggleFeaturedVideo);
 r.patch('/videos/:id/publish', quickTogglePublishVideo);
+r.patch('/videos/:id/status', quickTogglePublishVideo);
+r.patch('/videos/:id/order', quickUpdateOrderVideo);
 r.delete('/videos/:id', deleteVideo);
+
+// /api/admin/reels (aliases matching requirements)
+r.get('/reels', listAdminVideos);
+r.get('/reels/:id', getAdminVideo);
+r.post('/reels', createVideo);
+r.post('/reels/upload', uploadHandler, uploadMedia);
+r.patch('/reels/settings', updateVideoSettings);
+r.patch('/reels/reorder', bulkReorderVideos);
+r.patch('/reels/:id', updateVideo);
+r.put('/reels/:id', updateVideo);
+r.patch('/reels/:id/featured', quickToggleFeaturedVideo);
+r.patch('/reels/:id/publish', quickTogglePublishVideo);
+r.patch('/reels/:id/status', quickTogglePublishVideo);
+r.patch('/reels/:id/order', quickUpdateOrderVideo);
+r.delete('/reels/:id', deleteVideo);
 
 r.get('/audit-logs', listAuditLogs);
 r.get('/export/:resource', exportCSV);

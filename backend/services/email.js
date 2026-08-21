@@ -3,10 +3,17 @@ import { config } from '../config/index.js';
 
 let transporter = null;
 
+const maskEmail = (email) => {
+  const value = String(email || '');
+  const at = value.indexOf('@');
+  if (at <= 1) return value ? '[redacted]' : '[missing]';
+  return `${value[0]}***${value.slice(at - 1)}`;
+};
+
 const getTransport = () => {
   if (transporter) return transporter;
-  if (!config.smtp.host || !config.smtp.user) {
-    console.warn('[email] SMTP host/user not configured. Email will be stubbed to log.');
+  if (!config.smtp.host || !config.smtp.user || !config.smtp.password || !config.smtp.from) {
+    console.error('[email:config] SMTP_HOST, SMTP_USER, SMTP_PASSWORD, and SMTP_FROM are required');
     return null;
   }
   transporter = nodemailer.createTransport({
@@ -21,6 +28,10 @@ const getTransport = () => {
 };
 
 export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from }) => {
+  if (!to) {
+    return { sent: false, error: 'Email recipient is missing' };
+  }
+
   const transport = getTransport();
   const mail = {
     from: from || `"${config.business.name}" <${config.business.email}>`,
@@ -30,14 +41,18 @@ export const sendEmail = async ({ to, subject, html, text = '', from = config.sm
     text,
   };
   if (!transport) {
-    console.log(`[email:stub] Dispatching email to: ${to} | Subject: "${subject}"`);
-    return { sent: false, stub: true, mail };
+    const error = 'SMTP configuration is incomplete';
+    console.error(`[email:failed] provider=smtp recipient=${maskEmail(to)} reason=${error}`);
+    return { sent: false, error };
   }
   try {
     const info = await transport.sendMail(mail);
+    console.log(
+      `[email:sent] provider=smtp recipient=${maskEmail(to)} messageId=${info.messageId || 'unknown'} response=${info.response || 'accepted'}`
+    );
     return { sent: true, info };
   } catch (err) {
-    console.error('[email] Delivery failed:', err.message);
+    console.error(`[email:failed] provider=smtp recipient=${maskEmail(to)} reason=${err.message}`);
     return { sent: false, error: err.message };
   }
 };
@@ -424,6 +439,61 @@ export const sendAdminEmailDeliveryFailureAlert = (order, errorMsg) => {
   });
 };
 
+/**
+ * Internal Admin Security Alert: Voucher Product Mismatch Blocked
+ */
+export const sendAdminVoucherMismatchAlert = (order, expectedItem, attemptedVoucher) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerEmail = order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
+  const expectedType = expectedItem?.voucherType || 'Unknown';
+  const attemptedType = attemptedVoucher?.voucherType || 'Unknown';
+
+  const subject = `🚨 CRITICAL ALERT: Voucher Product Mismatch Blocked — Order #${order.orderNo}`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 12px 0; color: #ef4444;">🚨 CRITICAL SECURITY: VOUCHER MISMATCH BLOCKED</h2>
+    <p style="font-size: 14px; color: #fca5a5; margin-bottom: 20px; line-height: 1.6;">
+      An attempted voucher delivery was <strong>AUTOMATICALLY BLOCKED</strong> because the voucher type did not match the purchased product. The wrong voucher was NOT delivered to the customer.
+    </p>
+    <div style="background-color: #1a1a1a; border: 2px solid #ef4444; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #FF005C; padding-bottom: 6px;">${customerEmail}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Expected Product:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #34d399; padding-bottom: 6px;">${expectedItem?.productName || ''} (${expectedType})</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Attempted Voucher Type:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #ef4444; padding-bottom: 6px;">${attemptedType} (${attemptedVoucher?.code || '—'})</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Action Taken:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #fbbf24; padding-bottom: 6px;">DELIVERY CANCELLED & BLOCKED</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #dc2626; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Review Voucher Inventory in Admin →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
 export const sendPasswordReset = (user, token) => {
   const clientUrl = config.clientUrl || 'http://localhost:5173';
   const url = `${clientUrl}/reset-password?token=${token}`;
@@ -447,3 +517,31 @@ export const sendPasswordReset = (user, token) => {
     ),
   });
 };
+
+export const sendEmailChangeVerification = (user, newEmail, token) => {
+  const serverUrl = config.serverUrl || 'http://localhost:5000';
+  const url = `${serverUrl}/api/account/verify-email-change?token=${token}`;
+  return sendEmail({
+    to: newEmail,
+    subject: `Verify your new email address — ${config.business.name}`,
+    html: htmlWrap(
+      'Verify your email',
+      `
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Verify your new email</h2>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
+        Hi ${user.name || 'there'},
+      </p>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 24px 0;">
+        You requested to change your ${config.business.name} account email to <strong style="color: #ffffff;">${newEmail}</strong>. Click the button below to confirm this change. This link is valid for 60 minutes.
+      </p>
+      <div style="text-align: center;">
+        <a href="${url}" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+          Verify Email Address
+        </a>
+      </div>
+      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't request this change, please ignore this email. Your current email will remain unchanged.</p>
+      `
+    ),
+  });
+};
+

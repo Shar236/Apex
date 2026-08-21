@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Film, Play, Video as VideoIcon,
-  LogOut, Search, Plus, Edit2, Trash2, Upload, Save, RefreshCw, CheckCircle2, AlertTriangle, X, ArrowRight, Crown, Sparkles, Clock, ShieldCheck, Eye, Copy, Download, TrendingUp, TrendingDown, FileSpreadsheet, ShieldAlert, Megaphone, Globe, Calendar, DollarSign, Sliders, Type,
-  Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks
+  LogOut, Search, Plus, Edit2, Trash2, Upload, Save, RefreshCw, CheckCircle2, AlertTriangle, X, ArrowRight, Crown, Sparkles, Clock, ShieldCheck, Eye, EyeOff, Copy, Download, TrendingUp, TrendingDown, FileSpreadsheet, ShieldAlert, Megaphone, Globe, Calendar, DollarSign, Sliders, Type,
+  Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks, Bell, Layers, Check as CheckIcon, ArrowUp, ArrowDown, ChevronUp, ChevronDown
 } from 'lucide-react';
+
 import { adminApi, formatPrice } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useVoucher } from '../context/VoucherContext';
@@ -25,37 +26,80 @@ const TABS = [
 
 export default function AdminConsole({ initial = 'dashboard' }) {
   const [tab, setTab] = useState(initial);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsData, setNotificationsData] = useState({ data: [], counts: {} });
+  const [notifLoading, setNotifLoading] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const loadNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const res = await adminApi.notifications();
+      if (res?.success) {
+        setNotificationsData(res);
+      }
+    } catch {} finally {
+      setNotifLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const timer = setInterval(loadNotifications, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const criticalCount = notificationsData?.counts?.critical || 0;
+  const salesCount = notificationsData?.counts?.sales || 0;
+
   return (
     <div className="min-h-screen bg-[#F3EEFF]/30 dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col lg:flex-row transition-colors duration-300">
-      <aside className="lg:w-72 lg:min-h-screen bg-white dark:bg-[#101010] border-r border-[#EAEAEA] dark:border-[#222] p-5 lg:sticky lg:top-0 flex-shrink-0">
-        <div className="flex items-center justify-between mb-6 lg:mb-8">
-          <ApexLogo className="h-7" />
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FF005C]/10 text-[#FF005C] border border-[#FF005C]/20 text-[10px] font-black">
-            <Crown className="w-3 h-3" /> ADMIN
-          </span>
+      <aside className="lg:w-72 lg:min-h-screen bg-white dark:bg-[#101010] border-r border-[#EAEAEA] dark:border-[#222] p-5 lg:sticky lg:top-0 flex-shrink-0 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-6 lg:mb-8">
+            <ApexLogo className="h-7" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setNotificationsOpen(!notificationsOpen); loadNotifications(); }}
+                className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#202020] text-neutral-700 dark:text-neutral-200 hover:text-[#FF005C] transition"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {(criticalCount > 0 || salesCount > 0) && (
+                  <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center animate-pulse ${criticalCount > 0 ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+                    {criticalCount > 0 ? '!' : salesCount}
+                  </span>
+                )}
+              </button>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FF005C]/10 text-[#FF005C] border border-[#FF005C]/20 text-[10px] font-black">
+                <Crown className="w-3 h-3" /> ADMIN
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#F3EEFF] dark:bg-[#1e1638] border border-[#6C3CE0]/20 mb-6">
+            <p className="text-xs font-black text-[#6C3CE0] mb-1">Signed in as</p>
+            <p className="font-black truncate">{user?.name}</p>
+            <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] truncate">{user?.email}</p>
+          </div>
+
+          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl font-black text-xs whitespace-nowrap transition flex-shrink-0 ${
+                  tab === t.id ? 'bg-[#FF005C] text-white shadow-lg' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1e1e1e]'
+                }`}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="p-4 rounded-2xl bg-[#F3EEFF] dark:bg-[#1e1638] border border-[#6C3CE0]/20 mb-6">
-          <p className="text-xs font-black text-[#6C3CE0] mb-1">Signed in as</p>
-          <p className="font-black truncate">{user?.name}</p>
-          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] truncate">{user?.email}</p>
-        </div>
-        <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl font-black text-xs whitespace-nowrap transition flex-shrink-0 ${
-                tab === t.id ? 'bg-[#FF005C] text-white shadow-lg' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1e1e1e]'
-              }`}
-            >
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
-        </nav>
+
         <div className="mt-6 pt-5 border-t border-[#EAEAEA] dark:border-[#292929]">
           <button
             onClick={() => { logout(); navigate('/'); }}
@@ -66,7 +110,94 @@ export default function AdminConsole({ initial = 'dashboard' }) {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-[1400px] mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-[1400px] mx-auto w-full relative">
+        {/* Real-time Notifications Drawer */}
+        {notificationsOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
+            <div className="bg-white dark:bg-[#141414] w-full max-w-md h-full shadow-2xl border-l border-neutral-200 dark:border-[#262626] flex flex-col animate-in slide-in-from-right duration-200">
+              <div className="p-5 border-b border-neutral-200 dark:border-[#262626] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#FF005C]/10 text-[#FF005C] flex items-center justify-center font-black">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base">Admin Notifications</h3>
+                    <p className="text-[11px] font-bold text-neutral-500">Live sold vouchers, low inventory, and security alerts</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={loadNotifications} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-[#222]">
+                    <RefreshCw className={`w-4 h-4 ${notifLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button onClick={() => setNotificationsOpen(false)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-[#222]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {notificationsData?.data?.length === 0 ? (
+                  <div className="text-center py-16">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-50" />
+                    <div className="font-black text-sm text-neutral-600 dark:text-neutral-400">All systems normal</div>
+                    <div className="text-xs text-neutral-400 font-semibold">No recent alerts or pending mismatch events</div>
+                  </div>
+                ) : (
+                  notificationsData?.data?.map((n, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        n.severity === 'critical' || n.type === 'MISMATCH_BLOCKED'
+                          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60'
+                          : n.type === 'OUT_OF_STOCK'
+                          ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40'
+                          : n.type === 'LOW_STOCK'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40'
+                          : 'bg-emerald-50/60 dark:bg-[#161f1a] border-emerald-200 dark:border-emerald-900/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <span className="font-black text-xs flex items-center gap-1.5">
+                          {n.title}
+                        </span>
+                        <span className="text-[10px] font-mono text-neutral-400">
+                          {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold leading-relaxed text-neutral-800 dark:text-neutral-200 mb-2">
+                        {n.message}
+                      </p>
+
+                      {n.data && (
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-[#0E0E0E]/80 border border-neutral-200/50 dark:border-[#222] font-mono text-[10px] space-y-1">
+                          {n.data.codeMasked && (
+                            <div className="flex justify-between">
+                              <span className="text-neutral-400">Voucher Code:</span>
+                              <span className="font-black text-[#FF005C]">{n.data.codeMasked}</span>
+                            </div>
+                          )}
+                          {n.data.voucherType && (
+                            <div className="flex justify-between">
+                              <span className="text-neutral-400">Voucher Type:</span>
+                              <span className="font-black text-[#6C3CE0]">{n.data.voucherType}</span>
+                            </div>
+                          )}
+                          {n.data.customerEmail && (
+                            <div className="flex justify-between">
+                              <span className="text-neutral-400">Customer:</span>
+                              <span className="truncate max-w-[180px] font-bold text-neutral-700 dark:text-neutral-300">{n.data.customerEmail}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === 'dashboard' && <AdminOverview />}
         {tab === 'cms' && <WebsiteCMSAdmin />}
         {tab === 'products' && <ProductsAdmin />}
@@ -897,30 +1028,91 @@ function ProductsAdmin() {
 
 function VouchersAdmin() {
   const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [productId, setProductId] = useState('');
+  const [search, setSearch] = useState('');
   const [products, setProducts] = useState([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulk, setBulk] = useState({ productId: '', codes: '', expiryDate: '' });
+  const [revealedCodes, setRevealedCodes] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+  const [revealingId, setRevealingId] = useState(null);
 
   const refresh = async () => {
     setLoading(true);
     const params = {};
     if (status) params.status = status;
     if (productId) params.productId = productId;
-    const [vRes, pRes] = await Promise.all([adminApi.vouchers(params), adminApi.products()]);
-    setRows(vRes.data || []);
-    setProducts(pRes.data || []);
-    setLoading(false);
+    if (search) params.search = search;
+
+    try {
+      const [vRes, pRes, sRes] = await Promise.all([
+        adminApi.vouchers(params),
+        adminApi.products(),
+        adminApi.voucherSummaryByProduct(),
+      ]);
+      setRows(vRes?.data || []);
+      setProducts(pRes?.data || []);
+      setSummary(sRes?.data || []);
+    } catch (err) {
+      console.error('Failed to load vouchers:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { refresh(); }, [status, productId]);
+  useEffect(() => {
+    refresh();
+  }, [status, productId]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    refresh();
+  };
+
+  const handleReveal = async (voucherId) => {
+    if (revealedCodes[voucherId]) {
+      // Toggle off
+      setRevealedCodes((prev) => {
+        const next = { ...prev };
+        delete next[voucherId];
+        return next;
+      });
+      return;
+    }
+
+    setRevealingId(voucherId);
+    try {
+      const res = await adminApi.revealVoucherCode(voucherId);
+      if (res?.success && res.data?.code) {
+        setRevealedCodes((prev) => ({
+          ...prev,
+          [voucherId]: res.data.code,
+        }));
+      } else {
+        alert(res?.message || 'Failed to reveal voucher code');
+      }
+    } catch (err) {
+      alert('Error revealing code: ' + err.message);
+    } finally {
+      setRevealingId(null);
+    }
+  };
+
+  const handleCopy = (id, code) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
+  const selectedProductObj = products.find((p) => p._id === bulk.productId);
 
   const submitBulk = async () => {
-    const codes = bulk.codes.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+    const codes = bulk.codes.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
     if (!bulk.productId || codes.length === 0 || !bulk.expiryDate) {
-      alert('Please choose a product, paste at least one code, and set expiry.');
+      alert('Please choose a product, paste at least one code, and set expiry date.');
       return;
     }
     const res = await adminApi.addVouchersBulk({
@@ -928,97 +1120,369 @@ function VouchersAdmin() {
       codes,
       expiryDate: new Date(bulk.expiryDate),
     });
-    if (res.success) {
+    if (res?.success) {
       setBulkOpen(false);
       setBulk({ productId: '', codes: '', expiryDate: '' });
       refresh();
-    } else alert(res.message || 'Failed to add vouchers');
+    } else {
+      alert(res?.message || 'Failed to add vouchers');
+    }
   };
 
+  const STATUS_FILTERS = [
+    { label: 'All Inventory', value: '' },
+    { label: 'Available', value: 'AVAILABLE', tint: 'emerald' },
+    { label: 'Reserved', value: 'RESERVED', tint: 'amber' },
+    { label: 'Sold', value: 'SOLD', tint: 'purple' },
+    { label: 'Assigned', value: 'ASSIGNED', tint: 'sky' },
+    { label: 'Used', value: 'USED', tint: 'neutral' },
+    { label: 'Expired', value: 'EXPIRED', tint: 'rose' },
+    { label: 'Invalid / Cancelled', value: 'CANCELLED', tint: 'rose' },
+  ];
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Voucher Inventory</h1>
-          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Add codes, filter inventory state machine, and verify assignments.</p>
+          <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Voucher Inventory Management</h1>
+          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
+            Strict product-to-voucher inventory mapping, atomic allocations, and masked code security.
+          </p>
         </div>
-        <button onClick={() => setBulkOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-pink text-white font-black text-xs shadow-lg">
-          <Upload className="w-4 h-4" /> Add Voucher Codes
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refresh}
+            className="p-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C] transition shadow-sm"
+            title="Refresh Inventory"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-pink text-white font-black text-xs shadow-lg"
+          >
+            <Upload className="w-4 h-4" /> Add Voucher Codes
+          </button>
+        </div>
       </div>
 
+      {/* Product-Separated Inventory Summary Cards */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-black text-xs uppercase tracking-wider text-neutral-400">Inventory Breakdown by Product</h3>
+          {productId && (
+            <button
+              onClick={() => setProductId('')}
+              className="text-xs font-black text-[#FF005C] hover:underline"
+            >
+              Clear Product Filter (Show All)
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {summary.map((item) => {
+            const p = item.product;
+            const c = item.counts || {};
+            const isSelected = productId === p._id;
+            return (
+              <div
+                key={p._id}
+                onClick={() => setProductId(isSelected ? '' : p._id)}
+                className={`p-4 rounded-3xl border cursor-pointer transition-all duration-200 shadow-sm ${
+                  isSelected
+                    ? 'bg-[#FFF0F5] dark:bg-[#2A0A17] border-[#FF005C] ring-2 ring-[#FF005C]/20 shadow-md'
+                    : 'bg-white dark:bg-[#161616] border-[#EAEAEA] dark:border-[#292929] hover:border-[#FF005C]/50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-[#6C3CE0]/10 text-[#6C3CE0] dark:text-[#A78BFA] font-mono text-[9px] font-black uppercase mb-1">
+                      {p.voucherType || 'EXAM'}
+                    </span>
+                    <h4 className="font-black text-sm truncate text-neutral-900 dark:text-white" title={p.name}>
+                      {p.name}
+                    </h4>
+                  </div>
+                  {item.isOutOfStock ? (
+                    <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 font-black text-[9px] whitespace-nowrap">
+                      OUT OF STOCK
+                    </span>
+                  ) : item.isLowStock ? (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 font-black text-[9px] whitespace-nowrap">
+                      LOW STOCK
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-black text-[9px] whitespace-nowrap">
+                      IN STOCK
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 mt-2 border-t border-[#EAEAEA] dark:border-[#292929] text-center font-mono">
+                  <div>
+                    <div className="text-[10px] text-neutral-400 font-bold">Avail</div>
+                    <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">{c.available || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-neutral-400 font-bold">Sold</div>
+                    <div className="font-black text-sm text-purple-600 dark:text-purple-400">{(c.sold || 0) + (c.assigned || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-neutral-400 font-bold">Total</div>
+                    <div className="font-black text-sm text-neutral-700 dark:text-neutral-300">{c.total || 0}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Add Voucher Codes Modal */}
       {bulkOpen && (
-        <FormCard title="Add Voucher Codes" onClose={() => setBulkOpen(false)} onSave={submitBulk}>
+        <FormCard title="Add Voucher Codes to Inventory" onClose={() => setBulkOpen(false)} onSave={submitBulk}>
           <div className="space-y-4">
             <div>
-              <Label>Product</Label>
+              <Label>Select Product *</Label>
               <select
                 value={bulk.productId}
                 onChange={(e) => setBulk({ ...bulk, productId: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C]"
               >
-                <option value="">— select —</option>
-                {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                <option value="">— Select Target Product —</option>
+                {products.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name} ({p.voucherType || p.brand})
+                  </option>
+                ))}
               </select>
+              {selectedProductObj && (
+                <div className="mt-2 p-3 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-[#FF005C]">Bound Voucher Type:</span>{' '}
+                    <strong className="font-black">{selectedProductObj.voucherType || selectedProductObj.brand}</strong>
+                  </div>
+                  <span className="text-[10px] font-bold text-neutral-400">
+                    Codes will ONLY be delivered for this exact product
+                  </span>
+                </div>
+              )}
             </div>
-            <Field label="Expiry Date" type="date" value={bulk.expiryDate} onChange={(v) => setBulk({ ...bulk, expiryDate: v })} />
+
+            <Field
+              label="Expiry Date *"
+              type="date"
+              value={bulk.expiryDate}
+              onChange={(v) => setBulk({ ...bulk, expiryDate: v })}
+            />
+
             <div>
-              <Label>Codes (one per line or comma-separated)</Label>
+              <Label>Voucher Codes (one per line or comma-separated) *</Label>
               <textarea
                 value={bulk.codes}
                 onChange={(e) => setBulk({ ...bulk, codes: e.target.value })}
-                rows={8}
-                placeholder={'APX-PTE-1234-ABC\nAPX-PTE-5678-DEF\nAPX-PTE-9012-GHI'}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C] font-mono"
+                rows={7}
+                placeholder={'APX-DUOL-1234-ABC\nAPX-DUOL-5678-DEF\nAPX-DUOL-9012-GHI'}
+                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-[#FF005C] font-mono uppercase"
               />
             </div>
           </div>
         </FormCard>
       )}
 
-      <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] p-4 shadow-sm mb-4 flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-neutral-400" />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
-            <option value="">All statuses</option>
-            {['AVAILABLE','RESERVED','SOLD','ASSIGNED','USED','EXPIRED','CANCELLED'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+      {/* Filter Toolbar & Status Sub-Tabs */}
+      <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] p-4 shadow-sm space-y-4">
+        {/* Status Sub-Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {STATUS_FILTERS.map((sf) => (
+            <button
+              key={sf.value}
+              onClick={() => setStatus(sf.value)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition ${
+                status === sf.value
+                  ? 'bg-[#FF005C] text-white shadow-md'
+                  : 'bg-neutral-100 dark:bg-[#202020] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
+              }`}
+            >
+              {sf.label}
+            </button>
+          ))}
         </div>
-        <select value={productId} onChange={(e) => setProductId(e.target.value)} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
-          <option value="">All products</option>
-          {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-        </select>
+
+        {/* Search & Product Dropdown */}
+        <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by code, customer email, or order #..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-[#FF005C]"
+            />
+          </div>
+
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold"
+          >
+            <option value="">All products</option>
+            {products.map((p) => (
+              <option key={p._id} value={p._id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-black font-black text-xs"
+          >
+            Filter
+          </button>
+        </form>
       </div>
 
+      {/* Vouchers Table */}
       <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-bold">
             <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
               <tr>
-                <Th>Code</Th>
-                <Th>Product</Th>
+                <Th>Voucher Code</Th>
+                <Th>Assigned Product</Th>
+                <Th>Voucher Type</Th>
                 <Th>Status</Th>
-                <Th>Customer</Th>
-                <Th>Order</Th>
-                <Th>Expiry</Th>
+                <Th>Sold / Assigned To</Th>
+                <Th>Order ID</Th>
+                <Th>Expiry Date</Th>
+                <Th>Sale Timestamp</Th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan="6" className="p-4"><div className="h-8 bg-neutral-100 dark:bg-[#292929] rounded animate-pulse" /></td></tr>}
-              {!loading && rows.map(v => (
-                <tr key={v._id} className="border-t border-[#EAEAEA] dark:border-[#292929]">
-                  <Td className="font-mono whitespace-nowrap font-black text-[#6C3CE0]">{v.code}</Td>
-                  <Td>{v.productId?.name || '—'}</Td>
-                  <Td><Pill text={v.status} /></Td>
-                  <Td className="whitespace-nowrap">{v.userId ? `${v.userId.name || ''} ${v.userId.email ? `<${v.userId.email}>` : ''}` : '—'}</Td>
-                  <Td className="whitespace-nowrap">{v.orderId?.orderNo || '—'}</Td>
-                  <Td>{new Date(v.expiryDate).toLocaleDateString()}</Td>
+              {loading && (
+                <tr>
+                  <td colSpan="8" className="p-6">
+                    <div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" />
+                  </td>
                 </tr>
-              ))}
+              )}
+              {!loading &&
+                rows.map((v) => {
+                  const isRevealed = !!revealedCodes[v._id];
+                  const displayCode = isRevealed ? revealedCodes[v._id] : v.codeDisplay || v.code;
+                  const isCopied = copiedId === v._id;
+
+                  return (
+                    <tr
+                      key={v._id}
+                      className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111] transition"
+                    >
+                      {/* Code with Security Mask & Reveal */}
+                      <Td className="whitespace-nowrap font-mono font-black">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`${
+                              isRevealed ? 'text-[#FF005C] bg-[#FFF0F5] dark:bg-[#2A0A17] px-2 py-0.5 rounded-md' : 'text-[#6C3CE0]'
+                            }`}
+                          >
+                            {displayCode}
+                          </span>
+                          <button
+                            onClick={() => handleReveal(v._id)}
+                            disabled={revealingId === v._id}
+                            className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition"
+                            title={isRevealed ? 'Mask Code' : 'Reveal Full Code (Audit Logged)'}
+                          >
+                            {revealingId === v._id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : isRevealed ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleCopy(v._id, isRevealed ? revealedCodes[v._id] : v.code)}
+                            className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-[#FF005C] transition"
+                            title="Copy Code"
+                          >
+                            {isCopied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </Td>
+
+                      {/* Product Name */}
+                      <Td className="font-bold">{v.productId?.name || '—'}</Td>
+
+                      {/* Voucher Type */}
+                      <Td>
+                        <span className="inline-flex px-2 py-0.5 rounded-md bg-[#6C3CE0]/10 text-[#6C3CE0] dark:text-[#A78BFA] font-mono text-[10px] font-black">
+                          {v.voucherType || v.productId?.voucherType || 'EXAM'}
+                        </span>
+                      </Td>
+
+                      {/* Status */}
+                      <Td>
+                        {v.status === 'AVAILABLE' ? (
+                          <Pill text="AVAILABLE" tint="emerald" />
+                        ) : v.status === 'RESERVED' ? (
+                          <Pill text="RESERVED" tint="amber" />
+                        ) : v.status === 'SOLD' ? (
+                          <Pill text="SOLD" tint="purple" />
+                        ) : v.status === 'ASSIGNED' ? (
+                          <Pill text="ASSIGNED" tint="sky" />
+                        ) : v.status === 'USED' ? (
+                          <Pill text="USED" tint="neutral" />
+                        ) : (
+                          <Pill text={v.status} tint="rose" />
+                        )}
+                      </Td>
+
+                      {/* Customer */}
+                      <Td className="whitespace-nowrap">
+                        {v.soldTo ? (
+                          <span className="text-neutral-700 dark:text-neutral-300">{v.soldTo}</span>
+                        ) : v.userId ? (
+                          <span>
+                            {v.userId.name} {v.userId.email && `<${v.userId.email}>`}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-400 italic">—</span>
+                        )}
+                      </Td>
+
+                      {/* Order No */}
+                      <Td className="whitespace-nowrap font-mono text-[11px]">
+                        {v.orderId?.orderNo ? (
+                          <span className="text-[#FF005C]">#{v.orderId.orderNo}</span>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </Td>
+
+                      {/* Expiry */}
+                      <Td className="whitespace-nowrap">{new Date(v.expiryDate).toLocaleDateString()}</Td>
+
+                      {/* Sold At */}
+                      <Td className="whitespace-nowrap text-neutral-400">
+                        {v.soldAt
+                          ? new Date(v.soldAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                          : v.assignedAt
+                          ? new Date(v.assignedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                          : '—'}
+                      </Td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No vouchers" desc="Add inventory codes to start selling." />}
+        {!loading && rows.length === 0 && (
+          <Empty title="No matching vouchers" desc="Try adjusting your filter or add voucher inventory codes." />
+        )}
       </div>
     </div>
   );
@@ -1655,24 +2119,29 @@ function SEOProductEditor({ product, onClose, onSaved }) {
     setAnalyzing(true);
     try {
       const sks = String(form.seo.secondaryKeywords || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const faqBlocks = form.faqs ? form.faqs.split('\n---\n').map(block => {
+        const [q, ...rest] = block.split('\n');
+        return { question: (q || '').trim(), answer: rest.join('\n').trim() };
+      }).filter(f => f.question) : [];
+      const relatedIds = form.relatedProducts ? form.relatedProducts.split(',').filter(Boolean) : [];
       const res = await adminApi.seo.analyzeInline({
-        type: 'product',
-        name: product?.name || '',
+        productName: product?.name || '',
         seoTitle: form.seo.title,
-        seoDescription: form.seo.description,
+        metaDescription: form.seo.description,
         slug: form.seo.slug || form.slug,
         focusKeyword: form.seo.focusKeyword,
         secondaryKeywords: sks,
         canonicalUrl: form.seo.canonicalUrl,
         description: form.description,
         richDescription: form.richDescription,
-        imageAlt: form.imageSeo?.altText,
-        imagePresent: !!(product?.image || product?.logo),
-        faqCount: form.faqs ? form.faqs.split('---').length : 0,
-        relatedCount: form.relatedProducts ? form.relatedProducts.split(',').filter(Boolean).length : 0,
+        imageAltText: form.imageSeo?.altText,
+        productImage: product?.image || product?.logo || '',
+        faqs: faqBlocks,
+        relatedProducts: relatedIds,
         noindex: form.seo.noindex,
+        ogImage: form.seo.ogImage,
       });
-      if (res) setAnalysis(res);
+      if (res?.success) setAnalysis(res.data || null);
     } catch (e) { /* ignore */ } finally { setAnalyzing(false); }
   }, [form, product]);
 
@@ -1747,7 +2216,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
     <div className="mb-6 rounded-3xl p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
       <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
         <div className="flex items-start gap-4">
-          <SEOScoreBadge score={analysis?.score ?? 0} grade={analysis?.grade} gradeColor={analysis?.gradeColor} size="lg" />
+          <SEOScoreBadge score={analysis?.score ?? 0} grade={analysis?.grade} gradeColor={{ green: '#10B981', yellow: '#F59E0B', red: '#EF4444' }[analysis?.gradeColor] || analysis?.gradeColor || '#10B981'} size="lg" />
           <div>
             <h3 className="font-black text-lg mb-1">🧠 Product SEO Editor — {product?.name}</h3>
             <p className="text-[11px] font-bold text-neutral-500 max-w-lg">Configure search metadata, long-form content, and social sharing. Updates are sanitized on the server and applied in real-time to live product pages.</p>
@@ -1983,7 +2452,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
               {analyzing && <span className="text-[9px] font-black text-[#6C3CE0] uppercase tracking-wider animate-pulse">analyzing…</span>}
             </div>
             <div className="flex items-center gap-4 mb-4">
-              <SEOScoreBadge score={analysis?.score ?? 0} grade={analysis?.grade} gradeColor={analysis?.gradeColor} />
+              <SEOScoreBadge score={analysis?.score ?? 0} grade={analysis?.grade} gradeColor={{ green: '#10B981', yellow: '#F59E0B', red: '#EF4444' }[analysis?.gradeColor] || analysis?.gradeColor || '#10B981'} />
               <div className="flex-1 min-w-0">
                 <div className="font-black text-sm">
                   {analysis?.grade === 'Excellent' && '🌟'}
@@ -2080,7 +2549,7 @@ function SEOManager() {
     setLoadingOverview(true);
     try {
       const res = await adminApi.seo.overview();
-      if (res) setOverviewData(res);
+      if (res?.success) setOverviewData(res.data || null);
     } catch (e) { setOverviewData(null); } finally { setLoadingOverview(false); }
   };
   const loadPages = async () => {
@@ -2309,30 +2778,30 @@ function SEOManager() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-black text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Issues ({overviewData?.issues?.length || 0})</h4>
+                    <h4 className="font-black text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Issues ({overviewData?.issuesCount || 0})</h4>
                   </div>
                   <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                    {(overviewData?.issues || []).slice(0, 25).map((it, i) => (
+                    {(overviewData?.topIssues || []).slice(0, 25).map((it, i) => (
                       <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40">
                         <AlertOctagon className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
                         <div className="text-[10px] font-bold text-rose-700 dark:text-rose-300 leading-snug flex-1">{it.text || it}</div>
                       </div>
                     ))}
-                    {(!overviewData?.issues?.length) && <div className="text-[10px] font-bold text-emerald-600">✓ No critical issues detected.</div>}
+                    {(!overviewData?.topIssues?.length) && <div className="text-[10px] font-bold text-emerald-600">✓ No critical issues detected.</div>}
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-black text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Warnings ({overviewData?.warnings?.length || 0})</h4>
+                    <h4 className="font-black text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Warnings ({overviewData?.warningsCount || 0})</h4>
                   </div>
                   <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                    {(overviewData?.warnings || []).slice(0, 25).map((it, i) => (
+                    {(overviewData?.topWarnings || []).slice(0, 25).map((it, i) => (
                       <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
                         <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
                         <div className="text-[10px] font-bold text-amber-700 dark:text-amber-300 leading-snug flex-1">{it.text || it}</div>
                       </div>
                     ))}
-                    {(!overviewData?.warnings?.length) && <div className="text-[10px] font-bold text-neutral-400">No warnings.</div>}
+                    {(!overviewData?.topWarnings?.length) && <div className="text-[10px] font-bold text-neutral-400">No warnings.</div>}
                   </div>
                 </div>
               </div>
@@ -2349,7 +2818,7 @@ function SEOManager() {
                     {(overviewData?.duplicates?.seoTitles || []).map((g, i) => (
                       <div key={i} className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 text-[10px] font-bold text-rose-700 dark:text-rose-300 leading-snug">
                         <span className="font-mono line-clamp-1">{g.value}</span>
-                        <div className="text-[9px] opacity-70 mt-0.5">{g.count} items</div>
+                        <div className="text-[9px] opacity-70 mt-0.5">{g.items?.length || 0} items</div>
                       </div>
                     ))}
                     {(!overviewData?.duplicates?.seoTitles?.length) && <div className="text-[10px] font-bold text-emerald-600">✓ All unique</div>}
@@ -2364,7 +2833,7 @@ function SEOManager() {
                     {(overviewData?.duplicates?.metaDescriptions || []).map((g, i) => (
                       <div key={i} className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 text-[10px] font-bold text-rose-700 dark:text-rose-300 leading-snug">
                         <span className="font-mono line-clamp-2">{g.value}</span>
-                        <div className="text-[9px] opacity-70 mt-0.5">{g.count} items</div>
+                        <div className="text-[9px] opacity-70 mt-0.5">{g.items?.length || 0} items</div>
                       </div>
                     ))}
                     {(!overviewData?.duplicates?.metaDescriptions?.length) && <div className="text-[10px] font-bold text-emerald-600">✓ All unique</div>}
@@ -2416,35 +2885,36 @@ function SEOManager() {
                     <tr key={i}><td colSpan="7" className="p-4"><div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" /></td></tr>
                   ))}
                   {!loadingOverview && (overviewData?.productScores || []).map(ps => {
-                    const fullProd = (overviewData?.allProducts || []).find(p => (p._id || p.id) === (ps._id || ps.id)) || ps;
+                    const a = ps.analysis || {};
+                    const colorMap = { green: '#10B981', yellow: '#F59E0B', red: '#EF4444' };
                     return (
-                      <tr key={ps._id || ps.id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111]">
+                      <tr key={ps.id || ps._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111]">
                         <Td>
                           <div className="flex items-center gap-2">
                             <div className="w-9 h-9 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] border border-[#FF005C]/20 flex items-center justify-center font-black text-[9px] text-[#FF005C]">
-                              {fullProd.providerShortName || fullProd.brand?.slice(0,3) || 'APX'}
+                              APX
                             </div>
                             <div>
-                              <div className="font-black text-sm">{fullProd.name}</div>
-                              <div className="text-[10px] font-bold text-neutral-400">{fullProd.provider} · {fullProd.category}</div>
+                              <div className="font-black text-sm">{ps.name}</div>
+                              <div className="text-[10px] font-bold text-neutral-400">{ps.slug}</div>
                             </div>
                           </div>
                         </Td>
                         <Td className="max-w-xs">
-                          <div className="text-[11px] leading-snug line-clamp-2">{fullProd.seo?.title || fullProd.seoTitle || <span className="text-neutral-400 italic">not set</span>}</div>
+                          <div className="text-[11px] leading-snug line-clamp-2">{a.checks?.find(c => c.key === 'seoTitlePresent' && c.status === 'good') ? <span>{ps.name}</span> : <span className="text-neutral-400 italic">not set</span>}</div>
                         </Td>
-                        <Td><span className="font-mono text-[10px]">{fullProd.seo?.slug || fullProd.slug}</span></Td>
+                        <Td><span className="font-mono text-[10px]">{ps.slug}</span></Td>
                         <Td className="text-center">
-                          {fullProd.seo?.focusKeyword ? <span className="inline-flex px-2 py-0.5 rounded-md bg-[#6C3CE0]/10 text-[#6C3CE0] text-[10px] font-black border border-[#6C3CE0]/20">{fullProd.seo.focusKeyword}</span> : <span className="text-neutral-400 text-[10px]">—</span>}
+                          <span className="text-neutral-400 text-[10px]">—</span>
                         </Td>
                         <Td className="text-center">
-                          <div className="flex justify-center"><SEOScoreBadge score={ps.score || 0} grade={ps.grade} gradeColor={ps.gradeColor} size="sm" /></div>
+                          <div className="flex justify-center"><SEOScoreBadge score={a.score || 0} grade={a.grade} gradeColor={colorMap[a.gradeColor] || a.gradeColor || '#10B981'} size="sm" /></div>
                         </Td>
                         <Td className="text-center whitespace-nowrap">
-                          {fullProd.seo?.noindex ? <Pill text="NOINDEX" tint="rose" /> : fullProd.active ? <Pill text="INDEXABLE" tint="emerald" /> : <Pill text="INACTIVE" tint="neutral" />}
+                          {ps.active ? <Pill text="INDEXABLE" tint="emerald" /> : <Pill text="INACTIVE" tint="neutral" />}
                         </Td>
                         <Td className="text-right whitespace-nowrap">
-                          <button onClick={() => setProductSEOEditing(fullProd)} className="px-3 py-1.5 rounded-xl bg-[#6C3CE0]/10 text-[#6C3CE0] border border-[#6C3CE0]/20 font-black text-[10px] inline-flex items-center gap-1 hover:bg-[#6C3CE0] hover:text-white transition">
+                          <button onClick={() => setProductSEOEditing(ps)} className="px-3 py-1.5 rounded-xl bg-[#6C3CE0]/10 text-[#6C3CE0] border border-[#6C3CE0]/20 font-black text-[10px] inline-flex items-center gap-1 hover:bg-[#6C3CE0] hover:text-white transition">
                             <Edit2 className="w-3 h-3" /> Edit SEO
                           </button>
                         </Td>
@@ -2757,16 +3227,16 @@ function SEOManager() {
                   <Field label="Website Name" value={globalForm.websiteName || ''} onChange={v => setGlobalForm({ ...globalForm, websiteName: v })} placeholder="Apex Vouchers" />
                   <Field label="Default SEO Title" value={globalForm.defaultSeoTitle || ''} onChange={v => setGlobalForm({ ...globalForm, defaultSeoTitle: v })} placeholder="Exam Vouchers at Best Prices | Apex Vouchers" />
                   <TextArea label="Default Meta Description" value={globalForm.defaultMetaDescription || ''} onChange={v => setGlobalForm({ ...globalForm, defaultMetaDescription: v })} rows={3} />
-                  <Field label="Website URL (Canonical Base)" value={globalForm.siteUrl || ''} onChange={v => setGlobalForm({ ...globalForm, siteUrl: v })} placeholder="https://apexvouchers.com" />
+                  <Field label="Website URL (Canonical Base)" value={globalForm.websiteUrl || ''} onChange={v => setGlobalForm({ ...globalForm, websiteUrl: v })} placeholder="https://apexvouchers.com" />
                 </div>
                 <div className="space-y-4">
                   <Field label="Default OG Image URL (1200×630)" value={globalForm.defaultOgImage || ''} onChange={v => setGlobalForm({ ...globalForm, defaultOgImage: v })} placeholder="https://..." />
                   <Field label="Default Social Sharing Image" value={globalForm.defaultSocialImage || ''} onChange={v => setGlobalForm({ ...globalForm, defaultSocialImage: v })} />
                   <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]" />
-                  <Field label="Organization / Brand Name" value={globalForm.orgName || ''} onChange={v => setGlobalForm({ ...globalForm, orgName: v })} placeholder="Apex Vouchers" />
-                  <Field label="Organization Logo URL" value={globalForm.orgLogo || ''} onChange={v => setGlobalForm({ ...globalForm, orgLogo: v })} placeholder="https://.../logo.png" />
+                  <Field label="Organization / Brand Name" value={globalForm.organizationName || ''} onChange={v => setGlobalForm({ ...globalForm, organizationName: v })} placeholder="Apex Vouchers" />
+                  <Field label="Organization Logo URL" value={globalForm.organizationLogo || ''} onChange={v => setGlobalForm({ ...globalForm, organizationLogo: v })} placeholder="https://.../logo.png" />
                   <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]" />
-                  <Field label="Google Search Console (Verification Meta Tag content)" value={globalForm.gscVerification || ''} onChange={v => setGlobalForm({ ...globalForm, gscVerification: v })} placeholder="google-site-verification value" />
+                  <Field label="Google Search Console (Verification Meta Tag content)" value={globalForm.gscVerificationCode || ''} onChange={v => setGlobalForm({ ...globalForm, gscVerificationCode: v })} placeholder="google-site-verification value" />
                   <Field label="Google Analytics 4 Measurement ID" value={globalForm.gaMeasurementId || ''} onChange={v => setGlobalForm({ ...globalForm, gaMeasurementId: v })} placeholder="G-XXXXXXXXXX" />
                 </div>
               </div>
@@ -2872,10 +3342,21 @@ function VideosAdmin() {
       setUploadProgress(100);
 
       if (res.success) {
-        if (type === 'video' && res.videoUrl) {
-          setDraft((prev) => ({ ...prev, videoUrl: res.videoUrl }));
-        } else if (type === 'thumbnail' && res.thumbnailUrl) {
-          setDraft((prev) => ({ ...prev, thumbnail: res.thumbnailUrl }));
+        if (type === 'video') {
+          setDraft((prev) => ({
+            ...prev,
+            videoUrl: res.videoUrl || prev.videoUrl,
+            cloudinaryPublicId: res.cloudinaryPublicId || prev.cloudinaryPublicId || '',
+            thumbnail: res.thumbnailUrl || prev.thumbnail,
+            thumbnailUrl: res.thumbnailUrl || prev.thumbnailUrl,
+            duration: res.duration || prev.duration || '15s',
+          }));
+        } else if (type === 'thumbnail') {
+          setDraft((prev) => ({
+            ...prev,
+            thumbnail: res.thumbnailUrl || prev.thumbnail,
+            thumbnailUrl: res.thumbnailUrl || prev.thumbnailUrl,
+          }));
         }
       } else {
         alert(res.message || 'File upload failed');
@@ -2895,7 +3376,7 @@ function VideosAdmin() {
     if (statusFilter) params.status = statusFilter;
     if (categoryFilter) params.category = categoryFilter;
 
-    const res = await adminApi.videos(params);
+    const res = await adminApi.reels(params);
     setRows(res.data || []);
     setKpis(res.kpis || {});
     if (res.settings) setSettings(res.settings);
@@ -2907,21 +3388,38 @@ function VideosAdmin() {
     return () => clearTimeout(t);
   }, [search, statusFilter, categoryFilter]);
 
+  const setCloudinaryId = (id) => {
+    const clean = id.trim();
+    setDraft((prev) => ({
+      ...prev,
+      cloudinaryPublicId: clean,
+      videoUrl: clean ? `https://res.cloudinary.com/nbcbpuql/video/upload/${clean}.mp4` : prev.videoUrl,
+      thumbnail: clean ? `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${clean}.jpg` : prev.thumbnail,
+      thumbnailUrl: clean ? `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${clean}.jpg` : prev.thumbnailUrl,
+    }));
+  };
+
   const startCreate = () => {
+    const nextOrder = (rows.length || 0) + 1;
     setDraft({
       title: '',
       description: '',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      cloudinaryPublicId: 'v1',
+      videoUrl: 'https://res.cloudinary.com/nbcbpuql/video/upload/v1.mp4',
       youtubeEmbed: '',
-      thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80',
       category: 'Step-By-Step Guide',
       duration: '15s',
       badgeColor: 'bg-amber-400 text-slate-950',
       icon: '🎬',
-      displayOrder: (rows.length || 0) + 1,
+      displayOrder: nextOrder,
+      order: nextOrder,
       viewsCount: 0,
+      views: 0,
       featured: false,
       published: true,
+      isActive: true,
     });
     setEditing(null);
     setIsCreating(true);
@@ -2930,22 +3428,39 @@ function VideosAdmin() {
   const startEdit = (v) => {
     setEditing(v);
     setIsCreating(false);
-    setDraft({ ...v });
+    setDraft({
+      ...v,
+      cloudinaryPublicId: v.cloudinaryPublicId || '',
+      thumbnail: v.thumbnailUrl || v.thumbnail || '',
+      thumbnailUrl: v.thumbnailUrl || v.thumbnail || '',
+      order: v.order ?? v.displayOrder ?? 0,
+      displayOrder: v.displayOrder ?? v.order ?? 0,
+      isActive: v.isActive ?? v.published ?? true,
+      published: v.published ?? v.isActive ?? true,
+      views: v.views ?? v.viewsCount ?? 0,
+      viewsCount: v.viewsCount ?? v.views ?? 0,
+    });
   };
 
   const saveVideo = async () => {
-    if (!draft.title || !draft.videoUrl) {
-      alert('Video title and video URL are required.');
+    if (!draft.title || (!draft.videoUrl && !draft.cloudinaryPublicId)) {
+      alert('Video title and video URL or Cloudinary Public ID are required.');
       return;
     }
+    const orderVal = Number(draft.order ?? draft.displayOrder) || 0;
+    const viewsVal = Number(draft.views ?? draft.viewsCount) || 0;
     const payload = {
       ...draft,
-      displayOrder: Number(draft.displayOrder) || 0,
-      viewsCount: Number(draft.viewsCount) || 0,
+      order: orderVal,
+      displayOrder: orderVal,
+      views: viewsVal,
+      viewsCount: viewsVal,
+      isActive: draft.isActive !== undefined ? !!draft.isActive : !!draft.published,
+      published: draft.published !== undefined ? !!draft.published : !!draft.isActive,
     };
     let res;
-    if (isCreating) res = await adminApi.createVideo(payload);
-    else res = await adminApi.updateVideo(editing?._id || editing?.id, payload);
+    if (isCreating) res = await adminApi.createReel(payload);
+    else res = await adminApi.updateReel(editing?._id || editing?.id, payload);
 
     if (res.success) {
       setIsCreating(false);
@@ -2954,9 +3469,24 @@ function VideosAdmin() {
     } else alert(res.message || 'Failed to save video');
   };
 
+  const moveOrder = async (index, direction) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= rows.length) return;
+
+    const newRows = [...rows];
+    const temp = newRows[index];
+    newRows[index] = newRows[targetIdx];
+    newRows[targetIdx] = temp;
+
+    const items = newRows.map((r, idx) => ({ id: r._id || r.id, order: idx + 1 }));
+    setRows(newRows);
+    const res = await adminApi.bulkReorderReels(items);
+    if (res.success) refresh();
+  };
+
   const toggleSectionEnabled = async () => {
     const nextVal = !settings.videoSectionEnabled;
-    const res = await adminApi.updateVideoSettings({ videoSectionEnabled: nextVal });
+    const res = await adminApi.updateReelSettings({ videoSectionEnabled: nextVal });
     if (res.success) {
       setSettings((prev) => ({ ...prev, videoSectionEnabled: nextVal }));
       refresh();
@@ -2965,7 +3495,7 @@ function VideosAdmin() {
 
   const toggleMovieModeEnabled = async () => {
     const nextVal = !settings.movieReelModeEnabled;
-    const res = await adminApi.updateVideoSettings({ movieReelModeEnabled: nextVal });
+    const res = await adminApi.updateReelSettings({ movieReelModeEnabled: nextVal });
     if (res.success) {
       setSettings((prev) => ({ ...prev, movieReelModeEnabled: nextVal }));
       refresh();
@@ -2973,20 +3503,21 @@ function VideosAdmin() {
   };
 
   const toggleFeatured = async (v) => {
-    const res = await adminApi.quickToggleFeaturedVideo(v._id || v.id, !v.featured);
+    const res = await adminApi.quickToggleFeaturedReel(v._id || v.id, !v.featured);
     if (res.success) refresh();
   };
 
   const togglePublished = async (v) => {
-    const res = await adminApi.quickTogglePublishVideo(v._id || v.id, !v.published);
+    const isPub = v.published !== undefined ? !v.published : !v.isActive;
+    const res = await adminApi.quickTogglePublishReel(v._id || v.id, isPub);
     if (res.success) refresh();
   };
 
   const removeVideo = async (v) => {
-    if (!confirm(`Are you sure you want to delete video "${v.title}"?`)) return;
-    const res = await adminApi.deleteVideo(v._id || v.id);
+    if (!confirm(`Are you sure you want to delete reel "${v.title}"?`)) return;
+    const res = await adminApi.deleteReel(v._id || v.id);
     if (res.success) refresh();
-    else alert(res.message || 'Failed to delete video');
+    else alert(res.message || 'Failed to delete reel');
   };
 
   return (
@@ -2995,7 +3526,7 @@ function VideosAdmin() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Videos & Reels Management</h1>
-          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Manage video tutorials, reel cards, featured highlights, durations, and view analytics.</p>
+          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Manage Cloudinary-hosted reels, carousel order, live card previews, durations, and view analytics.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -3006,7 +3537,7 @@ function VideosAdmin() {
                 : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'
             }`}
           >
-            <Film className="w-4 h-4" /> Video Section: {settings.videoSectionEnabled ? 'ON (Visible)' : 'OFF (Hidden)'}
+            <Film className="w-4 h-4" /> Reel Section: {settings.videoSectionEnabled ? 'ON (Visible)' : 'OFF (Hidden)'}
           </button>
 
           <button
@@ -3020,15 +3551,15 @@ function VideosAdmin() {
             <Sparkles className="w-4 h-4" /> Movie Mode: {settings.movieReelModeEnabled ? 'ON' : 'OFF'}
           </button>
 
-          <button onClick={startCreate} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl btn-pink text-white font-black text-xs shadow-lg">
-            <Plus className="w-4 h-4" /> Add New Video
+          <button onClick={startCreate} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl btn-pink text-white font-black text-xs shadow-lg cursor-pointer">
+            <Plus className="w-4 h-4" /> Add New Reel
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatCard label="Total Videos" value={kpis.totalVideos || 0} icon={<Film className="w-4 h-4" />} tint="#FF005C" />
+        <StatCard label="Total Reels" value={kpis.totalVideos || rows.length} icon={<Film className="w-4 h-4" />} tint="#FF005C" />
         <StatCard label="Published" value={kpis.publishedVideos || 0} icon={<CheckCircle2 className="w-4 h-4" />} tint="#10B981" />
         <StatCard label="Drafts" value={kpis.draftVideos || 0} icon={<Clock className="w-4 h-4" />} tint="#64748B" />
         <StatCard label="Center Featured" value={kpis.featuredVideos || 0} icon={<Crown className="w-4 h-4" />} tint="#F59E0B" />
@@ -3041,7 +3572,7 @@ function VideosAdmin() {
           <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex-1 max-w-md">
             <Search className="w-4 h-4 text-neutral-400" />
             <input
-              placeholder="Search videos by title, description, category..."
+              placeholder="Search reels by title, description, category, Cloudinary ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="bg-transparent outline-none text-xs font-bold w-full text-neutral-900 dark:text-white"
@@ -3057,6 +3588,7 @@ function VideosAdmin() {
             <option value="Step-By-Step Guide">Step-By-Step Guide</option>
             <option value="PTE Voucher">PTE Voucher</option>
             <option value="Redemption Guide">Redemption Guide</option>
+            <option value="Save Money">Save Money</option>
             <option value="Offers">Offers</option>
             <option value="Voucher FAQs">Voucher FAQs</option>
             <option value="IELTS">IELTS</option>
@@ -3068,15 +3600,15 @@ function VideosAdmin() {
         {/* Status Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
           {[
-            { id: '', label: 'All Videos' },
-            { id: 'published', label: 'Published' },
-            { id: 'draft', label: 'Drafts' },
+            { id: '', label: 'All Reels' },
+            { id: 'published', label: 'Published / Active' },
+            { id: 'draft', label: 'Drafts / Inactive' },
             { id: 'featured', label: 'Center Featured' },
           ].map((pill) => (
             <button
               key={pill.id}
               onClick={() => setStatusFilter(pill.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap cursor-pointer ${
                 statusFilter === pill.id
                   ? 'bg-[#FF005C] text-white shadow-sm'
                   : 'bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
@@ -3091,23 +3623,89 @@ function VideosAdmin() {
       {/* Add / Edit Video Modal */}
       {(isCreating || editing) && (
         <FormCard
-          title={isCreating ? '🎬 Add New Video Reel' : `✏️ Edit Video: ${editing?.title}`}
+          title={isCreating ? '🎬 Add New Video Reel (Cloudinary)' : `✏️ Edit Reel: ${editing?.title}`}
           onClose={() => { setIsCreating(false); setEditing(null); }}
           onSave={saveVideo}
         >
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left 2 Cols: Inputs */}
             <div className="lg:col-span-2 space-y-4">
+              
+              {/* Cloudinary Presets & Upload Dropzones */}
+              <div className="p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase">
+                      Cloudinary ID
+                    </span>
+                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                      Select or type a Cloudinary Public ID:
+                    </span>
+                  </div>
+                  {/* Quick Preset Buttons */}
+                  <div className="flex items-center gap-1.5">
+                    {['v1', 'v2', 'v3', 'v4', 'v5'].map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setCloudinaryId(id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-black transition cursor-pointer ${
+                          draft.cloudinaryPublicId === id
+                            ? 'bg-amber-400 text-slate-950 shadow-md scale-105'
+                            : 'bg-white dark:bg-[#222] text-neutral-700 dark:text-neutral-300 border border-[#EAEAEA] dark:border-[#333] hover:border-amber-400'
+                        }`}
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Cloudinary Public ID
+                    </label>
+                    <input
+                      type="text"
+                      value={draft.cloudinaryPublicId || ''}
+                      onChange={(e) => setCloudinaryId(e.target.value)}
+                      placeholder="e.g. v1, v2, my_reel_01"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#121212] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold text-neutral-900 dark:text-white outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Auto-Generated Poster Frame
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (draft.cloudinaryPublicId) {
+                          const poster = `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${draft.cloudinaryPublicId}.jpg`;
+                          setDraft((prev) => ({ ...prev, thumbnail: poster, thumbnailUrl: poster }));
+                        }
+                      }}
+                      disabled={!draft.cloudinaryPublicId}
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-100 dark:bg-[#222] text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:bg-amber-400 hover:text-slate-950 transition cursor-pointer disabled:opacity-50"
+                    >
+                      ⚡ Use Cloudinary Keyframe Snapshot (so_0)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* File Upload Dropzones */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#1A1A1A] border border-slate-200 dark:border-[#292929]">
                 {/* Video File Upload */}
                 <div className="space-y-2">
                   <label className="block text-xs font-black text-slate-900 dark:text-white">
-                    🎬 Upload Video File (.mp4, .webm, .mov)
+                    🎬 Upload Video to Cloudinary (.mp4, .webm, .mov)
                   </label>
                   <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-[#FF005C]/30 bg-rose-50/30 dark:bg-[#2A0A17]/20 hover:border-[#FF005C] cursor-pointer transition">
-                    <span className="text-xs font-black text-[#FF005C]">Click to Upload / Drag MP4 Video</span>
-                    <span className="text-[10px] text-slate-400 font-medium mt-0.5">Max 100MB • High Performance H.264</span>
+                    <span className="text-xs font-black text-[#FF005C]">Click to Upload MP4 Video</span>
+                    <span className="text-[10px] text-slate-400 font-medium mt-0.5">Direct Cloudinary Stream • Max 100MB</span>
                     <input
                       type="file"
                       accept="video/mp4,video/webm,video/quicktime"
@@ -3120,11 +3718,11 @@ function VideosAdmin() {
                 {/* Thumbnail Image Upload */}
                 <div className="space-y-2">
                   <label className="block text-xs font-black text-slate-900 dark:text-white">
-                    🖼️ Upload Poster Thumbnail (.jpg, .png, .webp)
+                    🖼️ Upload Custom Poster (.jpg, .png, .webp)
                   </label>
                   <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20 hover:border-amber-500 cursor-pointer transition">
-                    <span className="text-xs font-black text-amber-600 dark:text-amber-400">Click to Upload / Drag Poster Image</span>
-                    <span className="text-[10px] text-slate-400 font-medium mt-0.5">Max 10MB • 9:16 Aspect Ratio Recommended</span>
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400">Click to Upload Poster Image</span>
+                    <span className="text-[10px] text-slate-400 font-medium mt-0.5">9:16 Aspect Ratio Recommended</span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -3137,28 +3735,27 @@ function VideosAdmin() {
 
               {uploadingMedia && (
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold flex items-center justify-between">
-                  <span>Uploading media file to server storage...</span>
+                  <span>Uploading video to Cloudinary storage...</span>
                   <span>{uploadProgress}%</span>
                 </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Video Title *" value={draft.title} onChange={(v) => setDraft({ ...draft, title: v })} placeholder="e.g. How to Buy an Exam Voucher" />
+                <Field label="Reel Title *" value={draft.title} onChange={(v) => setDraft({ ...draft, title: v })} placeholder="e.g. How to Buy an Exam Voucher" />
                 <Field label="Category *" value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} placeholder="Step-By-Step Guide / PTE Voucher" />
-                <Field label="Video Stream URL (MP4 / Uploaded URL) *" value={draft.videoUrl} onChange={(v) => setDraft({ ...draft, videoUrl: v })} placeholder="https://..." />
-                <Field label="Thumbnail Image URL *" value={draft.thumbnail} onChange={(v) => setDraft({ ...draft, thumbnail: v })} placeholder="https://..." />
-                <Field label="Instagram Reel URL (Optional Reference Link)" value={draft.instagramUrl || ''} onChange={(v) => setDraft({ ...draft, instagramUrl: v })} placeholder="https://www.instagram.com/reel/..." />
-                <Field label="YouTube Embed / Link (Optional)" value={draft.youtubeEmbed || ''} onChange={(v) => setDraft({ ...draft, youtubeEmbed: v })} placeholder="https://www.youtube.com/watch?v=..." />
+                <Field label="Direct Video Stream URL (MP4) *" value={draft.videoUrl} onChange={(v) => setDraft({ ...draft, videoUrl: v })} placeholder="https://res.cloudinary.com/..." />
+                <Field label="Poster / Thumbnail Image URL *" value={draft.thumbnailUrl || draft.thumbnail} onChange={(v) => setDraft({ ...draft, thumbnail: v, thumbnailUrl: v })} placeholder="https://..." />
                 <Field label="Duration" value={draft.duration} onChange={(v) => setDraft({ ...draft, duration: v })} placeholder="15s" />
-                <Field label="Display Order (Rank)" type="number" value={draft.displayOrder} onChange={(v) => setDraft({ ...draft, displayOrder: v })} />
-                <Field label="View Count" type="number" value={draft.viewsCount} onChange={(v) => setDraft({ ...draft, viewsCount: v })} />
+                <Field label="Display Order (Rank)" type="number" value={draft.order ?? draft.displayOrder} onChange={(v) => setDraft({ ...draft, order: v, displayOrder: v })} />
+                <Field label="View Count" type="number" value={draft.views ?? draft.viewsCount} onChange={(v) => setDraft({ ...draft, views: v, viewsCount: v })} />
+                <Field label="Badge Text Style" value={draft.badgeColor} onChange={(v) => setDraft({ ...draft, badgeColor: v })} placeholder="bg-amber-400 text-slate-950" />
               </div>
 
               <TextArea label="Short Description (Shown on Reel Card)" value={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} rows={2} />
 
               <div className="flex flex-wrap items-center gap-4 pt-2">
-                <Check label="Center Featured Video (Large Card)" checked={!!draft.featured} onChange={(v) => setDraft({ ...draft, featured: v })} />
-                <Check label="Published & Visible on Website" checked={!!draft.published} onChange={(v) => setDraft({ ...draft, published: v })} />
+                <Check label="Center Featured Video (Large Card Highlight)" checked={!!draft.featured} onChange={(v) => setDraft({ ...draft, featured: v })} />
+                <Check label="Active & Visible on Public Website" checked={draft.isActive !== undefined ? !!draft.isActive : !!draft.published} onChange={(v) => setDraft({ ...draft, isActive: v, published: v })} />
               </div>
             </div>
 
@@ -3166,7 +3763,11 @@ function VideosAdmin() {
             <div className="space-y-2">
               <Label>Live Customer Card Preview</Label>
               <div className="w-full aspect-[9/16] rounded-2xl bg-[#161616] border-2 border-amber-400 p-4 relative overflow-hidden flex flex-col justify-between text-white shadow-xl">
-                <img src={draft.thumbnail || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600'} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                <img 
+                  src={draft.thumbnailUrl || draft.thumbnail || (draft.cloudinaryPublicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/so_0/${draft.cloudinaryPublicId}.jpg` : 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600')} 
+                  alt="preview" 
+                  className="absolute inset-0 w-full h-full object-cover opacity-60" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/70" />
 
                 <div className="relative z-10 flex justify-between items-center">
@@ -3187,10 +3788,10 @@ function VideosAdmin() {
 
                 <div className="relative z-10 space-y-1 bg-slate-950/90 p-3 rounded-xl border border-white/10">
                   <div className="flex justify-between items-start gap-1">
-                    <h4 className="font-heading font-black text-xs text-white leading-tight truncate">{draft.title || 'Untitled Video'}</h4>
-                    <span className="text-[9px] font-bold text-slate-400 shrink-0">{(Number(draft.viewsCount) || 0).toLocaleString()} views</span>
+                    <h4 className="font-heading font-black text-xs text-white leading-tight truncate">{draft.title || 'Untitled Reel'}</h4>
+                    <span className="text-[9px] font-bold text-slate-400 shrink-0">{(Number(draft.views ?? draft.viewsCount) || 0).toLocaleString()} views</span>
                   </div>
-                  <p className="text-[10px] text-slate-300 font-medium line-clamp-2">{draft.description || 'Description will appear here...'}</p>
+                  <p className="text-[10px] text-slate-300 font-medium line-clamp-2">{draft.description || 'Description will appear on reel card...'}</p>
                 </div>
               </div>
             </div>
@@ -3198,13 +3799,13 @@ function VideosAdmin() {
         </FormCard>
       )}
 
-      {/* Main Video Table */}
+      {/* Main Reel Table */}
       <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-bold">
             <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
               <tr>
-                <Th>Thumbnail & Video Title</Th>
+                <Th>Thumbnail & Reel Details</Th>
                 <Th>Category</Th>
                 <Th className="text-center">Duration</Th>
                 <Th className="text-right">Total Views</Th>
@@ -3219,13 +3820,13 @@ function VideosAdmin() {
                 <tr key={i}><td colSpan="8" className="p-4"><div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" /></td></tr>
               ))}
 
-              {!loading && rows.map((v) => (
-                <tr key={v._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111] transition-colors">
+              {!loading && rows.map((v, index) => (
+                <tr key={v._id || v.id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111] transition-colors">
                   {/* Thumbnail & Title */}
                   <Td>
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-10 rounded-xl bg-neutral-900 overflow-hidden relative border border-[#EAEAEA] dark:border-[#292929] flex-shrink-0">
-                        <img src={v.thumbnail || v.poster} alt={v.title} className="w-full h-full object-cover" />
+                        <img src={v.thumbnailUrl || v.thumbnail || v.poster} alt={v.title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                           <Play className="w-3.5 h-3.5 fill-white text-white" />
                         </div>
@@ -3233,6 +3834,11 @@ function VideosAdmin() {
                       <div>
                         <div className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
                           <span>{v.title}</span>
+                          {v.cloudinaryPublicId && (
+                            <span className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-500 border border-sky-500/20 text-[9px] font-mono font-bold">
+                              {v.cloudinaryPublicId}
+                            </span>
+                          )}
                           {v.featured && (
                             <span className="px-2 py-0.5 rounded-md bg-amber-400/10 text-amber-600 border border-amber-400/30 text-[9px] font-black">
                               ★ CENTER FEATURED
@@ -3260,7 +3866,7 @@ function VideosAdmin() {
 
                   {/* Views */}
                   <Td className="text-right tabular-nums font-black text-neutral-900 dark:text-white">
-                    {(v.viewsCount || 0).toLocaleString()}
+                    {(v.views ?? v.viewsCount ?? 0).toLocaleString()}
                   </Td>
 
                   {/* Center Featured Toggle */}
@@ -3280,35 +3886,60 @@ function VideosAdmin() {
                   {/* Status Toggle */}
                   <Td className="text-center whitespace-nowrap">
                     <button onClick={() => togglePublished(v)} className="cursor-pointer">
-                      <Pill text={v.published ? 'PUBLISHED' : 'DRAFT'} tint={v.published ? 'emerald' : 'neutral'} />
+                      <Pill
+                        text={(v.isActive ?? v.published) ? 'ACTIVE' : 'INACTIVE'}
+                        tint={(v.isActive ?? v.published) ? 'emerald' : 'neutral'}
+                      />
                     </button>
                   </Td>
 
-                  {/* Display Order */}
-                  <Td className="text-center font-mono font-black text-xs">{v.displayOrder || 0}</Td>
+                  {/* Display Order with Up/Down Controls */}
+                  <Td className="text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => moveOrder(index, -1)}
+                        className="p-1 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-amber-400 hover:text-slate-950 transition disabled:opacity-30 cursor-pointer"
+                        title="Move Up in Carousel"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="font-mono font-black text-xs px-1.5">{v.order ?? v.displayOrder ?? index + 1}</span>
+                      <button
+                        type="button"
+                        disabled={index === rows.length - 1}
+                        onClick={() => moveOrder(index, 1)}
+                        className="p-1 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-amber-400 hover:text-slate-950 transition disabled:opacity-30 cursor-pointer"
+                        title="Move Down in Carousel"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </Td>
 
                   {/* Actions */}
                   <Td className="text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
                       <button
                         onClick={() => setPreviewVideo(v)}
-                        className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-purple-200"
-                        title="Preview Customer Player"
+                        className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-purple-200 cursor-pointer"
+                        title="Preview Native Reel Player"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
 
                       <button
                         onClick={() => startEdit(v)}
-                        className="px-2.5 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black flex items-center gap-1 cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" /> Edit
                       </button>
 
                       <button
                         onClick={() => removeVideo(v)}
-                        className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200"
-                        title="Delete Video"
+                        className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 cursor-pointer"
+                        title="Delete Reel"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -3319,7 +3950,7 @@ function VideosAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No videos found" desc="Add your first reel video to populate the website video section." />}
+        {!loading && rows.length === 0 && <Empty title="No reels found" desc="Add your first Cloudinary video reel to populate the website carousel." />}
       </div>
 
       {/* Admin Video Preview Modal */}
@@ -3337,52 +3968,33 @@ function VideosAdmin() {
               <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black uppercase">
                 {previewVideo.category}
               </span>
+              {previewVideo.cloudinaryPublicId && (
+                <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">
+                  Public ID: {previewVideo.cloudinaryPublicId}
+                </span>
+              )}
               <ApexLogo className="h-5" whiteText={true} />
             </div>
 
             <h3 className="font-heading font-black text-xl text-white">{previewVideo.title}</h3>
 
             <div className="aspect-video w-full rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10 shadow-xl relative flex items-center justify-center">
-              {/instagram\.com|instagr\.am/i.test(previewVideo.instagramUrl || previewVideo.videoUrl) ? (
-                <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center space-y-3">
-                  {previewVideo.thumbnail && <img src={previewVideo.thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />}
-                  <div className="relative z-10 w-12 h-12 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-xl">
-                    <Film className="w-6 h-6" />
-                  </div>
-                  <div className="relative z-10 space-y-1">
-                    <div className="font-heading font-black text-sm text-white">{previewVideo.title}</div>
-                    <div className="text-xs text-slate-300 font-medium">Hosted on Instagram (No direct iframe)</div>
-                  </div>
-                  <a
-                    href={previewVideo.instagramUrl || previewVideo.videoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="relative z-10 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-xs inline-flex items-center gap-1.5"
-                  >
-                    <span>Watch on Instagram ↗</span>
-                  </a>
-                </div>
-              ) : /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(previewVideo.videoUrl) || /commondatastorage|cloudinary|s3/i.test(previewVideo.videoUrl) ? (
-                <video
-                  src={previewVideo.videoUrl}
-                  poster={previewVideo.thumbnail}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <iframe
-                  className="w-full h-full object-cover"
-                  src={previewVideo.youtubeEmbed || previewVideo.videoUrl}
-                  title={previewVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              )}
+              <video
+                src={previewVideo.videoUrl || (previewVideo.cloudinaryPublicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/${previewVideo.cloudinaryPublicId}.mp4` : '')}
+                poster={previewVideo.thumbnailUrl || previewVideo.thumbnail}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <p className="text-xs text-slate-300 font-medium">{previewVideo.description}</p>
-            <div className="pt-2 flex justify-end">
-              <button onClick={() => setPreviewVideo(null)} className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black text-xs">
+            <div className="pt-2 flex justify-between items-center">
+              <span className="text-xs text-amber-400 font-mono font-bold">
+                ▶ {previewVideo.duration || '15s'} • {(Number(previewVideo.views ?? previewVideo.viewsCount) || 0).toLocaleString()} views
+              </span>
+              <button onClick={() => setPreviewVideo(null)} className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black text-xs cursor-pointer">
                 Close Preview
               </button>
             </div>
@@ -3392,6 +4004,7 @@ function VideosAdmin() {
     </div>
   );
 }
+
 
 function WebsiteCMSAdmin() {
   const { products, refreshWebsiteConfig, showToast } = useVoucher();

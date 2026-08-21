@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
@@ -13,6 +14,7 @@ import {
   sendAdminVoucherAssignmentFailureAlert,
   sendAdminEmailDeliveryFailureAlert,
 } from '../services/email.js';
+import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
 
@@ -34,49 +36,18 @@ const getProductsWithPrices = async (lineItems) => {
     if (qty > MAX_LINE_ITEM_QUANTITY) {
       throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
     }
+    const voucherType = normalizeVoucherType(product.voucherType, product);
     items.push({
       productId: product._id,
       productName: product.name,
+      voucherType,
+      brand: product.brand || '',
       unitPrice: product.sellingPrice,
       originalPrice: product.originalPrice,
       quantity: qty,
     });
   }
   return items;
-};
-
-const assignVouchers = async (userId, orderId, items, session) => {
-  const assigned = [];
-  for (const it of items) {
-    const qty = it.quantity;
-    for (let i = 0; i < qty; i++) {
-      const available = await VoucherCode.findOneAndUpdate(
-        {
-          productId: it.productId,
-          status: 'AVAILABLE',
-          expiryDate: { $gt: new Date() },
-        },
-        {
-          $set: {
-            status: 'ASSIGNED',
-            userId,
-            orderId,
-            assignedAt: new Date(),
-          },
-        },
-        { new: true, session }
-      );
-      if (!available) {
-        throw new AppError(
-          `Insufficient voucher inventory for ${it.productName}.`,
-          400,
-          'OUT_OF_STOCK'
-        );
-      }
-      assigned.push(available);
-    }
-  }
-  return assigned;
 };
 
 /**
@@ -103,18 +74,19 @@ export const createCashfreeOrder = async (req, res, next) => {
       return next(new AppError(`Maximum ${MAX_LINE_ITEMS} line items per order`, 400, 'TOO_MANY_ITEMS'));
     }
 
-    // 1. Strict Server-Side Price Calculation & Stock Check
+    // 1. Strict Server-Side Price Calculation & Product-Specific Stock Check
     const lineItems = await getProductsWithPrices(items);
     for (const it of lineItems) {
       const availableStock = await VoucherCode.countDocuments({
         productId: it.productId,
+        voucherType: it.voucherType,
         status: 'AVAILABLE',
         expiryDate: { $gt: new Date() },
       });
       if (availableStock < it.quantity) {
         return next(
           new AppError(
-            `Voucher code out of stock for ${it.productName}. Please try again later or contact support.`,
+            `Voucher code out of stock for ${it.productName} (${it.voucherType}). Please try again later or contact support.`,
             400,
             'VOUCHER_OUT_OF_STOCK'
           )
@@ -168,7 +140,7 @@ export const createCashfreeOrder = async (req, res, next) => {
       userId: req.user.id,
       items: lineItems,
       subtotal,
-      discountAmount: discount,
+      discountAmount: discountAmount,
       tax: 0,
       total,
       currency: 'INR',
@@ -176,6 +148,7 @@ export const createCashfreeOrder = async (req, res, next) => {
       promoCode: promoResult.promotion?.code || null,
       paymentStatus: 'PENDING',
       orderStatus: 'PAYMENT_PENDING',
+      fulfillmentStatus: 'PENDING',
       paymentProvider: 'cashfree',
       paymentMethod: paymentMethod || 'upi',
       billingDetails: billing || {},
@@ -229,7 +202,7 @@ export const createCashfreeOrder = async (req, res, next) => {
             },
             order_meta: {
               return_url: `${config.clientUrl}/payment/cashfree/return?order_id={order_id}`,
-              notify_url: `${config.clientUrl}/api/payments/cashfree/webhook`,
+              notify_url: `${config.serverUrl}/api/payments/cashfree/webhook`,
             },
           }),
         });
@@ -278,7 +251,22 @@ const deliverOrderEmailSafe = async (user, order, vouchers) => {
     return;
   }
 
+  const claimedOrder = await Order.findOneAndUpdate(
+    { _id: order._id, emailStatus: { $in: ['PENDING', 'FAILED'] } },
+    { $set: { emailStatus: 'SENDING', emailError: null } },
+    { new: true }
+  );
+  if (!claimedOrder) {
+    console.log(`[email:idempotent] Email send already in progress for order #${order.orderNo}`);
+    return;
+  }
+  order.emailStatus = 'SENDING';
+
   try {
+    const recipient = user?.email || order.customerSnapshot?.email || order.billingDetails?.email;
+    console.log(
+      `[email:attempt] orderId=${order.orderNo} recipient=${recipient ? `${recipient[0]}***${recipient.slice(recipient.indexOf('@') - 1)}` : '[missing]'} paymentStatus=${order.paymentStatus}`
+    );
     const mailRes = await sendOrderConfirmation(user, order, vouchers);
     if (mailRes && mailRes.sent !== false) {
       order.emailStatus = 'SENT';
@@ -287,6 +275,7 @@ const deliverOrderEmailSafe = async (user, order, vouchers) => {
     } else {
       order.emailStatus = 'FAILED';
       order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
+      console.error(`[email:failure] orderId=${order.orderNo} providerResponse=${order.emailError}`);
     }
   } catch (err) {
     order.emailStatus = 'FAILED';
@@ -296,7 +285,7 @@ const deliverOrderEmailSafe = async (user, order, vouchers) => {
 
   await order.save().catch(() => {});
 
-  // Internal admin purchase notification to apexvouchers@gmail.com
+  // Internal admin purchase notification
   try {
     await sendAdminNewOrderNotification(user, order, vouchers);
   } catch (adminErr) {
@@ -328,10 +317,10 @@ export const getCashfreeOrderStatus = async (req, res, next) => {
       return next(new AppError('Not authorized to access this order', 403));
     }
 
-    // If order is already paid & fulfilled, return existing order & vouchers
-    if (order.paymentStatus === 'PAID' && order.orderStatus === 'FULFILLED') {
+    // Idempotency check: If order is already paid & fulfilled, return existing order & vouchers
+    if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
       const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-        .populate('productId', 'name brand')
+        .populate('productId', 'name brand provider')
         .lean();
       return res.json({
         success: true,
@@ -388,7 +377,7 @@ export const getCashfreeOrderStatus = async (req, res, next) => {
       });
     }
 
-    // Atomic update: Mark order PAID & assign vouchers
+    // Atomic update: Mark order PAID & assign vouchers with strict validation
     order.paymentStatus = 'PAID';
     order.orderStatus = 'PROCESSING';
     order.paymentReference = paymentRef;
@@ -397,44 +386,55 @@ export const getCashfreeOrderStatus = async (req, res, next) => {
 
     let vouchers = [];
     let allocationFailed = false;
+    let allocationError = null;
 
     try {
       const session = await Order.startSession();
       try {
         await session.withTransaction(async () => {
-          vouchers = await assignVouchers(order.userId, order._id, order.items, session);
+          const allocRes = await allocateVouchersForOrder({
+            order,
+            user: req.user,
+            session,
+          });
+          vouchers = allocRes.vouchers;
         });
       } finally {
         await session.endSession();
       }
     } catch (allocErr) {
       allocationFailed = true;
+      allocationError = allocErr.message;
       order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
+      order.fulfillmentStatus = allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
+      order.fulfillmentError = allocErr.message;
       await order.save();
 
       await AuditLog.create({
-        adminId: req.user._id,
-        adminEmail: req.user.email,
-        action: 'ORDER_ALLOCATION_FAILED',
+        adminEmail: req.user.email || 'system@apexvouchers.in',
+        action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
         resourceType: 'Order',
         resourceId: order._id.toString(),
         details: {
           orderNo: order.orderNo,
           error: allocErr.message,
+          code: allocErr.code,
         },
       }).catch(() => {});
+
+      try {
+        await sendAdminVoucherAssignmentFailureAlert(order, allocErr.message);
+      } catch {}
     }
 
     if (!allocationFailed) {
-      order.orderStatus = 'FULFILLED';
-      await order.save();
-
       const enriched = vouchers.map((v) => {
-        const match = order.items.find((it) => it.productId.toString() === v.productId.toString());
+        const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
         return {
           code: v.code,
           expiryDate: v.expiryDate,
-          productName: match?.productName || '',
+          productName: match?.productName || v.productId?.name || '',
+          voucherType: v.voucherType || match?.voucherType || '',
         };
       });
 
@@ -455,7 +455,9 @@ export const getCashfreeOrderStatus = async (req, res, next) => {
       paymentStatus: 'PAID',
       orderStatus: 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
       needsAllocation: true,
-      message: 'Payment received successfully. Voucher allocation is pending manual restock.',
+      fulfillmentStatus: order.fulfillmentStatus,
+      message: 'Payment received successfully. Voucher allocation is pending manual restock or verification.',
+      error: allocationError,
       data: order.toObject(),
       vouchers: [],
     });
@@ -470,6 +472,25 @@ export const getCashfreeOrderStatus = async (req, res, next) => {
  */
 export const handleCashfreeWebhook = async (req, res, next) => {
   try {
+    const signature = req.headers['x-webhook-signature'];
+    const timestamp = req.headers['x-webhook-timestamp'];
+    const rawBody = req.rawBody;
+    if (!signature || !timestamp || !rawBody || !config.cashfree.secretKey) {
+      console.error('[Cashfree Webhook Rejected]: missing signature configuration');
+      return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', config.cashfree.secretKey)
+      .update(`${timestamp}${rawBody}`)
+      .digest('base64');
+    const received = Buffer.from(String(signature));
+    const expected = Buffer.from(expectedSignature);
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) {
+      console.error('[Cashfree Webhook Rejected]: signature verification failed');
+      return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
     const payload = req.body || {};
     const eventType = payload.type || payload.event || '';
     const orderData = payload.data?.order || payload.order || {};
@@ -486,8 +507,8 @@ export const handleCashfreeWebhook = async (req, res, next) => {
       return res.status(200).json({ success: true, message: 'Order not found for webhook' });
     }
 
-    // Idempotency check: if order is already paid, acknowledge immediately
-    if (order.paymentStatus === 'PAID' && order.orderStatus === 'FULFILLED') {
+    // Idempotency check: if order is already paid & fulfilled, acknowledge immediately
+    if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
       return res.status(200).json({ success: true, message: 'Webhook already processed (Idempotent)' });
     }
 
@@ -505,20 +526,24 @@ export const handleCashfreeWebhook = async (req, res, next) => {
         const session = await Order.startSession();
         try {
           await session.withTransaction(async () => {
-            vouchers = await assignVouchers(order.userId, order._id, order.items, session);
+            const allocRes = await allocateVouchersForOrder({
+              order,
+              user: order.userId,
+              session,
+            });
+            vouchers = allocRes.vouchers;
           });
-          order.orderStatus = 'FULFILLED';
-          await order.save();
         } finally {
           await session.endSession();
         }
 
         const enriched = vouchers.map((v) => {
-          const match = order.items.find((it) => it.productId.toString() === v.productId.toString());
+          const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
           return {
             code: v.code,
             expiryDate: v.expiryDate,
-            productName: match?.productName || '',
+            productName: match?.productName || v.productId?.name || '',
+            voucherType: v.voucherType || match?.voucherType || '',
           };
         });
 
@@ -527,11 +552,26 @@ export const handleCashfreeWebhook = async (req, res, next) => {
         }
       } catch (err) {
         order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
+        order.fulfillmentStatus = err.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
+        order.fulfillmentError = err.message;
         await order.save();
+
+        await AuditLog.create({
+          adminEmail: 'webhook@apexvouchers.in',
+          action: err.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
+          resourceType: 'Order',
+          resourceId: order._id.toString(),
+          details: {
+            orderNo: order.orderNo,
+            error: err.message,
+            code: err.code,
+          },
+        }).catch(() => {});
       }
     } else if (['PAYMENT_FAILED', 'ORDER_FAILED'].includes(eventType)) {
       order.paymentStatus = 'FAILED';
       order.orderStatus = 'FAILED';
+      order.fulfillmentStatus = 'FAILED';
       await order.save();
     }
 

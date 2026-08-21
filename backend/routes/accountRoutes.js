@@ -2,6 +2,11 @@ import { Router } from 'express';
 import {
   getAccount,
   updateProfile,
+  uploadProfileImage,
+  removeProfileImage,
+  requestEmailChange,
+  verifyEmailChange,
+  changePassword,
   myOrders,
   myVouchers,
   dashboardStats,
@@ -9,6 +14,7 @@ import {
   markVoucherUsed,
 } from '../controllers/accountController.js';
 import { protect } from '../middleware/auth.js';
+import { profileImageUpload } from '../middleware/upload.js';
 import { validatePromotionEndpoint } from '../services/promotions.js';
 
 const r = Router();
@@ -17,6 +23,12 @@ r.use(protect);
 
 r.get('/', getAccount);
 r.patch('/profile', updateProfile);
+r.post('/profile/avatar', profileImageUpload.single('avatar'), uploadProfileImage);
+r.delete('/profile/avatar', removeProfileImage);
+r.post('/change-email', requestEmailChange);
+r.post('/verify-email-change', verifyEmailChange);
+r.get('/verify-email-change', verifyEmailChange);
+r.post('/change-password', changePassword);
 r.get('/stats', dashboardStats);
 r.get('/orders', myOrders);
 r.get('/vouchers', myVouchers);

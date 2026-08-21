@@ -36,7 +36,7 @@ export const DaylightHero3DGraphic = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* DOTTED ORBITAL RING & CENTRAL STUDENT HERO ILLUSTRATION (Parallax: 10px) */}
+      {/* DOTTED ORBITAL RING & CENTRAL 3D STUDENT HERO ILLUSTRATION (Parallax: 10px) */}
       {/* ========================================================================= */}
       <div
         className="relative w-full h-full flex items-center justify-center transition-transform duration-300 ease-out"
@@ -44,109 +44,60 @@ export const DaylightHero3DGraphic = () => {
           transform: `translate3d(${mouseOffset.x * 10}px, ${mouseOffset.y * 10}px, 0)`,
         }}
       >
-        <svg
-          viewBox="0 0 700 520"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-2xl overflow-visible"
-        >
-          <defs>
-            <linearGradient id="beanBagGrad3D" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FFF0F5" />
-              <stop offset="100%" stopColor="#FFE4E6" />
-            </linearGradient>
-            <filter id="softGlowShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="12" stdDeviation="16" floodColor="#FF005C" floodOpacity="0.1" />
-            </filter>
-          </defs>
+        {/* DOTTED PINK ORBITAL RING & FLIGHT TRAJECTORY */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <svg
+            viewBox="0 0 700 520"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-full drop-shadow-sm overflow-visible"
+          >
+            <defs>
+              <filter id="softGlowShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="10" stdDeviation="14" floodColor="#FF005C" floodOpacity="0.15" />
+              </filter>
+            </defs>
 
-          {/* DOTTED PINK ORBITAL RING WITH ROTATION */}
-          <g className="animate-orbit-spin">
+            {/* Dotted Pink Orbit Path */}
             <ellipse
               cx="350"
-              cy="260"
-              rx="230"
-              ry="205"
+              cy="255"
+              rx="235"
+              ry="200"
               stroke="#FF005C"
               strokeWidth="1.8"
-              strokeDasharray="7 7"
+              strokeDasharray="6 8"
               fill="none"
-              opacity="0.4"
+              opacity="0.35"
             />
 
-            {/* ORBIT SATELLITE NODES */}
+            {/* Satellite Orbital Nodes */}
             <g filter="url(#softGlowShadow)">
-              <circle cx="350" cy="55" r="7" fill="#FF005C" />
-              <circle cx="350" cy="55" r="12" stroke="#FF005C" strokeWidth="1.5" opacity="0.4" />
-
-              <circle cx="120" cy="260" r="7" fill="#FF005C" />
-              <circle cx="120" cy="260" r="12" stroke="#FF005C" strokeWidth="1.5" opacity="0.4" />
-
-              <circle cx="350" cy="465" r="7" fill="#FF005C" />
-              <circle cx="350" cy="465" r="12" stroke="#FF005C" strokeWidth="1.5" opacity="0.4" />
-
-              <circle cx="580" cy="260" r="7" fill="#FF005C" />
-              <circle cx="580" cy="260" r="12" stroke="#FF005C" strokeWidth="1.5" opacity="0.4" />
+              <circle cx="130" cy="220" r="5" fill="#FF005C" />
+              <circle cx="570" cy="220" r="5" fill="#FF005C" />
+              <circle cx="450" cy="65" r="5" fill="#FF005C" />
+              <circle cx="650" cy="380" r="5" fill="#FF005C" />
             </g>
-          </g>
 
-          {/* INNER ORBIT GUIDE */}
-          <ellipse
-            cx="350"
-            cy="260"
-            rx="160"
-            ry="140"
-            stroke="#FF005C"
-            strokeWidth="1"
-            strokeDasharray="4 8"
-            fill="none"
-            opacity="0.2"
+            {/* Flight Plane ✈ Along Orbital Path */}
+            <g transform="translate(250, 155) rotate(-28)">
+              <path
+                d="M16 2L19 12L29 14L19 17L16 28L13 17L3 14L13 12L16 2Z"
+                fill="#6C3CE0"
+                opacity="0.85"
+              />
+            </g>
+          </svg>
+        </div>
+
+        {/* Central 3D Student Character Image */}
+        <div className="relative z-10 flex items-center justify-center">
+          <img
+            src="/apex_hero_student_3d.png"
+            alt="Apex Vouchers Student with Laptop"
+            className="w-[320px] sm:w-[370px] md:w-[400px] max-w-full h-auto object-contain drop-shadow-[0_20px_35px_rgba(255,0,92,0.12)] select-none pointer-events-none"
           />
-
-          {/* PLANT POT ON FLOOR */}
-          <g transform="translate(170, 315)">
-            <path d="M15 50L25 90H45L55 50H15Z" fill="#FFD1DC" stroke="#F472B6" strokeWidth="1.5" />
-            <path d="M35 15C15 25 10 45 35 50C60 50 55 25 35 15Z" fill="#F472B6" />
-            <path d="M25 30C10 32 5 45 25 50Z" fill="#FB7185" />
-            <path d="M45 25C60 28 65 42 45 50Z" fill="#F43F5E" />
-          </g>
-
-          {/* BEAN BAG CHAIR */}
-          <g filter="url(#softGlowShadow)">
-            <path
-              d="M230 370 C 210 270, 280 200, 350 230 C 420 250, 460 340, 430 410 C 390 450, 250 450, 230 370 Z"
-              fill="url(#beanBagGrad3D)"
-              stroke="#FECDD3"
-              strokeWidth="2.5"
-            />
-            <path d="M280 350 Q 350 400 410 370" stroke="#FDA4AF" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-          </g>
-
-          {/* STUDENT CHARACTER SITTING IN BEAN BAG CHAIR */}
-          <path d="M290 355 L350 380 L380 345" stroke="#1E293B" strokeWidth="36" strokeLinecap="round" strokeLinejoin="round" />
-          <ellipse cx="385" cy="345" rx="16" ry="10" fill="white" stroke="#CBD5E1" strokeWidth="2" />
-          <path d="M380 342L390 348" stroke="#FF005C" strokeWidth="2" />
-
-          {/* Vibrant Pink Hoodie */}
-          <path d="M290 210 C290 175, 320 160, 350 160 C380 160, 400 175, 400 210 V340 H290 V210 Z" fill="#FF005C" />
-          <path d="M335 160 L350 210 L365 160 H335 Z" fill="#FFF0F5" />
-
-          {/* Student Head & Hair */}
-          <circle cx="350" cy="140" r="30" fill="#FDBA74" />
-          <path d="M318 130 C318 95, 338 80, 358 80 C378 80, 390 98, 385 130 C372 112, 355 112, 345 112 C332 112, 322 116, 318 130 Z" fill="#0F172A" />
-          <circle cx="340" cy="136" r="4" fill="#0F172A" />
-          <circle cx="360" cy="136" r="4" fill="#0F172A" />
-          <path d="M342 148 C342 155, 358 155, 358 148 Z" fill="#0F172A" />
-
-          {/* Arms holding Laptop on lap */}
-          <path d="M300 230 L265 295 L350 300" stroke="#FF005C" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* LAPTOP */}
-          <path d="M250 290 L290 245 L340 290 Z" fill="#334155" />
-          <rect x="245" y="285" width="95" height="44" rx="5" fill="#64748B" stroke="#475569" strokeWidth="1.5" />
-          <rect x="255" y="292" width="75" height="30" rx="3" fill="#0F172A" />
-          <path d="M292 300L298 314H290L288 308H282L280 314H274L284 300H292Z" fill="#FF005C" />
-        </svg>
+        </div>
       </div>
 
       {/* ========================================================================= */}

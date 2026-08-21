@@ -1226,9 +1226,16 @@ Apex/
    JWT_SECRET=dev_apex_vouchers_jwt_secret_key_2025
    JWT_EXPIRES_IN=7d
    CLIENT_URL=http://localhost:5173
+      SERVER_URL=http://localhost:5000
    ADMIN_EMAIL=admin@apexvouchers.in
    ADMIN_PASSWORD=Admin@123
    ADMIN_NAME=System Admin
+      SMTP_HOST=smtp.gmail.com
+      SMTP_PORT=587
+      SMTP_USER=your-verified-sender@example.com
+      SMTP_PASSWORD=your-provider-app-password
+      SMTP_FROM="Apex Vouchers" <your-verified-sender@example.com>
+      SMTP_SECURE=false
    ```
 
 3. **Start Development Backend & Frontend**:

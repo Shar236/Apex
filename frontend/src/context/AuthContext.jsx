@@ -9,6 +9,20 @@ import {
 } from '../lib/api';
 const AuthContext = createContext(null);
 
+const normalizeUser = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return null;
+  const id = candidate._id || candidate.id || null;
+  return {
+    ...candidate,
+    ...(id ? { _id: id, id } : {}),
+    name: typeof candidate.name === 'string' ? candidate.name.trim() : '',
+    email: typeof candidate.email === 'string' ? candidate.email.trim().toLowerCase() : '',
+    phone: candidate.phone || null,
+    phoneCountry: candidate.phoneCountry || null,
+    profileImageUrl: candidate.profileImageUrl || null,
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,13 +35,14 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return;
     }
-    setUser(getStoredUser());
+    setUser(normalizeUser(getStoredUser()));
     setIsAuthenticated(true);
     const res = await authApi.me();
     setLoading(false);
     if (res.success) {
-      setUser(res.data);
-      setStoredUser(res.data);
+      const nextUser = normalizeUser(res.user || res.data);
+      setUser(nextUser);
+      setStoredUser(nextUser);
     } else {
       setIsAuthenticated(false);
       setUser(null);
@@ -44,8 +59,9 @@ export const AuthProvider = ({ children }) => {
     const res = await authApi.register(data);
     if (res.success) {
       setToken(res.token);
-      setUser(res.user);
-      setStoredUser(res.user);
+      const nextUser = normalizeUser(res.user);
+      setUser(nextUser);
+      setStoredUser(nextUser);
       setIsAuthenticated(true);
     } else {
       setError(res.message);
@@ -58,8 +74,9 @@ export const AuthProvider = ({ children }) => {
     const res = await authApi.login(data);
     if (res.success) {
       setToken(res.token);
-      setUser(res.user);
-      setStoredUser(res.user);
+      const nextUser = normalizeUser(res.user);
+      setUser(nextUser);
+      setStoredUser(nextUser);
       setIsAuthenticated(true);
     } else {
       setError(res.message);
@@ -87,11 +104,21 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = async () => {
     const res = await authApi.me();
     if (res.success) {
-      setUser(res.data);
-      setStoredUser(res.data);
+      const nextUser = normalizeUser(res.user || res.data);
+      setUser(nextUser);
+      setStoredUser(nextUser);
+      return { ...res, user: nextUser };
     }
     return res;
   };
+
+  const updateAuthenticatedUser = useCallback((candidate) => {
+    const nextUser = normalizeUser(candidate);
+    if (!nextUser) return null;
+    setUser(nextUser);
+    setStoredUser(nextUser);
+    return nextUser;
+  }, []);
 
   const isAdmin = !!user && user.role === 'admin';
 
@@ -100,6 +127,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         setUser,
+        updateAuthenticatedUser,
         isAuthenticated,
         loading,
         error,

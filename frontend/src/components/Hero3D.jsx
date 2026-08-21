@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Play, Tag, Award, Mail, Calendar, Headphones, Star } from 'lucide-react';
 import { useVoucher } from '../context/VoucherContext';
+import { useTheme } from '../context/ThemeContext';
 import { DaylightHero3DGraphic } from './DaylightHero3DGraphic';
+import { NightHero3DGraphic } from './NightHero3DGraphic';
 
 const CampaignCountdownTimer = ({ endDate }) => {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -42,6 +44,7 @@ const CampaignCountdownTimer = ({ endDate }) => {
 
 export const Hero3D = () => {
   const { setActiveTab, heroSettings, activeCampaign, benefitCards } = useVoucher();
+  const { isDark } = useTheme();
 
   const heading1 = heroSettings?.headingLine1 || 'Your Exam. Your Dream.';
   const headingHighlight = heroSettings?.headingHighlight || 'Our Vouchers.';
@@ -159,7 +162,7 @@ export const Hero3D = () => {
 
           {/* Right Column: Custom 3D Code Interactive Hero Graphic Component */}
           <div className="lg:col-span-5 flex justify-center">
-            <DaylightHero3DGraphic />
+            {isDark ? <NightHero3DGraphic /> : <DaylightHero3DGraphic />}
           </div>
         </div>
 

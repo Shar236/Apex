@@ -23,6 +23,26 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    phoneCountry: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    profileImageUrl: {
+      type: String,
+      default: null,
+    },
+    pendingEmail: { type: String, select: false, default: null },
+    pendingEmailToken: { type: String, select: false, default: null },
+    pendingEmailExpires: { type: Date, select: false, default: null },
     passwordHash: {
       type: String,
       required: [true, 'Password hash is required'],
@@ -50,6 +70,9 @@ const userSchema = new mongoose.Schema(
         delete ret.passwordHash;
         delete ret.resetToken;
         delete ret.resetExpires;
+        delete ret.pendingEmail;
+        delete ret.pendingEmailToken;
+        delete ret.pendingEmailExpires;
         delete ret.__v;
         return ret;
       },

@@ -189,6 +189,32 @@ export const productApi = {
 export const accountApi = {
   me: () => request('/api/account'),
   updateProfile: (data) => request('/api/account/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const token = getToken();
+    try {
+      const resp = await fetch(`${apiBase()}/api/account/profile/avatar`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.success === false) {
+        return { success: false, message: data?.message || `Upload failed (${resp.status})` };
+      }
+      return { success: true, ...data };
+    } catch (err) {
+      return { success: false, message: `Network error: ${err.message}` };
+    }
+  },
+  removeAvatar: () => request('/api/account/profile/avatar', { method: 'DELETE' }),
+  requestEmailChange: (newEmail) =>
+    request('/api/account/change-email', { method: 'POST', body: JSON.stringify({ newEmail }) }),
+  changePassword: (currentPassword, newPassword) =>
+    request('/api/account/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   stats: () => request('/api/account/stats'),
   orders: () => request('/api/account/orders'),
   vouchers: () => request('/api/account/vouchers'),
@@ -267,6 +293,9 @@ export const adminApi = {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);
   },
+  voucherSummaryByProduct: () => request('/api/admin/vouchers/summary-by-product'),
+  revealVoucherCode: (id) => request(`/api/admin/vouchers/${id}/reveal`),
+  notifications: () => request('/api/admin/notifications'),
   addVouchers: (payload) => request('/api/admin/vouchers', { method: 'POST', body: JSON.stringify(payload) }),
   addVouchersBulk: (payload) => request('/api/admin/vouchers/bulk', { method: 'POST', body: JSON.stringify(payload) }),
   updateVoucher: (id, data) => request(`/api/admin/vouchers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -316,17 +345,31 @@ export const adminApi = {
   },
   videos: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return request(`/api/admin/videos${qs ? `?${qs}` : ''}`);
+    return request(`/api/admin/reels${qs ? `?${qs}` : ''}`);
   },
-  createVideo: (data) => request('/api/admin/videos', { method: 'POST', body: JSON.stringify(data) }),
-  updateVideo: (id, data) => request(`/api/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  quickToggleFeaturedVideo: (id, featured) => request(`/api/admin/videos/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
-  quickTogglePublishVideo: (id, published) => request(`/api/admin/videos/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
-  deleteVideo: (id) => request(`/api/admin/videos/${id}`, { method: 'DELETE' }),
-  updateVideoSettings: (data) => request('/api/admin/videos/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  reels: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/reels${qs ? `?${qs}` : ''}`);
+  },
+  getVideo: (id) => request(`/api/admin/reels/${id}`),
+  getReel: (id) => request(`/api/admin/reels/${id}`),
+  createVideo: (data) => request('/api/admin/reels', { method: 'POST', body: JSON.stringify(data) }),
+  createReel: (data) => request('/api/admin/reels', { method: 'POST', body: JSON.stringify(data) }),
+  updateVideo: (id, data) => request(`/api/admin/reels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  updateReel: (id, data) => request(`/api/admin/reels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  quickToggleFeaturedVideo: (id, featured) => request(`/api/admin/reels/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  quickToggleFeaturedReel: (id, featured) => request(`/api/admin/reels/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  quickTogglePublishVideo: (id, published) => request(`/api/admin/reels/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
+  quickTogglePublishReel: (id, published) => request(`/api/admin/reels/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
+  quickUpdateOrder: (id, order) => request(`/api/admin/reels/${id}/order`, { method: 'PATCH', body: JSON.stringify({ order }) }),
+  bulkReorderReels: (items) => request('/api/admin/reels/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
+  deleteVideo: (id) => request(`/api/admin/reels/${id}`, { method: 'DELETE' }),
+  deleteReel: (id) => request(`/api/admin/reels/${id}`, { method: 'DELETE' }),
+  updateVideoSettings: (data) => request('/api/admin/reels/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateReelSettings: (data) => request('/api/admin/reels/settings', { method: 'PATCH', body: JSON.stringify(data) }),
   uploadMedia: async (formData) => {
     const token = getToken();
-    const resp = await fetch(`${apiBase()}/api/admin/videos/upload`, {
+    const resp = await fetch(`${apiBase()}/api/admin/reels/upload`, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -339,9 +382,13 @@ export const adminApi = {
 };
 
 export const videoApi = {
-  list: () => request('/api/videos'),
-  incrementView: (id) => request(`/api/videos/${id}/view`, { method: 'POST' }),
+  list: () => request('/api/reels'),
+  get: (id) => request(`/api/reels/${id}`),
+  incrementView: (id) => request(`/api/reels/${id}/view`, { method: 'POST' }),
 };
+
+export const reelApi = videoApi;
+
 
 export const formatPrice = (amount, currency = 'INR') => {
   if (currency === 'USD') {

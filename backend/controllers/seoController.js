@@ -667,7 +667,7 @@ export const getPublicSEOData = async (req, res, next) => {
           defaultSeoTitle: defaultTitle?.value || 'Exam Vouchers at Best Prices | Apex Vouchers',
           defaultMetaDescription: defaultDesc?.value || 'Buy official exam vouchers for PTE, IELTS, TOEFL and Duolingo at competitive prices. Save on exam fees with Apex Vouchers.',
           defaultOgImage: defaultOgImage?.value || '',
-          websiteUrl: siteUrl?.value || base,
+          websiteUrl: siteUrl?.value || baseUrl(),
           organizationName: orgName?.value || 'Apex Vouchers',
           organizationLogo: orgLogo?.value || '',
           gscVerificationCode: gscCode?.value || '',

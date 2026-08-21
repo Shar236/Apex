@@ -9,6 +9,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev-only-change-me-in-production-super-secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
+  serverUrl: process.env.SERVER_URL || process.env.API_URL || 'http://localhost:5000',
 
   business: {
     name: process.env.BUSINESS_NAME || 'Apex Vouchers',
@@ -43,11 +44,19 @@ export const config = {
   },
 
   smtp: {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: process.env.SMTP_HOST || '',
     port: process.env.SMTP_PORT || 587,
-    user: process.env.SMTP_USER || 'apexvouchers@gmail.com',
+    user: process.env.SMTP_USER || '',
     password: process.env.SMTP_PASSWORD || '',
-    from: process.env.SMTP_FROM || '"Apex Vouchers" <apexvouchers@gmail.com>',
+    from: process.env.SMTP_FROM || '',
     secure: process.env.SMTP_SECURE === 'true',
   },
+
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || 'nbcbpuql',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET || '',
+  },
 };
+
