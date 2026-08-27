@@ -63,7 +63,7 @@ const WRITABLE_FIELDS = [
   'title', 'slug', 'excerpt', 'content', 'coverImage', 'coverImagePublicId',
   'coverImageAlt', 'coverImageTitle', 'coverImageCaption', 'coverImageDescription',
   'images', 'author', 'authorBio', 'authorImage', 'reviewer', 'reviewedAt',
-  'category', 'tags', 'featured', 'faqs', 'relatedPosts', 'seo',
+  'category', 'tags', 'featured', 'faqs', 'relatedPosts', 'seo', 'contentSource',
 ];
 
 const pickWritable = (body) => {
@@ -511,7 +511,7 @@ export const listPublicBlogs = async (req, res, next) => {
     const [total, posts] = await Promise.all([
       BlogPost.countDocuments(filter),
       BlogPost.find(filter)
-        .select('title slug excerpt coverImage coverImageAlt category tags author authorImage authorBio publishedAt updatedAt readingTime featured')
+        .select('title slug excerpt coverImage coverImageAlt category tags author authorImage authorBio publishedAt updatedAt readingTime featured contentSource')
         .sort({ featured: -1, publishedAt: -1, createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)

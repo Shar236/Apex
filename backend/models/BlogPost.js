@@ -97,6 +97,20 @@ const blogPostSchema = new mongoose.Schema(
       default: 'draft',
       index: true,
     },
+
+    // How the public /blog/:slug page renders the BODY of this post.
+    //   'cms'  -> existing CMS renderer (the sanitized `content` HTML)
+    //   'code' -> a pre-approved React component looked up by slug in
+    //             frontend/src/blogs/registry.js
+    // Everything else (metadata, SEO, schema, FAQ, related posts, sitemap,
+    // redirects, view tracking, publishing) is unchanged either way.
+    // Existing posts have no value set and are treated as 'cms'.
+    contentSource: {
+      type: String,
+      enum: ['cms', 'code'],
+      default: 'cms',
+      index: true,
+    },
     previousStatus: { type: String, enum: BLOG_STATUSES, default: null },
     scheduledAt: { type: Date, default: null, index: true },
     publishedAt: { type: Date, default: null },

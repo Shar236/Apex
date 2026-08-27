@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { publicBlogApi, applyPageMetadata, setStructuredData } from '../lib/api';
 import { BlogArticleView } from './BlogArticleView';
+import { getCodeArticle } from '../blogs/registry';
+import CodeArticleLayout from '../blogs/CodeArticleLayout';
 
 export function BlogPostPage() {
   const { slug } = useParams();
@@ -72,6 +74,27 @@ export function BlogPostPage() {
   }
   if (notFound) {
     return <div className="min-h-[50vh] flex items-center justify-center text-sm font-bold text-neutral-400">Article not found — redirecting to Blog…</div>;
+  }
+
+  // Hybrid render: a "code" post with a registered component renders that
+  // component; everything else (including a "code" post with no registered
+  // component) falls through to the existing CMS renderer. Same URL, same SEO,
+  // same schema, same view tracking either way.
+  const CodeArticle = post.contentSource === 'code' ? getCodeArticle(post.slug) : null;
+  if (CodeArticle) {
+    return (
+      <CodeArticleLayout post={post}>
+        <Suspense
+          fallback={
+            <div className="min-h-[40vh] flex items-center justify-center text-sm font-bold text-neutral-400 animate-pulse">
+              Loading article…
+            </div>
+          }
+        >
+          <CodeArticle post={post} relatedPosts={relatedPosts} />
+        </Suspense>
+      </CodeArticleLayout>
+    );
   }
 
   return <BlogArticleView post={post} relatedPosts={relatedPosts} />;
