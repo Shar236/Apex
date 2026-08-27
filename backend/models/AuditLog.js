@@ -21,7 +21,7 @@ const auditLogSchema = new mongoose.Schema(
     resourceType: {
       type: String,
       required: true,
-      enum: ['Product', 'VoucherCode', 'Order', 'Promotion', 'User', 'System', 'Video', 'Setting', 'PTEBookingRequest', 'Award', 'PageSEO', 'BlogPost', 'Redirect', 'Campaign', 'GoogleSearchConsoleConnection'],
+      enum: ['Product', 'VoucherCode', 'Order', 'Promotion', 'User', 'System', 'Video', 'Setting', 'PTEBookingRequest', 'Award', 'PageSEO', 'BlogPost', 'Redirect', 'Campaign'],
       index: true,
     },
     resourceId: {

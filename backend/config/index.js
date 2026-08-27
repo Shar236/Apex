@@ -60,20 +60,7 @@ export const config = {
     uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET || '',
   },
 
-  google: {
-    seoIntegrationEnabled: process.env.GOOGLE_SEO_INTEGRATION_ENABLED === 'true',
-    searchConsole: {
-      enabled: process.env.GOOGLE_SEARCH_CONSOLE_ENABLED === 'true',
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      redirectUri: process.env.GOOGLE_OAUTH_REDIRECT_URI || '',
-    },
-    tokenEncryptionKey: process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || '',
-    pagespeed: {
-      enabled: process.env.GOOGLE_PAGESPEED_ENABLED === 'true',
-      apiKey: process.env.GOOGLE_PAGESPEED_API_KEY || '',
-    },
-    siteUrl: process.env.SEO_SITE_URL || '',
-  },
+  // Canonical/absolute base URL for SEO (sitemap, canonical tags, structured data).
+  siteUrl: process.env.SEO_SITE_URL || '',
 };
 

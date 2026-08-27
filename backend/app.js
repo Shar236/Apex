@@ -25,8 +25,6 @@ import pteBookingRoutes from './routes/pteBookingRoutes.js';
 import awardRoutes from './routes/awardRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import publicBlogRoutes from './routes/publicBlogRoutes.js';
-import googleSeoRoutes from './routes/googleSeoRoutes.js';
-import pagespeedRoutes from './routes/pagespeedRoutes.js';
 
 const app = express();
 
@@ -154,12 +152,6 @@ app.use('/api/reels', videoRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
-// Mounted before the generic /api/admin router below: googleSeoRoutes contains
-// the OAuth /callback route, which Google redirects the bare browser to and
-// therefore must be reachable without the Bearer token adminRoutes' own
-// `r.use(protectAdmin)` would otherwise demand for anything under /api/admin/*.
-app.use('/api/admin/seo/google', googleSeoRoutes);
-app.use('/api/admin/seo/pagespeed', pagespeedRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/pte-bookings', pteBookingRoutes);

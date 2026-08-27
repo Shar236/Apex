@@ -14,6 +14,3 @@ export { BlogPost, BLOG_STATUSES } from './BlogPost.js';
 export { BlogPostRevision } from './BlogPostRevision.js';
 export { Award } from './Award.js';
 export { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES } from './PTEBookingRequest.js';
-export { GoogleSearchConsoleConnection } from './GoogleSearchConsoleConnection.js';
-export { SearchPerformanceCache } from './SearchPerformanceCache.js';
-export { PageSpeedResult } from './PageSpeedResult.js';

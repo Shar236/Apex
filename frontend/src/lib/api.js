@@ -308,32 +308,6 @@ export const blogApi = {
   },
 };
 
-export const googleSeoApi = {
-  status: () => request('/api/admin/seo/google/status'),
-  connect: async () => {
-    const res = await request('/api/admin/seo/google/connect');
-    if (res.success && res.data?.url) {
-      window.location.href = res.data.url;
-    }
-    return res;
-  },
-  disconnect: () => request('/api/admin/seo/google/disconnect', { method: 'POST' }),
-  properties: () => request('/api/admin/seo/google/properties'),
-  setProperty: (propertyUrl) => request('/api/admin/seo/google/property', { method: 'POST', body: JSON.stringify({ propertyUrl }) }),
-  performance: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return request(`/api/admin/seo/google/performance${qs ? `?${qs}` : ''}`);
-  },
-  queries: (params = {}) => request(`/api/admin/seo/google/queries?${new URLSearchParams(params).toString()}`),
-  pages: (params = {}) => request(`/api/admin/seo/google/pages?${new URLSearchParams(params).toString()}`),
-  countries: (params = {}) => request(`/api/admin/seo/google/countries?${new URLSearchParams(params).toString()}`),
-  devices: (params = {}) => request(`/api/admin/seo/google/devices?${new URLSearchParams(params).toString()}`),
-  opportunities: (params = {}) => request(`/api/admin/seo/google/opportunities?${new URLSearchParams(params).toString()}`),
-  sync: () => request('/api/admin/seo/google/sync', { method: 'POST' }),
-  pagespeed: (url, strategy = 'mobile') => request(`/api/admin/seo/pagespeed?${new URLSearchParams({ url, strategy }).toString()}`),
-  runPageSpeedTest: (url, strategy = 'mobile') => request('/api/admin/seo/pagespeed/test', { method: 'POST', body: JSON.stringify({ url, strategy }) }),
-};
-
 export const publicBlogApi = {
   list: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
@@ -504,7 +478,6 @@ export const adminApi = {
   },
   seo: seoApi,
   blog: blogApi,
-  googleSeo: googleSeoApi,
   pteBookings: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/pte-bookings${qs ? `?${qs}` : ''}`);

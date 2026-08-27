@@ -4,7 +4,7 @@ import {
   RotateCcw, Trash, ImageIcon, Tag, Link2, HelpCircle, History, Sparkles, ChevronRight,
   CheckCircle2, AlertTriangle, XCircle, ExternalLink, Upload, Code2, PenSquare,
 } from 'lucide-react';
-import { blogApi, googleSeoApi } from '../lib/api';
+import { blogApi } from '../lib/api';
 import BlogRichTextEditor from './BlogRichTextEditor';
 import { listCodeArticles } from '../blogs/registry';
 
@@ -280,7 +280,6 @@ const TABS = [
   { id: 'faq', label: 'FAQ', icon: <HelpCircle className="w-4 h-4" /> },
   { id: 'links', label: 'Internal Links', icon: <Link2 className="w-4 h-4" /> },
   { id: 'related', label: 'Related Posts', icon: <ExternalLink className="w-4 h-4" /> },
-  { id: 'performance', label: 'Search Performance', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'history', label: 'Revision History', icon: <History className="w-4 h-4" /> },
 ];
 
@@ -508,10 +507,6 @@ function BlogEditor({ post, onClose, onSaved }) {
 
             {activeTab === 'related' && (
               <BlogRelatedTab draft={draft} setField={setField} excludeId={id} />
-            )}
-
-            {activeTab === 'performance' && (
-              <BlogSearchPerformanceTab slug={draft.slug} />
             )}
 
             {activeTab === 'history' && (
@@ -870,71 +865,6 @@ function BlogRelatedTab({ draft, setField, excludeId }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Search Performance tab (section 13 — needs Google Search Console) ──────
-
-function BlogSearchPerformanceTab({ slug }) {
-  const [status, setStatus] = useState(null);
-  const [performance, setPerformance] = useState(null);
-  const [queries, setQueries] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!slug) { setLoading(false); return; }
-    setLoading(true);
-    const pagePath = `/blog/${slug}`;
-    Promise.all([
-      googleSeoApi.status(),
-      googleSeoApi.performance({ period: '28d', pagePath }),
-      googleSeoApi.queries({ period: '28d', pagePath }),
-    ]).then(([statusRes, perfRes, queriesRes]) => {
-      if (statusRes.success) setStatus(statusRes.data);
-      if (perfRes.success) setPerformance(perfRes.data);
-      if (queriesRes.success) setQueries(queriesRes.data.rows || []);
-      setLoading(false);
-    });
-  }, [slug]);
-
-  if (!slug) return <Empty title="Save this post first" desc="Search performance is scoped to this article's published URL." />;
-  if (loading) return <div className="text-xs font-bold text-neutral-400 animate-pulse py-6 text-center">Loading search performance…</div>;
-
-  const connected = status?.connection?.connected && status?.connection?.propertyUrl;
-
-  if (!connected) {
-    return (
-      <div className="text-center py-10 rounded-2xl border border-dashed border-[#EAEAEA] dark:border-[#292929] space-y-2">
-        <div className="font-black text-neutral-900 dark:text-white">Connect Google Search Console to see this</div>
-        <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] max-w-sm mx-auto">
-          Real clicks, impressions, CTR and average position for /blog/{slug} will appear here once connected under SEO Manager → Google Search &amp; Speed.
-        </p>
-      </div>
-    );
-  }
-
-  const totals = performance?.totals || {};
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]"><div className="text-[10px] font-black text-neutral-400">Clicks</div><div className="font-black text-lg tabular-nums">{totals.clicks ?? '—'}</div></div>
-        <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]"><div className="text-[10px] font-black text-neutral-400">Impressions</div><div className="font-black text-lg tabular-nums">{totals.impressions ?? '—'}</div></div>
-        <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]"><div className="text-[10px] font-black text-neutral-400">CTR</div><div className="font-black text-lg tabular-nums">{totals.ctr != null ? `${(totals.ctr * 100).toFixed(2)}%` : '—'}</div></div>
-        <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]"><div className="text-[10px] font-black text-neutral-400">Avg Position</div><div className="font-black text-lg tabular-nums">{totals.position != null ? totals.position.toFixed(1) : '—'}</div></div>
-      </div>
-      <div>
-        <Label>Top Queries</Label>
-        <div className="space-y-1.5">
-          {queries.slice(0, 10).map((q, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs">
-              <span className="font-bold truncate flex-1">{q.key}</span>
-              <span className="text-neutral-400 font-mono text-[10px] ml-3 whitespace-nowrap">pos {q.position?.toFixed(1)} · {q.impressions} impr · {(q.ctr * 100).toFixed(1)}% CTR</span>
-            </div>
-          ))}
-          {queries.length === 0 && <p className="text-xs font-bold text-neutral-400 text-center py-4">No query data yet for this page.</p>}
-        </div>
-      </div>
     </div>
   );
 }

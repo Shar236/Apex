@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Film, Play, Video as VideoIcon,
   LogOut, Search, Plus, Edit2, Trash2, Upload, Save, RefreshCw, CheckCircle2, AlertTriangle, X, ArrowRight, Crown, Sparkles, Clock, ShieldCheck, Eye, EyeOff, Copy, Download, TrendingUp, TrendingDown, FileSpreadsheet, ShieldAlert, Megaphone, Globe, Calendar, DollarSign, Sliders, Type,
   Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks, Bell, Layers, Check as CheckIcon, ArrowUp, ArrowDown, ChevronUp, ChevronDown,
-  CalendarCheck, MapPin, Phone, Mail, StickyNote, GripVertical, Trophy, Globe2
+  CalendarCheck, MapPin, Phone, Mail, StickyNote, GripVertical, Trophy
 } from 'lucide-react';
 
 import { adminApi, formatPrice, apiBase, getToken } from '../lib/api';
@@ -14,7 +14,6 @@ import { ApexLogo } from './ApexLogo';
 import { DynamicPTELogo, PearsonOfficialLogo } from './OfficialBrandLogos';
 import AwardsAdmin from './AwardsAdmin';
 import BlogAdmin from './BlogAdmin';
-import GoogleSeoAdmin from './GoogleSeoAdmin';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -3441,7 +3440,6 @@ function SEOManager() {
     { id: 'products', label: 'Products SEO', icon: <Package className="w-4 h-4" /> },
     { id: 'pages', label: 'Pages SEO', icon: <FileSpreadsheet className="w-4 h-4" /> },
     { id: 'blogs', label: 'Blog Posts', icon: <FileText className="w-4 h-4" /> },
-    { id: 'google', label: 'Google Search & Speed', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'redirects', label: 'Redirect Manager', icon: <ArrowLeftRight className="w-4 h-4" /> },
     { id: 'global', label: 'Global Settings', icon: <Settings2 className="w-4 h-4" /> },
     { id: 'sitemap', label: 'Sitemap & Robots', icon: <Code2 className="w-4 h-4" /> },
@@ -3471,17 +3469,11 @@ function SEOManager() {
     setGlobalLoading(true);
     try { const res = await adminApi.seo.globalSettings(); if (res?.success) setGlobalForm(res.data || {}); } finally { setGlobalLoading(false); }
   };
-  const [googleStatusCard, setGoogleStatusCard] = useState(null);
-  const loadGoogleStatusCard = async () => {
-    const res = await adminApi.googleSeo.status();
-    if (res?.success) setGoogleStatusCard(res.data);
-  };
-
   useEffect(() => {
     if (subTab === 'overview') loadOverview();
     if (subTab === 'pages') loadPages();
     if (subTab === 'redirects') loadRedirects();
-    if (subTab === 'global') { loadGlobal(); loadGoogleStatusCard(); }
+    if (subTab === 'global') loadGlobal();
   }, [subTab]);
 
   useEffect(() => {
@@ -3877,8 +3869,6 @@ function SEOManager() {
 
       {subTab === 'blogs' && <BlogAdmin />}
 
-      {subTab === 'google' && <GoogleSeoAdmin />}
-
       {subTab === 'redirects' && (
         <div className="space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -4008,49 +3998,6 @@ function SEOManager() {
             )}
           </div>
 
-          <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] p-6 shadow-sm">
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-              <div>
-                <h3 className="font-black text-sm mb-1">Google Integrations</h3>
-                <p className="text-[11px] font-bold text-neutral-500 max-w-xl">
-                  Read-only configuration status from the backend .env — never shows secret values. Use the Google Search &amp; Speed tab to actually connect.
-                </p>
-              </div>
-              <button onClick={() => setSubTab('google')} className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black cursor-pointer">
-                Open Google Search &amp; Speed →
-              </button>
-            </div>
-            {!googleStatusCard ? (
-              <div className="h-24 rounded-2xl bg-neutral-100 dark:bg-[#262626] animate-pulse" />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Search Console (OAuth)</div>
-                  {[
-                    ['Google OAuth Client ID', googleStatusCard.searchConsole.clientIdConfigured],
-                    ['Google OAuth Client Secret', googleStatusCard.searchConsole.clientSecretConfigured],
-                    ['Redirect URI', googleStatusCard.searchConsole.redirectUriConfigured],
-                  ].map(([label, ok]) => (
-                    <div key={label} className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
-                      <span className={ok ? 'text-emerald-600' : 'text-neutral-400'}>{ok ? 'Configured ✓' : 'Not configured'}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-neutral-400">PageSpeed Insights (API Key)</div>
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-neutral-600 dark:text-neutral-300">PageSpeed API Key</span>
-                    <span className={googleStatusCard.pagespeed.configured ? 'text-emerald-600' : 'text-neutral-400'}>{googleStatusCard.pagespeed.configured ? 'Configured ✓' : 'Not configured'}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-neutral-600 dark:text-neutral-300">Master switch (GOOGLE_SEO_INTEGRATION_ENABLED)</span>
-                    <span className={googleStatusCard.seoIntegrationEnabled ? 'text-emerald-600' : 'text-neutral-400'}>{googleStatusCard.seoIntegrationEnabled ? 'Enabled' : 'Disabled'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
 

@@ -448,7 +448,7 @@ export const deleteRedirect = async (req, res, next) => {
 
 export const getGlobalSEOSettings = async (req, res, next) => {
   try {
-    const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, defaultSocialImage, gscCode, gaMeasurementId, gscConnected, gscPropertyUrl] = await Promise.all([
+    const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, defaultSocialImage, gscCode, gaMeasurementId] = await Promise.all([
       Setting.findOne({ key: 'seo_siteName' }).lean(),
       Setting.findOne({ key: 'seo_defaultTitle' }).lean(),
       Setting.findOne({ key: 'seo_defaultDescription' }).lean(),
@@ -459,8 +459,6 @@ export const getGlobalSEOSettings = async (req, res, next) => {
       Setting.findOne({ key: 'seo_defaultSocialImage' }).lean(),
       Setting.findOne({ key: 'seo_gscVerification' }).lean(),
       Setting.findOne({ key: 'seo_gaMeasurementId' }).lean(),
-      Setting.findOne({ key: 'seo_gscConnected' }).lean(),
-      Setting.findOne({ key: 'seo_gscPropertyUrl' }).lean(),
     ]);
 
     res.json({
@@ -476,9 +474,6 @@ export const getGlobalSEOSettings = async (req, res, next) => {
         defaultSocialImage: defaultSocialImage?.value || defaultOgImage?.value || '',
         gscVerificationCode: gscCode?.value || '',
         gaMeasurementId: gaMeasurementId?.value || '',
-        // Phase 2 placeholders — no live Search Console/PageSpeed data yet.
-        gscConnected: gscConnected?.value === 'true',
-        gscPropertyUrl: gscPropertyUrl?.value || '',
       },
     });
   } catch (err) {
