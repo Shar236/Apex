@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PRODUCTS as FALLBACK_PRODUCTS, TESTIMONIALS, FAQ_ITEMS, SOCIAL_PROOF_EVENTS } from '../types/data';
 import {
   productApi,
@@ -181,8 +182,18 @@ const DEFAULT_POLICY_SETTINGS = {
   ],
 };
 
+// Routes whose own page component is the source of truth for <title>, meta
+// description, canonical and structured data (they call applyPageMetadata /
+// setStructuredData themselves). On these routes VoucherContext must NOT apply
+// homepage / tab SEO defaults, or it would overwrite the page-specific values.
+//   /blog, /blog/:slug            -> BlogIndexPage / BlogPostPage
+//   /exam-vouchers/:slug          -> VoucherDetailPage
+const SELF_MANAGED_SEO_ROUTE = /^\/(blog|exam-vouchers)(\/|$)/;
+
 export const VoucherProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const { pathname } = useLocation();
+  const routeManagesOwnSEO = SELF_MANAGED_SEO_ROUTE.test(pathname);
 
   const [products, setProducts] = useState(FALLBACK_PRODUCTS.map(adaptProduct));
   const [userVouchers, setUserVouchers] = useState([]);
@@ -361,18 +372,20 @@ export const VoucherProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    if (routeManagesOwnSEO) return;
     if (websiteConfig && globalSEO) {
       applyGlobalDefaults();
     }
-  }, [websiteConfig, globalSEO, applyGlobalDefaults]);
+  }, [websiteConfig, globalSEO, applyGlobalDefaults, routeManagesOwnSEO]);
 
   useEffect(() => {
+    if (routeManagesOwnSEO) return;
     if (activeTab && !selectedProductDetail) {
       applyPageSEO(activeTab);
       setStructuredData('product', null);
       setStructuredData('breadcrumb', null);
     }
-  }, [activeTab, selectedProductDetail, applyPageSEO]);
+  }, [activeTab, selectedProductDetail, applyPageSEO, routeManagesOwnSEO]);
 
   const showToast = useCallback((message) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
