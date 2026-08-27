@@ -68,6 +68,53 @@ export const mediaUpload = multer({
   },
 });
 
+// ── Awards Media Upload (Image + Video) ──────────────────────────────────────
+const awardImagesDir = path.join(uploadsBaseDir, 'awards');
+if (!fs.existsSync(awardImagesDir)) {
+  fs.mkdirSync(awardImagesDir, { recursive: true });
+}
+
+const awardMediaStorage = multer.diskStorage({
+  destination: (_req, file, cb) => {
+    if (file.fieldname === 'video') cb(null, videosDir);
+    else cb(null, awardImagesDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const cleanName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+    cb(null, `award_${cleanName}_${uniqueSuffix}${ext}`);
+  },
+});
+
+const awardMediaFileFilter = (_req, file, cb) => {
+  if (file.fieldname === 'video') {
+    const allowedExts = ['.mp4', '.webm', '.mov'];
+    const allowedMimes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+      return cb(null, true);
+    }
+    return cb(new Error('Invalid video format. Supported: .mp4, .webm, .mov'), false);
+  }
+  // image field (award photo)
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    return cb(null, true);
+  }
+  return cb(new Error('Invalid award image format. Supported: .jpg, .jpeg, .png, .webp'), false);
+};
+
+export const awardMediaUpload = multer({
+  storage: awardMediaStorage,
+  fileFilter: awardMediaFileFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB max video size
+  },
+});
+
 // ── Profile Image Upload ──────────────────────────────────────────────────────
 const avatarStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, avatarsDir),
@@ -131,6 +178,41 @@ export const productLogoUpload = multer({
   fileFilter: productLogoFileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+});
+
+// ── Blog Image Upload (featured + in-article images) ─────────────────────────
+const blogImagesDir = path.join(uploadsBaseDir, 'blog');
+if (!fs.existsSync(blogImagesDir)) {
+  fs.mkdirSync(blogImagesDir, { recursive: true });
+}
+
+const blogImageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, blogImagesDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const cleanName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+    cb(null, `blog_${cleanName}_${uniqueSuffix}${ext}`);
+  },
+});
+
+const blogImageFileFilter = (_req, file, cb) => {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid image format. Supported: JPG, JPEG, PNG, WebP'), false);
+  }
+};
+
+export const blogImageUpload = multer({
+  storage: blogImageStorage,
+  fileFilter: blogImageFileFilter,
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15MB hard cap; a softer >2MB warning is surfaced separately
   },
 });
 

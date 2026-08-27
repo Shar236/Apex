@@ -170,6 +170,10 @@ export const applyPageMetadata = (options = {}) => {
 
 export const authApi = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  verifyRegistrationOtp: (email, otp) =>
+    request('/api/auth/register/verify-otp', { method: 'POST', body: JSON.stringify({ email, otp }) }),
+  resendRegistrationOtp: (email) =>
+    request('/api/auth/register/resend-otp', { method: 'POST', body: JSON.stringify({ email }) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   forgotPassword: (email) => request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (token, password) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
@@ -211,10 +215,15 @@ export const accountApi = {
     }
   },
   removeAvatar: () => request('/api/account/profile/avatar', { method: 'DELETE' }),
-  requestEmailChange: (newEmail) =>
-    request('/api/account/change-email', { method: 'POST', body: JSON.stringify({ newEmail }) }),
+  sendEmailOtp: (newEmail) =>
+    request('/api/account/email/send-otp', { method: 'POST', body: JSON.stringify({ newEmail }) }),
+  verifyEmailOtp: (otp) =>
+    request('/api/account/email/verify-otp', { method: 'POST', body: JSON.stringify({ otp }) }),
+  updatePhone: (phone, phoneCountry, currentPassword) =>
+    request('/api/account/phone', { method: 'PATCH', body: JSON.stringify({ phone, phoneCountry, currentPassword }) }),
   changePassword: (currentPassword, newPassword) =>
-    request('/api/account/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+    request('/api/account/password/change', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  logout: () => request('/api/account/logout', { method: 'POST' }),
   stats: () => request('/api/account/stats'),
   orders: () => request('/api/account/orders'),
   vouchers: () => request('/api/account/vouchers'),
@@ -254,15 +263,84 @@ export const seoApi = {
   createRedirect: (data) => request('/api/seo/redirects', { method: 'POST', body: JSON.stringify(data) }),
   updateRedirect: (id, data) => request(`/api/seo/redirects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteRedirect: (id) => request(`/api/seo/redirects/${id}`, { method: 'DELETE' }),
-  blogs: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return request(`/api/seo/blogs${qs ? `?${qs}` : ''}`);
-  },
-  createBlog: (data) => request('/api/seo/blogs', { method: 'POST', body: JSON.stringify(data) }),
-  updateBlog: (id, data) => request(`/api/seo/blogs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  deleteBlog: (id) => request(`/api/seo/blogs/${id}`, { method: 'DELETE' }),
   globalSettings: () => request('/api/seo/global-settings'),
   updateGlobalSettings: (data) => request('/api/seo/global-settings', { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+export const blogApi = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/blogs${qs ? `?${qs}` : ''}`);
+  },
+  get: (id) => request(`/api/admin/blogs/${id}`),
+  create: (data) => request('/api/admin/blogs', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/api/admin/blogs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  trash: (id) => request(`/api/admin/blogs/${id}`, { method: 'DELETE' }),
+  publish: (id) => request(`/api/admin/blogs/${id}/publish`, { method: 'POST' }),
+  unpublish: (id) => request(`/api/admin/blogs/${id}/unpublish`, { method: 'POST' }),
+  schedule: (id, scheduledAt) => request(`/api/admin/blogs/${id}/schedule`, { method: 'POST', body: JSON.stringify({ scheduledAt }) }),
+  duplicate: (id) => request(`/api/admin/blogs/${id}/duplicate`, { method: 'POST' }),
+  restore: (id) => request(`/api/admin/blogs/${id}/restore`, { method: 'POST' }),
+  permanentDelete: (id) => request(`/api/admin/blogs/${id}/permanent`, { method: 'DELETE' }),
+  revisions: (id) => request(`/api/admin/blogs/${id}/revisions`),
+  restoreRevision: (id, revisionId) => request(`/api/admin/blogs/${id}/revisions/${revisionId}/restore`, { method: 'POST' }),
+  preview: (id) => request(`/api/admin/blogs/${id}/preview`),
+  analyzeSeo: (id) => request(`/api/admin/blogs/${id}/seo-analysis`),
+  improveSeo: (id) => request(`/api/admin/blogs/${id}/improve-seo`, { method: 'POST' }),
+  internalLinkSuggestions: (q, excludeId) => {
+    const qs = new URLSearchParams({ q: q || '', ...(excludeId ? { excludeId } : {}) }).toString();
+    return request(`/api/admin/blogs/internal-link-suggestions?${qs}`);
+  },
+  uploadImage: async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/blogs/upload-image`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.success === false) {
+      return { success: false, message: data?.message || `Upload failed (${resp.status})` };
+    }
+    return { success: true, ...data };
+  },
+};
+
+export const googleSeoApi = {
+  status: () => request('/api/admin/seo/google/status'),
+  connect: async () => {
+    const res = await request('/api/admin/seo/google/connect');
+    if (res.success && res.data?.url) {
+      window.location.href = res.data.url;
+    }
+    return res;
+  },
+  disconnect: () => request('/api/admin/seo/google/disconnect', { method: 'POST' }),
+  properties: () => request('/api/admin/seo/google/properties'),
+  setProperty: (propertyUrl) => request('/api/admin/seo/google/property', { method: 'POST', body: JSON.stringify({ propertyUrl }) }),
+  performance: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/seo/google/performance${qs ? `?${qs}` : ''}`);
+  },
+  queries: (params = {}) => request(`/api/admin/seo/google/queries?${new URLSearchParams(params).toString()}`),
+  pages: (params = {}) => request(`/api/admin/seo/google/pages?${new URLSearchParams(params).toString()}`),
+  countries: (params = {}) => request(`/api/admin/seo/google/countries?${new URLSearchParams(params).toString()}`),
+  devices: (params = {}) => request(`/api/admin/seo/google/devices?${new URLSearchParams(params).toString()}`),
+  opportunities: (params = {}) => request(`/api/admin/seo/google/opportunities?${new URLSearchParams(params).toString()}`),
+  sync: () => request('/api/admin/seo/google/sync', { method: 'POST' }),
+  pagespeed: (url, strategy = 'mobile') => request(`/api/admin/seo/pagespeed?${new URLSearchParams({ url, strategy }).toString()}`),
+  runPageSpeedTest: (url, strategy = 'mobile') => request('/api/admin/seo/pagespeed/test', { method: 'POST', body: JSON.stringify({ url, strategy }) }),
+};
+
+export const publicBlogApi = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/blog${qs ? `?${qs}` : ''}`);
+  },
+  get: (slug) => request(`/api/blog/${slug}`),
+  categories: () => request('/api/blog/categories'),
 };
 
 export const adminApi = {
@@ -400,7 +478,33 @@ export const adminApi = {
     });
     return await resp.json();
   },
+  awards: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/awards${qs ? `?${qs}` : ''}`);
+  },
+  getAward: (id) => request(`/api/admin/awards/${id}`),
+  createAward: (data) => request('/api/admin/awards', { method: 'POST', body: JSON.stringify(data) }),
+  updateAward: (id, data) => request(`/api/admin/awards/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  quickToggleFeaturedAward: (id, featured) =>
+    request(`/api/admin/awards/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  quickToggleStatusAward: (id, status) =>
+    request(`/api/admin/awards/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  bulkReorderAwards: (items) => request('/api/admin/awards/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
+  deleteAward: (id) => request(`/api/admin/awards/${id}`, { method: 'DELETE' }),
+  uploadAwardMedia: async (formData) => {
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/awards/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    return await resp.json();
+  },
   seo: seoApi,
+  blog: blogApi,
+  googleSeo: googleSeoApi,
   pteBookings: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/pte-bookings${qs ? `?${qs}` : ''}`);
@@ -422,6 +526,12 @@ export const videoApi = {
 
 export const reelApi = videoApi;
 
+export const awardApi = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/awards${qs ? `?${qs}` : ''}`);
+  },
+};
 
 export const formatPrice = (amount, currency = 'INR') => {
   if (currency === 'USD') {

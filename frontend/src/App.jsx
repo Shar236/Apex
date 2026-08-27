@@ -30,12 +30,18 @@ const FAQSection = lazyNamed(() => import('./components/FAQSection'), 'FAQSectio
 const ExamGuides = lazyNamed(() => import('./components/ExamGuides'), 'ExamGuides');
 const AboutApexVouchers = lazyNamed(() => import('./components/AboutApexVouchers'), 'AboutApexVouchers');
 const FinalCTASection = lazyNamed(() => import('./components/FinalCTASection'), 'FinalCTASection');
+const AwardsAndAchievements = lazyNamed(() => import('./components/AwardsAndAchievements'), 'AwardsAndAchievements');
 const ProductCatalog = lazyNamed(() => import('./components/ProductCatalog'), 'ProductCatalog');
 const ProductDetailModal = lazyNamed(() => import('./components/ProductDetailModal'), 'ProductDetailModal');
 const CheckoutModal = lazyNamed(() => import('./components/CheckoutModal'), 'CheckoutModal');
 const PTEBookingModal = lazyNamed(() => import('./components/PTEBookingModal'), 'PTEBookingModal');
 const PTEExamBookingPage = lazyNamed(() => import('./components/PTEExamBookingPage'), 'PTEExamBookingPage');
 const VoucherDetailPage = lazyNamed(() => import('./components/VoucherDetailPage'), 'VoucherDetailPage');
+const PTEReschedulingGuidePage = lazyNamed(() => import('./components/PTEReschedulingGuidePage'), 'PTEReschedulingGuidePage');
+const RefundPolicyPage = lazyNamed(() => import('./components/RefundPolicyPage'), 'RefundPolicyPage');
+const VoucherRefundPolicyPage = lazyNamed(() => import('./components/VoucherRefundPolicyPage'), 'VoucherRefundPolicyPage');
+const TermsAndConditionsPage = lazyNamed(() => import('./components/TermsAndConditionsPage'), 'TermsAndConditionsPage');
+const PrivacyPolicyPage = lazyNamed(() => import('./components/PrivacyPolicyPage'), 'PrivacyPolicyPage');
 const Dashboard = lazyNamed(() => import('./components/Dashboard'), 'Dashboard');
 const LiveChatWidget = lazyNamed(() => import('./components/LiveChatWidget'), 'LiveChatWidget');
 const FloatingSupportWidget = lazyNamed(() => import('./components/FloatingSupportWidget'), 'FloatingSupportWidget');
@@ -48,6 +54,9 @@ const ResetPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'Res
 const PaymentReturnPage = lazyNamed(() => import('./components/PaymentReturnPage'), 'PaymentReturnPage');
 const AccountHome = lazy(() => import('./components/AccountPages'));
 const AdminConsole = lazy(() => import('./components/AdminConsole'));
+const BlogIndexPage = lazyNamed(() => import('./components/BlogIndexPage'), 'BlogIndexPage');
+const BlogPostPage = lazyNamed(() => import('./components/BlogPostPage'), 'BlogPostPage');
+const BlogPreviewPage = lazyNamed(() => import('./components/BlogPreviewPage'), 'BlogPreviewPage');
 
 const PageFallback = ({ minHeight = 'min-h-80' }) => (
   <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500 dark:text-neutral-400`}>
@@ -251,6 +260,7 @@ const MainContent = () => {
   if (activeTab === 'exam-guides') return <LazyPage><ExamGuides /><FinalCTASection /></LazyPage>;
   if (activeTab === 'testimonials') return <LazyPage><Testimonials /><FinalCTASection /></LazyPage>;
   if (activeTab === 'faq') return <LazyPage><FAQSection /><FinalCTASection /></LazyPage>;
+  if (activeTab === 'awards') return <LazyPage><AwardsAndAchievements /><FinalCTASection /></LazyPage>;
 
   return <HomePage />;
 };
@@ -337,6 +347,18 @@ const VoucherDetailLayout = () => (
   </div>
 );
 
+const PolicyPageLayout = ({ children }) => (
+  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+    <Navbar />
+    <ToastContainer />
+    <main className="flex-1">
+      <LazyPage>{children}</LazyPage>
+    </main>
+    <LegalTrustFooter />
+    <SharedModalsAndWidgets />
+  </div>
+);
+
 const AccountLayout = () => (
   <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
@@ -373,6 +395,26 @@ function RouterContent() {
       <Route path="/" element={<MarketingLayout />} />
       <Route path="/exam-booking" element={<ExamBookingLayout />} />
       <Route path="/exam-vouchers/:slug" element={<VoucherDetailLayout />} />
+
+      {/* Dedicated Policy & Guide Routes (Accessible from Footer) */}
+      <Route path="/refund-policy" element={<PolicyPageLayout><RefundPolicyPage /></PolicyPageLayout>} />
+      <Route path="/policies/refund-cancellation" element={<Navigate to="/refund-policy" replace />} />
+      <Route path="/how-to-reschedule-cancel-pte-exam" element={<PolicyPageLayout><PTEReschedulingGuidePage /></PolicyPageLayout>} />
+      <Route path="/pte-rescheduling-guide" element={<Navigate to="/how-to-reschedule-cancel-pte-exam" replace />} />
+      <Route path="/reschedule-pte-exam" element={<Navigate to="/how-to-reschedule-cancel-pte-exam" replace />} />
+      <Route path="/voucher-refund-policy" element={<PolicyPageLayout><VoucherRefundPolicyPage /></PolicyPageLayout>} />
+      <Route path="/terms" element={<PolicyPageLayout><TermsAndConditionsPage /></PolicyPageLayout>} />
+      <Route path="/terms-and-conditions" element={<Navigate to="/terms" replace />} />
+      <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+      <Route path="/privacy-policy" element={<PolicyPageLayout><PrivacyPolicyPage /></PolicyPageLayout>} />
+      <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+
+      {/* Blog / Exam Guides Routes */}
+      <Route path="/blog" element={<PolicyPageLayout><BlogIndexPage /><FinalCTASection /></PolicyPageLayout>} />
+      <Route path="/blog/:slug" element={<PolicyPageLayout><BlogPostPage /></PolicyPageLayout>} />
+      <Route path="/guides" element={<Navigate to="/blog" replace />} />
+      <Route path="/exam-guides" element={<Navigate to="/blog" replace />} />
+
       <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
       <Route path="/admin/login" element={<AuthLayout><AdminLoginPage /></AuthLayout>} />
       <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
@@ -400,6 +442,14 @@ function RouterContent() {
         element={
           <ProtectedRoute requireAdmin>
             <AdminLayout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/blog-preview/:id"
+        element={
+          <ProtectedRoute requireAdmin>
+            <PolicyPageLayout><BlogPreviewPage /></PolicyPageLayout>
           </ProtectedRoute>
         }
       />

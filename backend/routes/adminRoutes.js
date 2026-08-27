@@ -58,8 +58,20 @@ import {
   getPTEBookingRequestAdmin,
   updatePTEBookingRequestAdmin,
 } from '../controllers/pteBookingController.js';
+import {
+  listAdminAwards,
+  getAdminAward,
+  createAward,
+  updateAward,
+  deleteAward,
+  quickToggleFeaturedAward,
+  quickToggleStatusAward,
+  quickUpdateOrderAward,
+  bulkReorderAwards,
+  uploadAwardMedia,
+} from '../controllers/awardController.js';
 import { protectAdmin } from '../middleware/auth.js';
-import { mediaUpload, productLogoUpload } from '../middleware/upload.js';
+import { mediaUpload, productLogoUpload, awardMediaUpload } from '../middleware/upload.js';
 
 const r = Router();
 
@@ -149,6 +161,25 @@ r.patch('/reels/:id/publish', quickTogglePublishVideo);
 r.patch('/reels/:id/status', quickTogglePublishVideo);
 r.patch('/reels/:id/order', quickUpdateOrderVideo);
 r.delete('/reels/:id', deleteVideo);
+
+// ── Awards & Achievements Management Endpoints ───────────────────────────────
+const awardUploadHandler = awardMediaUpload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+]);
+
+// /api/admin/awards
+r.get('/awards', listAdminAwards);
+r.get('/awards/:id', getAdminAward);
+r.post('/awards', createAward);
+r.post('/awards/upload', awardUploadHandler, uploadAwardMedia);
+r.patch('/awards/reorder', bulkReorderAwards);
+r.patch('/awards/:id', updateAward);
+r.put('/awards/:id', updateAward);
+r.patch('/awards/:id/featured', quickToggleFeaturedAward);
+r.patch('/awards/:id/status', quickToggleStatusAward);
+r.patch('/awards/:id/order', quickUpdateOrderAward);
+r.delete('/awards/:id', deleteAward);
 
 r.get('/pte-bookings', listPTEBookingRequestsAdmin);
 r.get('/pte-bookings/:id', getPTEBookingRequestAdmin);

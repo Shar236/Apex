@@ -1,0 +1,150 @@
+import React, { useEffect } from 'react';
+import {
+  Ticket,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  RefreshCw,
+  Phone,
+  Mail,
+  ChevronRight,
+  Zap,
+  Lock,
+} from 'lucide-react';
+import { useVoucher } from '../context/VoucherContext';
+import { setMetaTag } from '../lib/api';
+
+export function VoucherRefundPolicyPage() {
+  const { policySettings, globalSEO } = useVoucher();
+  const apex = policySettings?.apexRefund || {};
+  const effectiveDate = apex.effectiveDate || '2026-01-01';
+  const supportPhone = apex.supportPhone || '+91 98559 26113';
+  const supportEmail = apex.supportEmail || 'info@apexvouchers.com';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const title = 'Voucher Refund & Replacement Policy | Apex Vouchers';
+    const desc =
+      'Detailed Voucher Refund Policy for Apex Vouchers: unredeemed returns, instant replacement guarantee, validity terms, and security protocols.';
+    const canonical = `${globalSEO?.websiteUrl || 'https://apexvouchers.com'}/voucher-refund-policy`;
+
+    document.title = title;
+    setMetaTag('description', desc);
+    setMetaTag('canonical', canonical, 'rel');
+    setMetaTag('og:title', title, 'property');
+    setMetaTag('og:description', desc, 'property');
+    setMetaTag('og:url', canonical, 'property');
+  }, [globalSEO]);
+
+  return (
+    <div className="bg-[#FAF8F5] dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 min-h-screen antialiased transition-colors duration-300">
+      {/* Breadcrumb */}
+      <div className="bg-white dark:bg-[#121212] border-b border-[#EAEAEA] dark:border-[#222]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
+          <nav className="flex items-center gap-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+            <a href="/" className="hover:text-brand-pink transition-colors">Home</a>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-neutral-400">Policies</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-brand-pink font-bold">Voucher Refund Policy</span>
+          </nav>
+        </div>
+      </div>
+
+      {/* Header */}
+      <header className="bg-white dark:bg-[#121212] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16 text-center">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink text-xs font-black uppercase tracking-wide">
+            <Ticket className="w-4 h-4" /> Official Voucher Terms
+          </div>
+          <h1 className="font-heading font-black text-3xl sm:text-4xl text-neutral-900 dark:text-white tracking-tight">
+            Voucher Refund & Replacement Policy
+          </h1>
+          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 font-medium">
+            100% Genuine Official Exam Codes with Instant Replacement & Unredeemed Return Guarantees.
+          </p>
+          <div className="pt-2 text-xs font-mono text-neutral-400">
+            Effective Date: {effectiveDate} • Applicable to All Exam Vouchers
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-10 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
+        
+        {/* Section 1 */}
+        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
+          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">
+            1. 100% Unredeemed Voucher Return Guarantee
+          </h2>
+          <p>
+            Every voucher purchased on Apex Vouchers is backed by our <strong>{apex.cancellationPeriodDays || 7}-Day Money-Back Guarantee</strong>. If you have not redeemed or applied the code on Pearson, ETS, or Duolingo portals, you are eligible for a full {apex.refundPercentage || 100}% refund.
+          </p>
+          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 font-medium">
+            ✓ <strong>Zero Deductions:</strong> No processing fees, gateway surcharges, or hidden penalties are subtracted from eligible refunds.
+          </div>
+        </section>
+
+        {/* Section 2 */}
+        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
+          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">
+            2. Instant Replacement Guarantee
+          </h2>
+          <p>
+            In the extremely rare event that an issued voucher code displays an error or is flagged as invalid during portal checkout, our security team provides an <strong>immediate verified replacement code within 15 minutes</strong> or an instant full refund.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+            <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#1A1A1A] border border-[#EAEAEA] dark:border-[#292929] text-center space-y-1">
+              <Zap className="w-5 h-5 text-brand-pink mx-auto" />
+              <div className="font-bold text-neutral-900 dark:text-white">15-Min Response</div>
+              <div className="text-neutral-500 text-[11px]">Expedited support review</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#1A1A1A] border border-[#EAEAEA] dark:border-[#292929] text-center space-y-1">
+              <ShieldCheck className="w-5 h-5 text-emerald-500 mx-auto" />
+              <div className="font-bold text-neutral-900 dark:text-white">100% Genuine</div>
+              <div className="text-neutral-500 text-[11px]">Direct partner inventory</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#1A1A1A] border border-[#EAEAEA] dark:border-[#292929] text-center space-y-1">
+              <Lock className="w-5 h-5 text-blue-500 mx-auto" />
+              <div className="font-bold text-neutral-900 dark:text-white">Safe Encryption</div>
+              <div className="text-neutral-500 text-[11px]">Unmasked on-demand</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3 */}
+        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
+          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">
+            3. Voucher Expiry & Validity Rules
+          </h2>
+          <p>
+            Standard vouchers issued by Apex Vouchers are valid for <strong>{apex.voucherValidityPeriod || '6 to 11 months from purchase date'}</strong>. The test must be scheduled and taken on or before the voucher expiry date indicated on your order receipt.
+          </p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            * Once a voucher passes its official expiration date without redemption, it cannot be refunded, renewed, or extended.
+          </p>
+        </section>
+
+        {/* Section 4 */}
+        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
+          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">
+            4. Transferability & Gifting
+          </h2>
+          <p>
+            Vouchers purchased on Apex Vouchers are transferable prior to portal redemption. You may reassign or gift the voucher code to a friend or student through your <em>User Dashboard → Transfer Voucher</em> feature. Once redeemed on a candidate's personal testing profile, the voucher is non-transferable.
+          </p>
+        </section>
+
+        {/* Contact Strip */}
+        <section className="p-8 rounded-3xl bg-[#111111] text-white border border-neutral-800 space-y-3">
+          <h3 className="font-heading font-black text-xl text-white">Need Assistance with a Voucher?</h3>
+          <p className="text-xs text-neutral-400 font-medium">
+            Contact our dedicated voucher verification desk via email at <a href={`mailto:${supportEmail}`} className="text-brand-pink">{supportEmail}</a> or phone/WhatsApp at <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="text-brand-pink">{supportPhone}</a>.
+          </p>
+        </section>
+
+      </main>
+    </div>
+  );
+}

@@ -12,7 +12,9 @@ function ProductLogo({ product }) {
     return <BrandLogoContainer brand={product.brand || product.provider} name={product.name} inverted={true} />;
   }
   return (
-    <div className="w-full h-24 rounded-2xl bg-white/5 dark:bg-[#090D16] border border-[#1E293B] flex items-center justify-center p-3">
+    /* White pill so dark-colored logos (e.g. TOEFL near-black, Pearson navy)
+       are always visible on the dark card background */
+    <div className="w-full h-24 rounded-2xl bg-white border border-white/10 flex items-center justify-center p-3">
       <img
         src={product.logo}
         alt={`${product.name} logo`}

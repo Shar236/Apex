@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Film, Play, Video as VideoIcon,
   LogOut, Search, Plus, Edit2, Trash2, Upload, Save, RefreshCw, CheckCircle2, AlertTriangle, X, ArrowRight, Crown, Sparkles, Clock, ShieldCheck, Eye, EyeOff, Copy, Download, TrendingUp, TrendingDown, FileSpreadsheet, ShieldAlert, Megaphone, Globe, Calendar, DollarSign, Sliders, Type,
   Search as SearchIcon, ExternalLink, AlertOctagon, Info, ArrowLeftRight, Settings2, FileText, Link2, Image as ImageIcon, Code2, Hash, CheckSquare, ListChecks, Bell, Layers, Check as CheckIcon, ArrowUp, ArrowDown, ChevronUp, ChevronDown,
-  CalendarCheck, MapPin, Phone, Mail, StickyNote, GripVertical
+  CalendarCheck, MapPin, Phone, Mail, StickyNote, GripVertical, Trophy, Globe2
 } from 'lucide-react';
 
 import { adminApi, formatPrice, apiBase, getToken } from '../lib/api';
@@ -12,6 +12,9 @@ import { useVoucher } from '../context/VoucherContext';
 import { useNavigate } from 'react-router-dom';
 import { ApexLogo } from './ApexLogo';
 import { DynamicPTELogo, PearsonOfficialLogo } from './OfficialBrandLogos';
+import AwardsAdmin from './AwardsAdmin';
+import BlogAdmin from './BlogAdmin';
+import GoogleSeoAdmin from './GoogleSeoAdmin';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -24,6 +27,7 @@ const TABS = [
   { id: 'promotions', label: 'Promo Coupons', icon: <Tag className="w-4 h-4" /> },
   { id: 'seo', label: 'SEO Manager', icon: <SearchIcon className="w-4 h-4" /> },
   { id: 'videos', label: 'Videos / Reels', icon: <Film className="w-4 h-4" /> },
+  { id: 'awards', label: 'Awards & Achievements', icon: <Trophy className="w-4 h-4" /> },
   { id: 'audit-logs', label: 'Audit Logs', icon: <Clock className="w-4 h-4" /> },
 ];
 
@@ -211,6 +215,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
         {tab === 'promotions' && <PromotionsAdmin />}
         {tab === 'seo' && <SEOManager />}
         {tab === 'videos' && <VideosAdmin />}
+        {tab === 'awards' && <AwardsAdmin />}
         {tab === 'audit-logs' && <AuditLogsAdmin />}
       </main>
     </div>
@@ -3425,12 +3430,6 @@ function SEOManager() {
   const [redirectDraft, setRedirectDraft] = useState({ sourcePath: '', targetPath: '', type: '301', enabled: true, notes: '' });
   const [redirectSearch, setRedirectSearch] = useState('');
 
-  const [blogRows, setBlogRows] = useState([]);
-  const [blogsLoading, setBlogsLoading] = useState(false);
-  const [blogModalOpen, setBlogModalOpen] = useState(false);
-  const [editingBlog, setEditingBlog] = useState(null);
-  const [blogDraft, setBlogDraft] = useState({ title: '', slug: '', excerpt: '', content: '', coverImage: '', author: '', category: '', tags: '', published: true, featured: false, seo: {} });
-
   const [globalForm, setGlobalForm] = useState({});
   const [globalLoading, setGlobalLoading] = useState(true);
   const [globalSaving, setGlobalSaving] = useState(false);
@@ -3442,6 +3441,7 @@ function SEOManager() {
     { id: 'products', label: 'Products SEO', icon: <Package className="w-4 h-4" /> },
     { id: 'pages', label: 'Pages SEO', icon: <FileSpreadsheet className="w-4 h-4" /> },
     { id: 'blogs', label: 'Blog Posts', icon: <FileText className="w-4 h-4" /> },
+    { id: 'google', label: 'Google Search & Speed', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'redirects', label: 'Redirect Manager', icon: <ArrowLeftRight className="w-4 h-4" /> },
     { id: 'global', label: 'Global Settings', icon: <Settings2 className="w-4 h-4" /> },
     { id: 'sitemap', label: 'Sitemap & Robots', icon: <Code2 className="w-4 h-4" /> },
@@ -3467,21 +3467,21 @@ function SEOManager() {
       if (res?.success) setRedirectRows(res.data || []);
     } finally { setRedirectsLoading(false); }
   };
-  const loadBlogs = async () => {
-    setBlogsLoading(true);
-    try { const res = await adminApi.seo.blogs(); if (res?.success) setBlogRows(res.data || []); } finally { setBlogsLoading(false); }
-  };
   const loadGlobal = async () => {
     setGlobalLoading(true);
     try { const res = await adminApi.seo.globalSettings(); if (res?.success) setGlobalForm(res.data || {}); } finally { setGlobalLoading(false); }
+  };
+  const [googleStatusCard, setGoogleStatusCard] = useState(null);
+  const loadGoogleStatusCard = async () => {
+    const res = await adminApi.googleSeo.status();
+    if (res?.success) setGoogleStatusCard(res.data);
   };
 
   useEffect(() => {
     if (subTab === 'overview') loadOverview();
     if (subTab === 'pages') loadPages();
     if (subTab === 'redirects') loadRedirects();
-    if (subTab === 'blogs') loadBlogs();
-    if (subTab === 'global') loadGlobal();
+    if (subTab === 'global') { loadGlobal(); loadGoogleStatusCard(); }
   }, [subTab]);
 
   useEffect(() => {
@@ -3546,44 +3546,6 @@ function SEOManager() {
   const deleteRedirect = async (r) => {
     if (!confirm(`Delete redirect from ${r.sourcePath}?`)) return;
     try { const res = await adminApi.seo.deleteRedirect(r._id); if (res?.success) loadRedirects(); } catch (e) { alert(e.message); }
-  };
-
-  const startEditBlog = (b = null) => {
-    setEditingBlog(b);
-    setBlogDraft({
-      title: b?.title || '',
-      slug: b?.slug || '',
-      excerpt: b?.excerpt || '',
-      content: b?.content || '',
-      coverImage: b?.coverImage || '',
-      author: b?.author || 'Apex Vouchers',
-      category: b?.category || 'Exam Guide',
-      tags: (b?.tags || []).join(', '),
-      published: b?.published !== false,
-      featured: !!b?.featured,
-      seo: { ...(b?.seo || {}) },
-    });
-    setBlogModalOpen(true);
-  };
-
-  const saveBlog = async () => {
-    try {
-      const payload = { ...blogDraft, tags: String(blogDraft.tags || '').split(',').map(s => s.trim()).filter(Boolean) };
-      let res;
-      if (editingBlog?._id) res = await adminApi.seo.updateBlog(editingBlog._id, payload);
-      else res = await adminApi.seo.createBlog(payload);
-      if (res?.success) {
-        setBlogModalOpen(false);
-        setEditingBlog(null);
-        loadBlogs();
-        alert('✅ Blog post saved');
-      } else alert(res?.message || 'Failed');
-    } catch (e) { alert(e.message); }
-  };
-
-  const deleteBlog = async (b) => {
-    if (!confirm(`Delete blog post "${b.title}"?`)) return;
-    try { const res = await adminApi.seo.deleteBlog(b._id); if (res?.success) loadBlogs(); } catch (e) { alert(e.message); }
   };
 
   const saveGlobal = async () => {
@@ -3913,108 +3875,9 @@ function SEOManager() {
         </div>
       )}
 
-      {subTab === 'blogs' && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="text-[11px] font-bold text-neutral-500">Total: <span className="text-neutral-900 dark:text-white font-black">{blogRows.length}</span> posts</div>
-            <button onClick={() => startEditBlog()} className="px-5 py-2.5 rounded-2xl btn-pink text-white font-black text-xs shadow-lg inline-flex items-center gap-2">
-              <Plus className="w-4 h-4" /> New Blog Post
-            </button>
-          </div>
-          <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs font-bold">
-                <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
-                  <tr>
-                    <Th>Post</Th>
-                    <Th>Author</Th>
-                    <Th>Category</Th>
-                    <Th>Tags</Th>
-                    <Th className="text-center">Views</Th>
-                    <Th className="text-center">Status</Th>
-                    <Th className="text-right">Actions</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {blogsLoading && Array.from({ length: 4 }).map((_, i) => (<tr key={i}><td colSpan="7" className="p-4"><div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" /></td></tr>))}
-                  {!blogsLoading && blogRows.map(b => (
-                    <tr key={b._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111]">
-                      <Td>
-                        <div className="flex items-center gap-3">
-                          {b.coverImage ? <img src={b.coverImage} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 border border-[#EAEAEA] dark:border-[#292929]" /> : <div className="w-12 h-12 rounded-xl bg-[#6C3CE0]/10 flex items-center justify-center font-black text-[#6C3CE0] text-xs shrink-0">📖</div>}
-                          <div className="min-w-0">
-                            <div className="font-black text-sm flex items-center gap-1.5">{b.title}{b.featured && <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">★ FEATURED</span>}</div>
-                            <div className="text-[10px] font-bold text-neutral-400 truncate max-w-xs">Slug: <span className="font-mono">{b.slug}</span></div>
-                          </div>
-                        </div>
-                      </Td>
-                      <Td>{b.author}</Td>
-                      <Td>{b.category}</Td>
-                      <Td className="max-w-xs">{(b.tags || []).slice(0, 3).map(t => <span key={t} className="inline-block mr-1 mb-1 px-2 py-0.5 rounded bg-[#6C3CE0]/10 text-[#6C3CE0] text-[9px] font-black border border-[#6C3CE0]/20">{t}</span>)}</Td>
-                      <Td className="text-center tabular-nums">{b.viewsCount || 0}</Td>
-                      <Td className="text-center whitespace-nowrap">
-                        {b.published ? <Pill text="PUBLISHED" tint="emerald" /> : <Pill text="DRAFT" tint="neutral" />}
-                      </Td>
-                      <Td className="text-right whitespace-nowrap">
-                        <div className="inline-flex gap-1.5 justify-end">
-                          <button onClick={() => startEditBlog(b)} className="px-2.5 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[10px] font-black inline-flex items-center gap-1">
-                            <Edit2 className="w-3 h-3" /> Edit
-                          </button>
-                          <button onClick={() => deleteBlog(b)} className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {!blogsLoading && blogRows.length === 0 && <Empty title="No blog posts yet" desc="Publish exam guides, preparation tips, and study strategies to drive organic traffic." />}
-          </div>
+      {subTab === 'blogs' && <BlogAdmin />}
 
-          {blogModalOpen && (
-            <FormCard title={editingBlog?._id ? '✏️ Edit Blog Post' : '➕ New Blog Post'} onClose={() => { setBlogModalOpen(false); setEditingBlog(null); }} onSave={saveBlog}>
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Field label="Post Title *" value={blogDraft.title} onChange={v => setBlogDraft({ ...blogDraft, title: v })} placeholder="How to Score 79+ in PTE Academic" />
-                  <Field label="URL Slug" value={blogDraft.slug} onChange={v => setBlogDraft({ ...blogDraft, slug: v.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') })} placeholder="how-to-score-79-pte" />
-                  <Field label="Author" value={blogDraft.author} onChange={v => setBlogDraft({ ...blogDraft, author: v })} />
-                </div>
-                <TextArea label="Excerpt (short intro shown on blog cards)" value={blogDraft.excerpt} onChange={v => setBlogDraft({ ...blogDraft, excerpt: v })} rows={2} />
-                <div>
-                  <Label>Post Content (HTML supported, sanitized on save)</Label>
-                  <RichTextToolbar onFormat={() => {}} />
-                  <textarea rows={12} value={blogDraft.content} onChange={e => setBlogDraft({ ...blogDraft, content: e.target.value })}
-                    className="w-full px-4 py-3 rounded-b-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-[11px] font-mono leading-relaxed focus:outline-none focus:border-brand-pink whitespace-pre-wrap" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Cover Image URL" value={blogDraft.coverImage} onChange={v => setBlogDraft({ ...blogDraft, coverImage: v })} />
-                  <Field label="Category" value={blogDraft.category} onChange={v => setBlogDraft({ ...blogDraft, category: v })} />
-                </div>
-                <Field label="Tags (comma separated)" value={blogDraft.tags} onChange={v => setBlogDraft({ ...blogDraft, tags: v })} placeholder="PTE, exam tips, study guide" />
-                <div className="p-4 rounded-2xl bg-[#F3EEFF] dark:bg-[#1e1638] border border-[#6C3CE0]/20 space-y-3">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-[#6C3CE0]">Blog SEO Fields</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="SEO Title" value={blogDraft.seo?.title || ''} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, title: v } })} />
-                    <Field label="Focus Keyword" value={blogDraft.seo?.focusKeyword || ''} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, focusKeyword: v } })} />
-                  </div>
-                  <TextArea label="Meta Description" value={blogDraft.seo?.description || ''} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, description: v } })} rows={2} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Canonical URL (optional)" value={blogDraft.seo?.canonicalUrl || ''} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, canonicalUrl: v } })} />
-                    <Field label="OG Image URL" value={blogDraft.seo?.ogImage || ''} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, ogImage: v } })} />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Check label="Published (public)" checked={!!blogDraft.published} onChange={v => setBlogDraft({ ...blogDraft, published: v })} />
-                  <Check label="Featured Post" checked={!!blogDraft.featured} onChange={v => setBlogDraft({ ...blogDraft, featured: v })} />
-                  <Check label="Noindex (hide from search)" checked={!!blogDraft.seo?.noindex} onChange={v => setBlogDraft({ ...blogDraft, seo: { ...blogDraft.seo, noindex: v } })} />
-                </div>
-              </div>
-            </FormCard>
-          )}
-        </div>
-      )}
+      {subTab === 'google' && <GoogleSeoAdmin />}
 
       {subTab === 'redirects' && (
         <div className="space-y-5">
@@ -4140,6 +4003,50 @@ function SEOManager() {
                   <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]" />
                   <Field label="Google Search Console (Verification Meta Tag content)" value={globalForm.gscVerificationCode || ''} onChange={v => setGlobalForm({ ...globalForm, gscVerificationCode: v })} placeholder="google-site-verification value" />
                   <Field label="Google Analytics 4 Measurement ID" value={globalForm.gaMeasurementId || ''} onChange={v => setGlobalForm({ ...globalForm, gaMeasurementId: v })} placeholder="G-XXXXXXXXXX" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] p-6 shadow-sm">
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+              <div>
+                <h3 className="font-black text-sm mb-1">Google Integrations</h3>
+                <p className="text-[11px] font-bold text-neutral-500 max-w-xl">
+                  Read-only configuration status from the backend .env — never shows secret values. Use the Google Search &amp; Speed tab to actually connect.
+                </p>
+              </div>
+              <button onClick={() => setSubTab('google')} className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black cursor-pointer">
+                Open Google Search &amp; Speed →
+              </button>
+            </div>
+            {!googleStatusCard ? (
+              <div className="h-24 rounded-2xl bg-neutral-100 dark:bg-[#262626] animate-pulse" />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Search Console (OAuth)</div>
+                  {[
+                    ['Google OAuth Client ID', googleStatusCard.searchConsole.clientIdConfigured],
+                    ['Google OAuth Client Secret', googleStatusCard.searchConsole.clientSecretConfigured],
+                    ['Redirect URI', googleStatusCard.searchConsole.redirectUriConfigured],
+                  ].map(([label, ok]) => (
+                    <div key={label} className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
+                      <span className={ok ? 'text-emerald-600' : 'text-neutral-400'}>{ok ? 'Configured ✓' : 'Not configured'}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-neutral-400">PageSpeed Insights (API Key)</div>
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-neutral-600 dark:text-neutral-300">PageSpeed API Key</span>
+                    <span className={googleStatusCard.pagespeed.configured ? 'text-emerald-600' : 'text-neutral-400'}>{googleStatusCard.pagespeed.configured ? 'Configured ✓' : 'Not configured'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-neutral-600 dark:text-neutral-300">Master switch (GOOGLE_SEO_INTEGRATION_ENABLED)</span>
+                    <span className={googleStatusCard.seoIntegrationEnabled ? 'text-emerald-600' : 'text-neutral-400'}>{googleStatusCard.seoIntegrationEnabled ? 'Enabled' : 'Disabled'}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -4940,6 +4847,71 @@ function WebsiteCMSAdmin() {
     copyright: '© 2026 Apex Vouchers. All rights reserved.',
   });
 
+  const [policyForm, setPolicyForm] = useState({
+    apexRefund: {
+      enabled: true,
+      effectiveDate: '2026-01-01',
+      eligibilityCriteria: 'Vouchers that are 100% unredeemed and unallocated on the Pearson / ETS portal within the allowable refund window.',
+      cancellationPeriodDays: 7,
+      refundPercentage: 100,
+      processingFeePercent: 0,
+      voucherValidityPeriod: '6 to 11 months from date of purchase (check voucher specification)',
+      cancellationRules: 'Once a voucher refund is issued, the alphanumeric code is permanently deactivated in our database and cannot be applied to any exam booking.',
+      reschedulingRules: 'Vouchers cannot be used to pay Pearson rescheduling fees. Rescheduling is managed directly via the student\'s myPTE account.',
+      exceptionalCircumstances: 'For medical or family emergencies, official documentation may be submitted to support for expedited case-by-case review.',
+      refundProcessingTime: '24 to 48 business hours via source payment method.',
+      supportEmail: 'info@apexvouchers.com',
+      supportPhone: '+91 98559 26113',
+      whatsappNumber: '9855926113',
+    },
+    guideSettings: {
+      pageTitle: 'How to Reschedule or Cancel a PTE Exam in 2026',
+      subtitle: 'Complete Guide to PTE Rescheduling, Cancellation, Refunds & Voucher Bookings',
+      ctaTitle: 'Planning to Book a New PTE Exam?',
+      ctaSubtitle: 'Purchase your official PTE voucher from Apex Vouchers and save instantly on your exam fee.',
+      ctaButtonText: 'BUY PTE VOUCHER ONLINE',
+      ctaButtonLink: 'https://apexvouchers.com/',
+      ctaEmail: 'info@apexvouchers.com',
+      ctaPhone: '98559 26113',
+      isPublished: true,
+      disclaimerText: 'Disclaimer: This article is for general informational purposes and is not affiliated with or endorsed by Pearson. PTE fees, cancellation rules, refund policies, voucher terms and booking procedures may change. Students should verify the latest information directly with Pearson and review the terms of their voucher provider before making a cancellation, rescheduling request or refund claim.',
+    },
+    faqs: [
+      {
+        question: 'Can I change my PTE exam date?',
+        answer: 'Yes. Eligible appointments can generally be rescheduled through your myPTE account under My Activity.',
+      },
+      {
+        question: 'Is PTE rescheduling free?',
+        answer: 'Under Pearson\'s current policy, rescheduling is generally free when more than 14 full calendar days remain before the test date.',
+      },
+      {
+        question: 'Can I cancel my PTE exam and get a refund?',
+        answer: 'Where applicable, the refund depends on how many full calendar days remain before the appointment. Cancellations made 14 or more full days before the test are generally eligible for a 100% refund, while cancellations made 13–8 full calendar days before the test are generally eligible for a 50% refund.',
+      },
+      {
+        question: 'What refund do I get if I cancel 14 or more days before my PTE exam?',
+        answer: 'Generally 100%, subject to Pearson\'s current terms and policies.',
+      },
+      {
+        question: 'What if I cancel 10 days before my PTE exam?',
+        answer: 'A cancellation made 13–8 full calendar days before the test date is generally eligible for a 50% refund under Pearson\'s published schedule.',
+      },
+      {
+        question: 'What if I cancel fewer than 7 days before my PTE exam?',
+        answer: 'Under Pearson\'s current published schedule, cancellations made fewer than 7 full calendar days before the test are generally not refundable.',
+      },
+      {
+        question: 'What if I bought my PTE voucher from a third-party provider?',
+        answer: 'Contact the provider from which the voucher was purchased and check that provider\'s applicable refund policy. Cancelling a Pearson exam appointment does not automatically refund payments made to a third-party voucher vendor.',
+      },
+      {
+        question: 'Can I use a voucher to pay a rescheduling fee?',
+        answer: 'Pearson states that PTE vouchers can be applied toward the test fee but cannot be used to pay a rescheduling fee.',
+      },
+    ],
+  });
+
   const [productPrices, setProductPrices] = useState([]);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -4972,6 +4944,7 @@ function WebsiteCMSAdmin() {
         if (sRes.data.heroSettings) setHeroForm((prev) => ({ ...prev, ...sRes.data.heroSettings }));
         if (sRes.data.announcementSettings) setAnnouncementForm((prev) => ({ ...prev, ...sRes.data.announcementSettings }));
         if (sRes.data.footerSettings) setFooterForm((prev) => ({ ...prev, ...sRes.data.footerSettings }));
+        if (sRes.data.policySettings) setPolicyForm((prev) => ({ ...prev, ...sRes.data.policySettings }));
       }
     } catch (err) {
       showToast?.(err.message || 'Failed to load CMS settings', 'error');
@@ -5014,6 +4987,19 @@ function WebsiteCMSAdmin() {
       showToast?.('Footer settings updated successfully!', 'success');
     } catch (err) {
       showToast?.(err.message || 'Failed to update footer settings', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleSavePolicySettings = async () => {
+    setSavingSettings(true);
+    try {
+      await adminApi.updateWebsiteSettings({ policySettings: policyForm });
+      await refreshWebsiteConfig?.();
+      showToast?.('Policy and Guide settings updated successfully!', 'success');
+    } catch (err) {
+      showToast?.(err.message || 'Failed to update policy settings', 'error');
     } finally {
       setSavingSettings(false);
     }
@@ -5114,6 +5100,7 @@ function WebsiteCMSAdmin() {
           { id: 'hero', label: '✍️ Hero Slogans & Copy' },
           { id: 'announcement', label: '⚡ Announcement Bar' },
           { id: 'prices', label: '💰 Voucher Price Controls' },
+          { id: 'policies', label: '📜 Policy & Legal CMS' },
           { id: 'footer', label: '🛡️ Benefits & Footer CMS' },
           { id: 'business', label: '📧 Business & Email Info' },
           { id: 'preview', label: '👁️ Live Homepage Preview' },
@@ -5496,6 +5483,442 @@ function WebsiteCMSAdmin() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: POLICY & LEGAL CMS */}
+      {activeSubTab === 'policies' && (
+        <div className="space-y-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-[#121212] p-6 rounded-3xl border border-[#EAEAEA] dark:border-[#222]">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink text-xs font-black uppercase">
+                  📜 Dynamic Legal & Policy System
+                </span>
+                <span className="text-xs text-neutral-400 font-mono">Footer Accessible Only</span>
+              </div>
+              <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white mt-1">
+                Refund, Rescheduling, Voucher & Legal Policies
+              </h3>
+              <p className="text-xs text-neutral-500 font-medium max-w-2xl">
+                Configure Apex Vouchers refund terms, cancellation windows, Pearson rescheduling guide copy, live CTA banner, FAQ items, and non-affiliation disclaimers without modifying application code.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSavePolicySettings}
+                disabled={savingSettings}
+                className="px-6 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 cursor-pointer transition inline-flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingSettings ? 'Saving Policies...' : 'Save All Policies'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Page Links */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: 'Refund Policy', path: '/refund-policy' },
+              { label: 'PTE Reschedule Guide', path: '/how-to-reschedule-cancel-pte-exam' },
+              { label: 'Voucher Policy', path: '/voucher-refund-policy' },
+              { label: 'Terms & Conditions', path: '/terms' },
+              { label: 'Privacy Policy', path: '/privacy-policy' },
+            ].map((p, idx) => (
+              <a
+                key={idx}
+                href={p.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] hover:border-brand-pink text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between transition group"
+              >
+                <span className="truncate">{p.label}</span>
+                <ExternalLink className="w-3.5 h-3.5 text-neutral-400 group-hover:text-brand-pink shrink-0" />
+              </a>
+            ))}
+          </div>
+
+          {/* SECTION 1: APEX VOUCHERS ACTUAL REFUND RULES */}
+          <div className="bg-white dark:bg-[#121212] p-6 sm:p-7 rounded-3xl border border-[#EAEAEA] dark:border-[#222] space-y-6">
+            <div className="flex items-center justify-between border-b border-[#EAEAEA] dark:border-[#222] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                    Apex Vouchers Refund & Cancellation Rules
+                  </h4>
+                  <p className="text-xs text-neutral-500 font-medium">Controls actual business terms rendered across all policy pages and trust sections.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Effective Date</label>
+                <input
+                  type="date"
+                  value={policyForm.apexRefund?.effectiveDate || '2026-01-01'}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, effectiveDate: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Cancellation Window (Days)</label>
+                <input
+                  type="number"
+                  value={policyForm.apexRefund?.cancellationPeriodDays ?? 7}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, cancellationPeriodDays: Number(e.target.value) },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Refund Percentage (%)</label>
+                <input
+                  type="number"
+                  value={policyForm.apexRefund?.refundPercentage ?? 100}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, refundPercentage: Number(e.target.value) },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs text-emerald-600 dark:text-emerald-400 font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Refund Eligibility Statement</label>
+              <textarea
+                rows="2"
+                value={policyForm.apexRefund?.eligibilityCriteria || ''}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({
+                    ...prev,
+                    apexRefund: { ...prev.apexRefund, eligibilityCriteria: e.target.value },
+                  }))
+                }
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Voucher Validity Term</label>
+                <input
+                  type="text"
+                  value={policyForm.apexRefund?.voucherValidityPeriod || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, voucherValidityPeriod: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Refund Processing Turnaround Time</label>
+                <input
+                  type="text"
+                  value={policyForm.apexRefund?.refundProcessingTime || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, refundProcessingTime: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Code Deactivation / Invalidation Rules</label>
+                <textarea
+                  rows="2"
+                  value={policyForm.apexRefund?.cancellationRules || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, cancellationRules: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Rescheduling Limitation Note</label>
+                <textarea
+                  rows="2"
+                  value={policyForm.apexRefund?.reschedulingRules || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      apexRefund: { ...prev.apexRefund, reschedulingRules: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Exceptional Circumstances (Medical/Emergencies)</label>
+              <textarea
+                rows="2"
+                value={policyForm.apexRefund?.exceptionalCircumstances || ''}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({
+                    ...prev,
+                    apexRefund: { ...prev.apexRefund, exceptionalCircumstances: e.target.value },
+                  }))
+                }
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+              />
+            </div>
+          </div>
+
+          {/* SECTION 2: PTE RESCHEDULING GUIDE & CTA BANNER CMS */}
+          <div className="bg-white dark:bg-[#121212] p-6 sm:p-7 rounded-3xl border border-[#EAEAEA] dark:border-[#222] space-y-6">
+            <div className="flex items-center justify-between border-b border-[#EAEAEA] dark:border-[#222] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-brand-pink/10 text-brand-pink flex items-center justify-center font-black">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                    PTE Rescheduling Guide & CTA Controls
+                  </h4>
+                  <p className="text-xs text-neutral-500 font-medium">Customize article headings, bottom CTA text, link target, and non-affiliation disclaimer.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Guide Main H1 Title</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.pageTitle || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, pageTitle: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Guide Subtitle</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.subtitle || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, subtitle: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">CTA Heading Title</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.ctaTitle || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, ctaTitle: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">CTA Subtitle Copy</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.ctaSubtitle || ''}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, ctaSubtitle: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">CTA Button Text</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.ctaButtonText || 'BUY PTE VOUCHER ONLINE'}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, ctaButtonText: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-brand-pink/30 bg-rose-50/50 dark:bg-[#2A0A17]/30 font-black text-xs text-brand-pink"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">CTA Target URL</label>
+                <input
+                  type="text"
+                  value={policyForm.guideSettings?.ctaButtonLink || 'https://apexvouchers.com/'}
+                  onChange={(e) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      guideSettings: { ...prev.guideSettings, ctaButtonLink: e.target.value },
+                    }))
+                  }
+                  className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-1">Official Non-Affiliation Disclaimer</label>
+              <textarea
+                rows="3"
+                value={policyForm.guideSettings?.disclaimerText || ''}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({
+                    ...prev,
+                    guideSettings: { ...prev.guideSettings, disclaimerText: e.target.value },
+                  }))
+                }
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-medium text-xs"
+              />
+            </div>
+          </div>
+
+          {/* SECTION 3: FAQ ACCORDION MANAGER */}
+          <div className="bg-white dark:bg-[#121212] p-6 sm:p-7 rounded-3xl border border-[#EAEAEA] dark:border-[#222] space-y-6">
+            <div className="flex items-center justify-between border-b border-[#EAEAEA] dark:border-[#222] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-black">
+                  <HelpCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                    PTE Rescheduling & Cancellation FAQs
+                  </h4>
+                  <p className="text-xs text-neutral-500 font-medium">Add, update, or remove question and answer items shown in the guide.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setPolicyForm((prev) => ({
+                    ...prev,
+                    faqs: [
+                      ...(prev.faqs || []),
+                      { question: 'New Question?', answer: 'Detailed helpful answer.' },
+                    ],
+                  }))
+                }
+                className="px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-[#202020] hover:bg-neutral-200 dark:hover:bg-[#2A2A2A] text-xs font-black text-neutral-800 dark:text-neutral-200 inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-brand-pink" /> Add FAQ Item
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(policyForm.faqs || []).map((faq, fIdx) => (
+                <div key={fIdx} className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#181818] border border-[#EAEAEA] dark:border-[#282828] space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-black text-neutral-400 uppercase">Question #{fIdx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPolicyForm((prev) => ({
+                          ...prev,
+                          faqs: prev.faqs.filter((_, idx) => idx !== fIdx),
+                        }))
+                      }
+                      className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold"
+                      title="Delete question"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={faq.question}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPolicyForm((prev) => ({
+                        ...prev,
+                        faqs: prev.faqs.map((f, i) => (i === fIdx ? { ...f, question: val } : f)),
+                      }));
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-[#333] bg-white dark:bg-[#141414] font-bold text-xs"
+                    placeholder="Enter question"
+                  />
+
+                  <textarea
+                    rows="2"
+                    value={faq.answer}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPolicyForm((prev) => ({
+                        ...prev,
+                        faqs: prev.faqs.map((f, i) => (i === fIdx ? { ...f, answer: val } : f)),
+                      }));
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-[#333] bg-white dark:bg-[#141414] font-medium text-xs text-neutral-600 dark:text-neutral-300"
+                    placeholder="Enter answer"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSavePolicySettings}
+                disabled={savingSettings}
+                className="px-6 py-3 rounded-2xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-lg shadow-brand-pink/20 cursor-pointer transition flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Save Policy Settings
+              </button>
+            </div>
           </div>
         </div>
       )}

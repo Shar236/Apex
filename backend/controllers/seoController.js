@@ -30,7 +30,7 @@ export const seoOverview = async (req, res, next) => {
     const [allProducts, allPages, allBlogs, allRedirects] = await Promise.all([
       Product.find({}).select('name slug seo seoTitle seoDescription description richDescription image imageSeo active faqs relatedProducts').lean(),
       PageSEO.find({}).lean(),
-      BlogPost.find({}).select('title slug seo published excerpt').lean(),
+      BlogPost.find({}).select('title slug seo status excerpt content').lean(),
       Redirect.find({ enabled: true }).lean(),
     ]);
 
@@ -95,6 +95,7 @@ export const seoOverview = async (req, res, next) => {
     }
 
     for (const post of allBlogs) {
+      const isPublished = post.status === 'published';
       const analysis = analyzeSEO({
         productName: post.title,
         seoTitle: post.seo?.title || '',
@@ -104,10 +105,10 @@ export const seoOverview = async (req, res, next) => {
         description: post.excerpt + ' ' + post.content,
         canonicalUrl: post.seo?.canonicalUrl || '',
         productImage: post.coverImage || '',
-        noindex: post.seo?.noindex || !post.published,
+        noindex: post.seo?.noindex || !isPublished,
       });
-      blogScores.push({ id: post._id, title: post.title, slug: post.slug, analysis, published: post.published });
-      if (post.published) {
+      blogScores.push({ id: post._id, title: post.title, slug: post.slug, analysis, published: isPublished, status: post.status });
+      if (isPublished) {
         totalScore += analysis.score;
         analyzedCount++;
       }
@@ -136,7 +137,7 @@ export const seoOverview = async (req, res, next) => {
         counts: {
           products: allProducts.filter((p) => p.active).length,
           pages: allPages.length,
-          blogPosts: allBlogs.filter((b) => b.published).length,
+          blogPosts: allBlogs.filter((b) => b.status === 'published').length,
           redirects: allRedirects.length,
         },
         gradeDistribution: byGrade,
@@ -312,9 +313,11 @@ const DEFAULT_PAGES = [
   { pageKey: 'exam-guides', pageTitle: 'Exam Guides', routePath: '/#exam-guides' },
   { pageKey: 'faq', pageTitle: 'Frequently Asked Questions', routePath: '/#faq' },
   { pageKey: 'about', pageTitle: 'About Apex Vouchers', routePath: '/#about' },
-  { pageKey: 'terms', pageTitle: 'Terms of Service', routePath: '/#terms' },
-  { pageKey: 'privacy', pageTitle: 'Privacy Policy', routePath: '/#privacy' },
-  { pageKey: 'refund-policy', pageTitle: 'Refund Policy', routePath: '/#refund-policy' },
+  { pageKey: 'refund-policy', pageTitle: 'Refund & Cancellation Policy', routePath: '/refund-policy' },
+  { pageKey: 'pte-rescheduling-guide', pageTitle: 'How to Reschedule or Cancel a PTE Exam in 2026', routePath: '/how-to-reschedule-cancel-pte-exam' },
+  { pageKey: 'voucher-refund-policy', pageTitle: 'Voucher Refund Policy', routePath: '/voucher-refund-policy' },
+  { pageKey: 'terms', pageTitle: 'Terms & Conditions', routePath: '/terms' },
+  { pageKey: 'privacy', pageTitle: 'Privacy Policy', routePath: '/privacy-policy' },
   { pageKey: 'contact', pageTitle: 'Contact Us', routePath: '/#contact' },
   { pageKey: 'blog', pageTitle: 'Blog / Exam Guides', routePath: '/#blog' },
 ];
@@ -440,64 +443,12 @@ export const deleteRedirect = async (req, res, next) => {
   }
 };
 
-export const listBlogsAdmin = async (req, res, next) => {
-  try {
-    const { search, status, category } = req.query;
-    const filter = {};
-    if (status === 'published') filter.published = true;
-    if (status === 'draft') filter.published = false;
-    if (category) filter.category = category;
-    if (search) {
-      const s = new RegExp(escapeRegex(search), 'i');
-      filter.$or = [{ title: s }, { category: s }, { excerpt: s }];
-    }
-    const posts = await BlogPost.find(filter).sort({ createdAt: -1 }).lean();
-    res.json({ success: true, count: posts.length, data: posts });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const createBlog = async (req, res, next) => {
-  try {
-    const post = new BlogPost({ ...req.body, seo: req.body.seo || {} });
-    await post.save();
-    await recordAudit(req, 'BLOG_CREATED', 'BlogPost', post._id, { title: post.title, published: post.published });
-    res.status(201).json({ success: true, data: post });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const updateBlog = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const payload = { ...req.body };
-    if (payload.slug) payload.slug = slugify(payload.slug);
-    const post = await BlogPost.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
-    if (!post) return next(new AppError('Blog post not found', 404));
-    await recordAudit(req, 'BLOG_UPDATED', 'BlogPost', post._id, { title: post.title, published: post.published });
-    res.json({ success: true, data: post });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const deleteBlog = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const post = await BlogPost.findByIdAndDelete(id);
-    if (!post) return next(new AppError('Blog post not found', 404));
-    await recordAudit(req, 'BLOG_DELETED', 'BlogPost', id, { title: post.title });
-    res.json({ success: true, deleted: true });
-  } catch (err) {
-    next(err);
-  }
-};
+// Blog CRUD moved to controllers/blogController.js + routes/blogRoutes.js
+// (mounted at /api/admin/blogs) — see that module for the full Blog CMS.
 
 export const getGlobalSEOSettings = async (req, res, next) => {
   try {
-    const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, defaultSocialImage, gscCode, gaMeasurementId] = await Promise.all([
+    const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, defaultSocialImage, gscCode, gaMeasurementId, gscConnected, gscPropertyUrl] = await Promise.all([
       Setting.findOne({ key: 'seo_siteName' }).lean(),
       Setting.findOne({ key: 'seo_defaultTitle' }).lean(),
       Setting.findOne({ key: 'seo_defaultDescription' }).lean(),
@@ -508,6 +459,8 @@ export const getGlobalSEOSettings = async (req, res, next) => {
       Setting.findOne({ key: 'seo_defaultSocialImage' }).lean(),
       Setting.findOne({ key: 'seo_gscVerification' }).lean(),
       Setting.findOne({ key: 'seo_gaMeasurementId' }).lean(),
+      Setting.findOne({ key: 'seo_gscConnected' }).lean(),
+      Setting.findOne({ key: 'seo_gscPropertyUrl' }).lean(),
     ]);
 
     res.json({
@@ -523,6 +476,9 @@ export const getGlobalSEOSettings = async (req, res, next) => {
         defaultSocialImage: defaultSocialImage?.value || defaultOgImage?.value || '',
         gscVerificationCode: gscCode?.value || '',
         gaMeasurementId: gaMeasurementId?.value || '',
+        // Phase 2 placeholders — no live Search Console/PageSpeed data yet.
+        gscConnected: gscConnected?.value === 'true',
+        gscPropertyUrl: gscPropertyUrl?.value || '',
       },
     });
   } catch (err) {
@@ -565,20 +521,17 @@ export const getSitemapXML = async (req, res, next) => {
     const [products, activePages, blogPosts] = await Promise.all([
       Product.find({ active: true, $or: [{ 'seo.noindex': { $ne: true } }, { 'seo.noindex': { $exists: false } }] }).select('slug updatedAt').lean(),
       PageSEO.find({ 'seo.noindex': { $ne: true } }).select('pageKey routePath updatedAt').lean(),
-      BlogPost.find({ published: true, 'seo.noindex': { $ne: true } }).select('slug updatedAt').lean(),
+      BlogPost.find({ status: 'published', 'seo.noindex': { $ne: true } }).select('slug updatedAt').lean(),
     ]);
 
     const staticUrls = [
       { loc: `${base}/`, lastmod: today, priority: '1.0', changefreq: 'daily' },
-      { loc: `${base}/#vouchers`, lastmod: today, priority: '0.9', changefreq: 'daily' },
-      { loc: `${base}/#how-it-works`, lastmod: today, priority: '0.7', changefreq: 'weekly' },
-      { loc: `${base}/#calculator`, lastmod: today, priority: '0.7', changefreq: 'weekly' },
-      { loc: `${base}/#exam-guides`, lastmod: today, priority: '0.8', changefreq: 'weekly' },
-      { loc: `${base}/#faq`, lastmod: today, priority: '0.7', changefreq: 'monthly' },
-      { loc: `${base}/#about`, lastmod: today, priority: '0.6', changefreq: 'monthly' },
-      { loc: `${base}/#terms`, lastmod: today, priority: '0.3', changefreq: 'yearly' },
-      { loc: `${base}/#privacy`, lastmod: today, priority: '0.3', changefreq: 'yearly' },
-      { loc: `${base}/#refund-policy`, lastmod: today, priority: '0.4', changefreq: 'yearly' },
+      { loc: `${base}/exam-booking`, lastmod: today, priority: '0.9', changefreq: 'daily' },
+      { loc: `${base}/refund-policy`, lastmod: today, priority: '0.8', changefreq: 'monthly' },
+      { loc: `${base}/how-to-reschedule-cancel-pte-exam`, lastmod: today, priority: '0.9', changefreq: 'weekly' },
+      { loc: `${base}/voucher-refund-policy`, lastmod: today, priority: '0.8', changefreq: 'monthly' },
+      { loc: `${base}/terms`, lastmod: today, priority: '0.6', changefreq: 'monthly' },
+      { loc: `${base}/privacy-policy`, lastmod: today, priority: '0.6', changefreq: 'monthly' },
     ];
 
     const prodUrls = products.map((p) => ({

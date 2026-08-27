@@ -198,6 +198,7 @@ export const getWebsiteConfig = async (req, res, next) => {
     const announcementDoc = await Setting.findOne({ key: 'announcementSettings' }).lean();
     const benefitCardsDoc = await Setting.findOne({ key: 'benefitCards' }).lean();
     const footerDoc = await Setting.findOne({ key: 'footerSettings' }).lean();
+    const policySettingsDoc = await Setting.findOne({ key: 'policySettings' }).lean();
     const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, gscCode, gaId] = await Promise.all([
       Setting.findOne({ key: 'seo_siteName' }).lean(),
       Setting.findOne({ key: 'seo_defaultTitle' }).lean(),
@@ -293,6 +294,71 @@ export const getWebsiteConfig = async (req, res, next) => {
       .lean();
     const hydratedProducts = await applyAvailability(products);
 
+    const policySettings = policySettingsDoc?.value || {
+      apexRefund: {
+        enabled: true,
+        effectiveDate: '2026-01-01',
+        eligibilityCriteria: 'Vouchers that are 100% unredeemed and unallocated on the Pearson / ETS portal within the allowable refund window.',
+        cancellationPeriodDays: 7,
+        refundPercentage: 100,
+        processingFeePercent: 0,
+        voucherValidityPeriod: '6 to 11 months from date of purchase (check voucher specification)',
+        cancellationRules: 'Once a voucher refund is issued, the alphanumeric code is permanently deactivated and cannot be applied to any test booking.',
+        reschedulingRules: 'Vouchers cannot be used to pay Pearson rescheduling fees. Rescheduling is managed directly via the student\'s myPTE account.',
+        exceptionalCircumstances: 'For medical or family emergencies, official documentation may be submitted to support for expedited case-by-case review.',
+        refundProcessingTime: '24 to 48 business hours via the original payment method (UPI / Bank Account / Card).',
+        supportEmail: 'info@apexvouchers.com',
+        supportPhone: '+91 98559 26113',
+        whatsappNumber: '9855926113',
+      },
+      guideSettings: {
+        pageTitle: 'How to Reschedule or Cancel a PTE Exam in 2026',
+        subtitle: 'Complete Guide to PTE Rescheduling, Cancellation, Refunds & Voucher Bookings',
+        ctaTitle: 'Planning to Book a New PTE Exam?',
+        ctaSubtitle: 'Purchase your official PTE voucher from Apex Vouchers and save instantly on your exam fee.',
+        ctaButtonText: 'BUY PTE VOUCHER ONLINE',
+        ctaButtonLink: 'https://apexvouchers.com/',
+        ctaEmail: 'info@apexvouchers.com',
+        ctaPhone: '98559 26113',
+        isPublished: true,
+        disclaimerText: 'Disclaimer: This article is for general informational purposes and is not affiliated with or endorsed by Pearson. PTE fees, cancellation rules, refund policies, voucher terms and booking procedures may change. Students should verify the latest information directly with Pearson and review the terms of their voucher provider before making a cancellation, rescheduling request or refund claim.',
+      },
+      faqs: [
+        {
+          question: 'Can I change my PTE exam date?',
+          answer: 'Yes. Eligible appointments can generally be rescheduled through your myPTE account under My Activity.',
+        },
+        {
+          question: 'Is PTE rescheduling free?',
+          answer: 'Under Pearson\'s current policy, rescheduling is generally free when more than 14 full calendar days remain before the test date.',
+        },
+        {
+          question: 'Can I cancel my PTE exam and get a refund?',
+          answer: 'Where applicable, the refund depends on how many full calendar days remain before the appointment. Cancellations made 14 or more full days before the test are generally eligible for a 100% refund, while cancellations made 13–8 full calendar days before the test are generally eligible for a 50% refund.',
+        },
+        {
+          question: 'What refund do I get if I cancel 14 or more days before my PTE exam?',
+          answer: 'Generally 100%, subject to Pearson\'s current terms and policies.',
+        },
+        {
+          question: 'What if I cancel 10 days before my PTE exam?',
+          answer: 'A cancellation made 13–8 full calendar days before the test date is generally eligible for a 50% refund under Pearson\'s published schedule.',
+        },
+        {
+          question: 'What if I cancel fewer than 7 days before my PTE exam?',
+          answer: 'Under Pearson\'s current published schedule, cancellations made fewer than 7 full calendar days before the test are generally not refundable.',
+        },
+        {
+          question: 'What if I bought my PTE voucher from a third-party provider?',
+          answer: 'Contact the provider from which the voucher was purchased and check that provider\'s applicable refund policy. Cancelling a Pearson exam appointment does not automatically refund payments made to a third-party voucher vendor.',
+        },
+        {
+          question: 'Can I use a voucher to pay a rescheduling fee?',
+          answer: 'Pearson states that PTE vouchers can be applied toward the test fee but cannot be used to pay a rescheduling fee.',
+        },
+      ],
+    };
+
     res.json({
       success: true,
       activeCampaign,
@@ -300,6 +366,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       announcementSettings,
       benefitCards,
       footerSettings,
+      policySettings,
       globalSEO,
       structuredData: {
         organization: orgJsonLd,

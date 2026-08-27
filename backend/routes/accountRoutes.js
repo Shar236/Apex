@@ -4,9 +4,11 @@ import {
   updateProfile,
   uploadProfileImage,
   removeProfileImage,
-  requestEmailChange,
-  verifyEmailChange,
+  sendEmailOtp,
+  verifyEmailOtp,
+  updatePhone,
   changePassword,
+  logout,
   myOrders,
   myVouchers,
   dashboardStats,
@@ -25,10 +27,11 @@ r.get('/', getAccount);
 r.patch('/profile', updateProfile);
 r.post('/profile/avatar', profileImageUpload.single('avatar'), uploadProfileImage);
 r.delete('/profile/avatar', removeProfileImage);
-r.post('/change-email', requestEmailChange);
-r.post('/verify-email-change', verifyEmailChange);
-r.get('/verify-email-change', verifyEmailChange);
-r.post('/change-password', changePassword);
+r.post('/email/send-otp', sendEmailOtp);
+r.post('/email/verify-otp', verifyEmailOtp);
+r.patch('/phone', updatePhone);
+r.post('/password/change', changePassword);
+r.post('/logout', logout);
 r.get('/stats', dashboardStats);
 r.get('/orders', myOrders);
 r.get('/vouchers', myVouchers);

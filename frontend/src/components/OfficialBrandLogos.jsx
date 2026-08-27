@@ -19,10 +19,22 @@ import React from 'react';
    1. Pearson Official Horizontal Logo
 ───────────────────────────────────────────── */
 export const PearsonOfficialLogo = ({ className = 'h-7', inverted = false, showTagline = false }) => {
-  const iconColor = inverted ? '#38BDF8' : '#000048';
-  const textColor = inverted ? '#FFFFFF' : '#000048';
+  /*
+   * Color strategy:
+   *   inverted=false (default) → navy  #000048  (for light backgrounds)
+   *   inverted=true            → white #FFFFFF   (for dark backgrounds)
+   *
+   * The SVG uses `currentColor` so callers can also just apply
+   *   className="text-[#000048] dark:text-white"
+   * on the wrapper and omit the inverted prop entirely.
+   */
+  const color = inverted ? '#FFFFFF' : '#000048';
   return (
-    <div className={`inline-flex items-center gap-2 select-none ${className}`} aria-label="Pearson">
+    <div
+      className={`inline-flex items-center gap-2 select-none ${className}`}
+      style={{ color }}
+      aria-label="Pearson"
+    >
       <svg
         className="h-full w-auto aspect-[3.2/1] shrink-0"
         viewBox="0 0 240 75"
@@ -31,12 +43,12 @@ export const PearsonOfficialLogo = ({ className = 'h-7', inverted = false, showT
         role="img"
         aria-label="Pearson official logo"
       >
-        <path d="M32 12C20 22 14 38 18 54C11 46 8 34 11 22C14 12 22 5 32 12Z" fill={iconColor} />
-        <path d="M48 20C38 28 34 44 38 60C30 52 27 40 30 28C33 18 40 12 48 20Z" fill={iconColor} />
+        <path d="M32 12C20 22 14 38 18 54C11 46 8 34 11 22C14 12 22 5 32 12Z" fill="currentColor" />
+        <path d="M48 20C38 28 34 44 38 60C30 52 27 40 30 28C33 18 40 12 48 20Z" fill="currentColor" />
         <text
           x="58"
           y="56"
-          fill={textColor}
+          fill="currentColor"
           fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
           fontWeight="800"
           fontSize="48"
@@ -53,6 +65,7 @@ export const PearsonOfficialLogo = ({ className = 'h-7', inverted = false, showT
     </div>
   );
 };
+
 
 /* ─────────────────────────────────────────────
    2. Pearson PTE Practice Test Logo
@@ -190,8 +203,9 @@ export const ETSGRELogo = ETSGreLogo;
    Previously used dark:text-white which made it INVISIBLE on white cards in dark mode.
 ───────────────────────────────────────────── */
 export const ETSToeflLogo = ({ className = 'h-12', inverted = false }) => {
-  const color    = inverted ? '#FFFFFF' : '#111827';
-  const subColor = inverted ? '#94A3B8' : '#64748B';
+  // ETS official brand blue (#1B3A6B) on light bg, white on dark bg
+  const color    = inverted ? '#FFFFFF' : '#0088f7ff';
+  const subColor = inverted ? '#94A3B8' : '#0449afff';
 
   return (
     <div className={`flex items-center justify-center gap-1.5 select-none ${className}`} aria-label="ETS TOEFL">
@@ -202,6 +216,7 @@ export const ETSToeflLogo = ({ className = 'h-12', inverted = false }) => {
     </div>
   );
 };
+
 
 export const ToeflOfficialLogo = ETSToeflLogo;
 

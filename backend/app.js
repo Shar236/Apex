@@ -10,6 +10,8 @@ import { seedAdmin } from './controllers/adminController.js';
 import { getSitemapXML, getRobotsTxt, getPublicSEOData, ensureDefaultPages } from './controllers/seoController.js';
 import { ensureVoucherSchemaConsistency } from './scripts/ensureVoucherSchema.js';
 import { Redirect } from './models/index.js';
+import { startBlogScheduler } from './services/blogScheduler.js';
+import { migrateBlogPosts } from './scripts/migrateBlogPosts.js';
 
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
@@ -20,6 +22,11 @@ import videoRoutes from './routes/videoRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 import pteBookingRoutes from './routes/pteBookingRoutes.js';
+import awardRoutes from './routes/awardRoutes.js';
+import blogRoutes from './routes/blogRoutes.js';
+import publicBlogRoutes from './routes/publicBlogRoutes.js';
+import googleSeoRoutes from './routes/googleSeoRoutes.js';
+import pagespeedRoutes from './routes/pagespeedRoutes.js';
 
 const app = express();
 
@@ -83,9 +90,19 @@ const accountSensitiveLimiter = rateLimit({
   standardHeaders: true,
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
-app.use('/api/account/change-email', accountSensitiveLimiter);
-app.use('/api/account/change-password', accountSensitiveLimiter);
-app.use('/api/account/verify-email-change', accountSensitiveLimiter);
+app.use('/api/account/email/send-otp', accountSensitiveLimiter);
+app.use('/api/account/email/verify-otp', accountSensitiveLimiter);
+app.use('/api/account/phone', accountSensitiveLimiter);
+app.use('/api/account/password/change', accountSensitiveLimiter);
+
+const registerOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/auth/register/verify-otp', registerOtpLimiter);
+app.use('/api/auth/register/resend-otp', registerOtpLimiter);
 
 const avatarUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -137,10 +154,19 @@ app.use('/api/reels', videoRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+// Mounted before the generic /api/admin router below: googleSeoRoutes contains
+// the OAuth /callback route, which Google redirects the bare browser to and
+// therefore must be reachable without the Bearer token adminRoutes' own
+// `r.use(protectAdmin)` would otherwise demand for anything under /api/admin/*.
+app.use('/api/admin/seo/google', googleSeoRoutes);
+app.use('/api/admin/seo/pagespeed', pagespeedRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/pte-bookings', pteBookingRoutes);
 app.use('/api/pte-booking-requests', pteBookingRoutes);
+app.use('/api/awards', awardRoutes);
+app.use('/api/admin/blogs', blogRoutes);
+app.use('/api/blog', publicBlogRoutes);
 
 
 app.use('/api/*', (req, res) => {
@@ -154,6 +180,8 @@ export const startServer = async () => {
   await seedAdmin();
   await ensureDefaultPages();
   await ensureVoucherSchemaConsistency();
+  await migrateBlogPosts();
+  startBlogScheduler();
   const port = config.port;
   app.listen(port, () => {
     console.log(`[server] Apex Vouchers API listening on http://localhost:${port}`);

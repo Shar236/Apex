@@ -94,29 +94,65 @@ export const LegalTrustFooter = () => {
             </ul>
           </div>
 
-          {/* Column 4: Support */}
+          {/* Column 4: Policies (Dedicated Area - accessible only from footer) */}
           <div className="space-y-3">
-            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Support</h4>
+            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Policies</h4>
             <ul className="space-y-2">
-              {['Help Center', 'Refund Policy', 'Terms of Service', 'Privacy Policy'].map((item, idx) => (
-                <li key={idx}>
-                  <button onClick={() => setActiveTab('faq')} className="hover:text-brand-pink transition-colors text-left font-medium">
-                    {item}
-                  </button>
-                </li>
-              ))}
+              <li>
+                <a href="/refund-policy" className="hover:text-brand-pink transition-colors text-left font-medium block">
+                  Refund & Cancellation Policy
+                </a>
+              </li>
+              <li>
+                <a href="/how-to-reschedule-cancel-pte-exam" className="hover:text-brand-pink transition-colors text-left font-medium flex items-center gap-1.5">
+                  <span>PTE Rescheduling Guide</span>
+                  <span className="text-[9px] bg-brand-pink/20 text-brand-pink px-1.5 py-0.2 rounded font-black">2026</span>
+                </a>
+              </li>
+              <li>
+                <a href="/voucher-refund-policy" className="hover:text-brand-pink transition-colors text-left font-medium block">
+                  Voucher Refund Policy
+                </a>
+              </li>
+              <li>
+                <a href="/terms" className="hover:text-brand-pink transition-colors text-left font-medium block">
+                  Terms & Conditions
+                </a>
+              </li>
+              <li>
+                <a href="/privacy-policy" className="hover:text-brand-pink transition-colors text-left font-medium block">
+                  Privacy Policy
+                </a>
+              </li>
             </ul>
           </div>
 
-          {/* Column 5: Payment Methods */}
+          {/* Column 5: Support & Payment Methods */}
           <div className="space-y-3">
-            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Accepted Payment</h4>
+            <h4 className="font-heading font-extrabold text-xs text-white uppercase tracking-wider">Support & Payment</h4>
+            <ul className="space-y-1.5 pb-2">
+              <li>
+                <button onClick={() => setActiveTab('faq')} className="hover:text-brand-pink transition-colors text-left font-medium text-xs">
+                  Help Center & FAQs
+                </button>
+              </li>
+              <li>
+                <a
+                  href={`https://wa.me/${footerPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Hello Apex Vouchers support team, I need assistance.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-brand-pink transition-colors text-left font-medium text-xs text-emerald-400"
+                >
+                  Live WhatsApp Support
+                </a>
+              </li>
+            </ul>
             <p className="text-[11px] text-neutral-400 leading-relaxed font-medium">
               256-bit SSL Encrypted Secure Checkout
             </p>
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
               {['UPI', 'GPay', 'PhonePe', 'Visa', 'Mastercard', 'NetBanking', 'EMI'].map((pay, i) => (
-                <span key={i} className="px-2 py-1 rounded bg-neutral-800 text-neutral-300 text-[10px] font-extrabold border border-neutral-700">
+                <span key={i} className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 text-[10px] font-extrabold border border-neutral-700">
                   {pay}
                 </span>
               ))}

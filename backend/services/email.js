@@ -707,9 +707,40 @@ export const sendPTEBookingAdminNotification = (booking) => {
   });
 };
 
-export const sendEmailChangeVerification = (user, newEmail, token) => {
-  const serverUrl = config.serverUrl || 'http://localhost:5000';
-  const url = `${serverUrl}/api/account/verify-email-change?token=${token}`;
+const otpCodeBlock = (otp) => `
+  <div style="text-align: center; margin: 28px 0;">
+    <span style="display: inline-block; background-color: #1a1a1a; border: 1px solid #292929; border-radius: 14px; padding: 16px 32px; font-size: 32px; font-weight: 900; letter-spacing: 10px; color: #ffffff; font-family: 'Courier New', monospace;">
+      ${otp}
+    </span>
+  </div>
+`;
+
+/**
+ * Registration email verification — 6-digit OTP sent to the address the user just registered with.
+ */
+export const sendRegistrationOtp = (user, otp) => {
+  return sendEmail({
+    to: user.email,
+    subject: `Verify your email — ${config.business.name}`,
+    html: htmlWrap(
+      'Verify your email',
+      `
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Verify your email address</h2>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
+        Hi ${user.name || 'there'}, welcome to ${config.business.name}! Enter this code to finish creating your account:
+      </p>
+      ${otpCodeBlock(otp)}
+      <p style="color: #666666; font-size: 12px; text-align: center; margin: 0;">This code expires in 5 minutes.</p>
+      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't create this account, please ignore this email.</p>
+      `
+    ),
+  });
+};
+
+/**
+ * Change-email OTP — 6-digit code sent to the NEW address before the swap is applied.
+ */
+export const sendEmailOtpCode = (user, newEmail, otp) => {
   return sendEmail({
     to: newEmail,
     subject: `Verify your new email address — ${config.business.name}`,
@@ -720,15 +751,32 @@ export const sendEmailChangeVerification = (user, newEmail, token) => {
       <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
         Hi ${user.name || 'there'},
       </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 24px 0;">
-        You requested to change your ${config.business.name} account email to <strong style="color: #ffffff;">${newEmail}</strong>. Click the button below to confirm this change. This link is valid for 60 minutes.
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
+        You requested to change your ${config.business.name} account email to <strong style="color: #ffffff;">${newEmail}</strong>. Enter this code to confirm:
       </p>
-      <div style="text-align: center;">
-        <a href="${url}" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
-          Verify Email Address
-        </a>
-      </div>
+      ${otpCodeBlock(otp)}
+      <p style="color: #666666; font-size: 12px; text-align: center; margin: 0;">This code expires in 5 minutes.</p>
       <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't request this change, please ignore this email. Your current email will remain unchanged.</p>
+      `
+    ),
+  });
+};
+
+/**
+ * Best-effort security notice sent to the OLD email address after a successful email change.
+ */
+export const sendEmailChangedSecurityNotice = (user, oldEmail, newEmail) => {
+  return sendEmail({
+    to: oldEmail,
+    subject: `Your ${config.business.name} account email was changed`,
+    html: htmlWrap(
+      'Email address changed',
+      `
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Your account email was changed</h2>
+      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
+        Hi ${user.name || 'there'}, this is a confirmation that your ${config.business.name} account email was changed to <strong style="color: #ffffff;">${newEmail}</strong>.
+      </p>
+      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't make this change, please contact our support team immediately.</p>
       `
     ),
   });

@@ -2,15 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
 import { useAuth } from '../context/AuthContext';
-import { pteBookingApi, applyPageMetadata } from '../lib/api';
-import { EXAM_PROVIDERS, PTE_INDIAN_CITIES } from '../lib/examProviders';
+import { pteBookingApi, applyPageMetadata, formatPrice } from '../lib/api';
+import { PTE_INDIAN_CITIES } from '../lib/examProviders';
+import { PRODUCTS, TESTIMONIALS } from '../types/data';
 import { PhoneInput } from './PhoneInput';
 import {
   PearsonOfficialLogo,
   PearsonPTELogo,
-  PTEAcademicLogo,
-  PTECoreLogo,
-  PTEUKVILogo,
   DynamicPTELogo,
   ETSGreLogo,
   ETSToeflLogo,
@@ -40,11 +38,16 @@ import {
   Search,
   Phone,
   Mail,
-  Play,
-  RotateCcw,
   BadgeCheck,
   AlertTriangle,
   Info,
+  Star,
+  ListChecks,
+  RefreshCcw,
+  Ticket,
+  Ban,
+  Quote,
+  ChevronRight,
 } from 'lucide-react';
 
 const EXAM_TYPE_OPTIONS = [
@@ -78,6 +81,43 @@ const EXAM_TYPE_OPTIONS = [
 ];
 
 const TIME_OPTIONS = ['Morning', 'Afternoon', 'Evening', 'Any Time'];
+
+const PTE_VOUCHER_IDS = ['pte-academic', 'pte-core'];
+
+const BEFORE_YOU_BOOK_CHECKLIST = [
+  { icon: FileCheck, text: 'Valid passport or accepted government photo ID — name must exactly match your test registration' },
+  { icon: CheckCircle2, text: 'Correct spelling of your full legal name as per your ID' },
+  { icon: Calendar, text: 'Accurate date of birth' },
+  { icon: Mail, text: 'An email address you check regularly' },
+  { icon: Phone, text: 'A mobile number reachable on WhatsApp' },
+  { icon: GraduationCap, text: 'Your confirmed test type — PTE Academic, PTE Core, or PTE Academic UKVI' },
+  { icon: Building2, text: 'Your preferred test centre and city' },
+  { icon: Clock, text: 'Your preferred date and time, plus a backup option' },
+  { icon: Lock, text: 'Your personal myPTE account, created directly on pearsonpte.com' },
+];
+
+const BOOKING_MISTAKES = [
+  {
+    title: 'Wrong Test Type',
+    desc: 'Booking PTE Academic when your university or immigration route actually requires PTE Core or PTE Academic UKVI — or vice-versa.',
+  },
+  {
+    title: 'Incorrect Personal Details',
+    desc: 'Name or date of birth that doesn’t exactly match your ID. This can delay or invalidate your appointment.',
+  },
+  {
+    title: 'Last-Minute Booking',
+    desc: 'Waiting too long means your preferred date, time or centre may no longer be available.',
+  },
+  {
+    title: 'Not Reviewing Final Details',
+    desc: 'Confirming a booking without double-checking the centre, date and time shown at the end.',
+  },
+  {
+    title: 'Ignoring Reschedule Rules',
+    desc: 'Not checking Pearson’s official rescheduling and cancellation policy before requesting a late change.',
+  },
+];
 
 const FAQ_LIST = [
   {
@@ -125,12 +165,53 @@ const FAQ_LIST = [
     a: 'Your appointment is officially confirmed only when you receive an official Pearson Booking Confirmation email containing your official appointment details, centre address, and Pearson candidate reference.',
   },
   {
+    q: 'Can I use a discounted PTE voucher with your booking assistance?',
+    a: 'Yes. Apex Vouchers sells genuine discounted vouchers for PTE Academic and PTE Core that you apply directly at the Pearson checkout step when you book. You can browse and purchase a voucher separately from our voucher shop, then use our booking assistance for guidance on the rest of the process.',
+  },
+  {
+    q: 'Can I reschedule or cancel my PTE exam?',
+    a: 'Rescheduling and cancellation are handled entirely through Pearson’s official policy on pearsonpte.com. We recommend checking the latest official terms and deadlines before requesting any change, especially close to your test date.',
+  },
+  {
     q: 'How much does booking assistance cost?',
     a: 'Booking assistance is currently available as a dedicated support service from Apex Vouchers. If you also purchase an official discounted exam voucher from us, you can apply the voucher during your official checkout to save on exam fees.',
   },
 ];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+/** Lightweight one-time fade-up-on-scroll wrapper — no animation library required. */
+function Reveal({ children, className = '' }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export const PTEExamBookingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -140,6 +221,7 @@ export const PTEExamBookingPage = () => {
 
   const formRef = useRef(null);
   const howItWorksRef = useRef(null);
+  const heroRef = useRef(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -164,6 +246,8 @@ export const PTEExamBookingPage = () => {
   const [submittedData, setSubmittedData] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const [citiesExpanded, setCitiesExpanded] = useState(false);
+  const [showStickyCta, setShowStickyCta] = useState(false);
 
   // Read URL query parameter for preselecting exam type (?exam=pte-academic, pte-core, pte-ukvi)
   useEffect(() => {
@@ -226,6 +310,18 @@ export const PTEExamBookingPage = () => {
     } catch {}
   }, [preferredCity, preferredTime, examType]);
 
+  // Show a slim sticky "Book Now" bar once the hero has scrolled out of view
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setShowStickyCta(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const supportPhone = footerSettings?.phone || '+91 9855926113';
   const supportEmail = footerSettings?.email || 'apexvouchers@gmail.com';
 
@@ -238,6 +334,18 @@ export const PTEExamBookingPage = () => {
       c.state.toLowerCase().includes(citySearch.toLowerCase())
     );
   }, [citySearch]);
+
+  const sortedCoverageCities = useMemo(
+    () => [...PTE_INDIAN_CITIES].sort((a, b) => Number(b.prominent) - Number(a.prominent)),
+    []
+  );
+  const visibleCoverageCities = citiesExpanded ? sortedCoverageCities : sortedCoverageCities.slice(0, 12);
+
+  const pteVouchers = useMemo(() => PRODUCTS.filter((p) => PTE_VOUCHER_IDS.includes(p.id)), []);
+  const pteTestimonials = useMemo(
+    () => TESTIMONIALS.filter((t) => t.exam?.toUpperCase().includes('PTE')),
+    []
+  );
 
   const scrollToForm = (preselectExam = null) => {
     if (preselectExam) {
@@ -331,6 +439,9 @@ export const PTEExamBookingPage = () => {
     setTermsAccepted(false);
   };
 
+  const whatsappHref = (text) =>
+    `https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white antialiased transition-colors duration-300">
       {/* Schema.org Structured Data */}
@@ -387,16 +498,17 @@ export const PTEExamBookingPage = () => {
       </div>
 
       {/* ── HERO SECTION ────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden pt-12 pb-16 sm:pt-16 sm:pb-24 border-b border-[#EAEAEA] dark:border-[#222]">
+      <section ref={heroRef} className="relative overflow-hidden pt-12 pb-16 sm:pt-16 sm:pb-24 border-b border-[#EAEAEA] dark:border-[#222]">
         {/* Background glow accents */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-150 h-87.5 bg-linear-to-tr from-brand-pink/15 via-[#6C3CE0]/15 to-transparent blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-linear-to-tl from-[#005A9C]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
+
             {/* Left Column: Heading & Copy */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              
+
               {/* Badge & Official Provider Indicator */}
               <div className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink font-black text-xs border border-brand-pink/30 shadow-sm">
@@ -420,29 +532,40 @@ export const PTEExamBookingPage = () => {
                 before you book.
               </p>
 
-              {/* Service Disclaimer Alert Box */}
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-800 dark:text-amber-300 flex items-start gap-3 max-w-2xl text-left">
-                <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <p>
-                  <strong>Important:</strong> Our service provides booking assistance and guidance.
-                  Your exam appointment is confirmed only through the official booking process.
-                </p>
+              {/* Live stat + Service Disclaimer */}
+              <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-neutral-50 dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] text-left shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center shrink-0">
+                    <Users className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <div className="font-heading font-black text-sm text-neutral-900 dark:text-white leading-none">13,500+</div>
+                    <div className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">Students helped</div>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-800 dark:text-amber-300 flex items-start gap-3 text-left">
+                  <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <p>
+                    <strong>Important:</strong> Our service provides booking assistance and guidance.
+                    Your exam appointment is confirmed only through the official booking process.
+                  </p>
+                </div>
               </div>
 
               {/* Hero Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
                 <button
                   onClick={() => scrollToForm()}
-                  className="w-full sm:w-auto btn-pink py-3.5! px-8! text-sm! font-extrabold flex items-center justify-center gap-2 shadow-xl hover:shadow-brand-pink/25"
+                  className="w-full sm:w-auto btn-pink py-3.5! px-8! text-sm! font-extrabold flex items-center justify-center gap-2 shadow-xl hover:shadow-brand-pink/25 cursor-pointer"
                 >
-                  <span>Start Booking Assistance</span>
+                  <span>Book Your PTE Exam</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={scrollToHowItWorks}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-100 dark:bg-[#1A1A1A] hover:bg-neutral-200 dark:hover:bg-[#252525] text-neutral-800 dark:text-neutral-200 font-bold text-sm border border-[#EAEAEA] dark:border-[#292929] transition-colors"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-100 dark:bg-[#1A1A1A] hover:bg-neutral-200 dark:hover:bg-[#252525] text-neutral-800 dark:text-neutral-200 font-bold text-sm border border-[#EAEAEA] dark:border-[#292929] transition-colors cursor-pointer"
                 >
-                  How It Works ↓
+                  Check How It Works ↓
                 </button>
               </div>
 
@@ -463,7 +586,7 @@ export const PTEExamBookingPage = () => {
 
             {/* Right Column: Hero Visual Graphic */}
             <div className="lg:col-span-5 flex justify-center">
-              <div className="w-full max-w-md rounded-3xl p-6 sm:p-7 bg-white dark:bg-[#141414] border-2 border-[#EAEAEA] dark:border-[#262626] shadow-2xl relative overflow-hidden group">
+              <div className="w-full max-w-md rounded-3xl p-6 sm:p-7 bg-white dark:bg-[#141414] border-2 border-[#EAEAEA] dark:border-[#262626] shadow-2xl relative overflow-hidden group animate-float-gentle">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-brand-pink/10 to-[#6C3CE0]/10 blur-2xl rounded-full pointer-events-none" />
 
                 {/* Visual Header */}
@@ -482,7 +605,7 @@ export const PTEExamBookingPage = () => {
                 <div className="space-y-3.5 mb-6">
                   {[
                     { label: 'Test Type', value: 'PTE Academic / Core / UKVI', icon: GraduationCap, tint: '#005A9C' },
-                    { label: 'Preferred City', value: 'Delhi, Mumbai, Chandigarh & 20+ Cities', icon: MapPin, tint: '#FF005C' },
+                    { label: 'Preferred City', value: 'Delhi, Mumbai, Chandigarh & more', icon: MapPin, tint: '#FF005C' },
                     { label: 'Test Centre', value: 'Select Nearest Authorized Centre', icon: Building2, tint: '#6C3CE0' },
                     { label: 'Preferred Date', value: 'Custom Slots & Morning/Afternoon', icon: Calendar, tint: '#10B981' },
                   ].map((item, idx) => {
@@ -530,7 +653,7 @@ export const PTEExamBookingPage = () => {
       {/* ── QUICK BOOKING FORM SECTION ──────────────────────────────────────────── */}
       <section ref={formRef} id="booking-form-section" className="py-16 sm:py-20 bg-neutral-50/60 dark:bg-[#0E0E0E] border-b border-[#EAEAEA] dark:border-[#222]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           {submittedData ? (
             /* ── SUCCESS SCREEN ── */
             <div className="rounded-3xl p-6 sm:p-10 bg-white dark:bg-[#141414] border-2 border-emerald-500/50 shadow-2xl text-center animate-in fade-in slide-in-from-bottom-4">
@@ -624,9 +747,9 @@ export const PTEExamBookingPage = () => {
               {/* Action Buttons: WhatsApp + Back */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
-                  href={`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                  href={whatsappHref(
                     `Hello Apex Vouchers, I submitted PTE booking assistance request ${submittedData.requestId} and need help with my booking.`
-                  )}`}
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
@@ -637,7 +760,7 @@ export const PTEExamBookingPage = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-100 dark:bg-[#1E1E1E] text-neutral-800 dark:text-neutral-200 font-extrabold text-xs hover:bg-neutral-200 dark:hover:bg-[#282828] transition-colors"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-100 dark:bg-[#1E1E1E] text-neutral-800 dark:text-neutral-200 font-extrabold text-xs hover:bg-neutral-200 dark:hover:bg-[#282828] transition-colors cursor-pointer"
                 >
                   Back to Exam Booking Form
                 </button>
@@ -646,7 +769,7 @@ export const PTEExamBookingPage = () => {
           ) : (
             /* ── BOOKING FORM ── */
             <div className="rounded-3xl p-6 sm:p-10 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-xl">
-              
+
               {/* Form Heading & Subtitle */}
               <div className="text-center max-w-xl mx-auto mb-8">
                 <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
@@ -668,7 +791,7 @@ export const PTEExamBookingPage = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                
+
                 {/* 1. Exam Type Selector with Dynamic Provider Logo */}
                 <div>
                   <label className="block text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-2">
@@ -717,7 +840,7 @@ export const PTEExamBookingPage = () => {
 
                 {/* 2. Customer Contact Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
+
                   {/* Full Name */}
                   <div>
                     <label htmlFor="fullName" className="block text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
@@ -786,7 +909,7 @@ export const PTEExamBookingPage = () => {
 
                 {/* 3. Location & Test Centre */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
+
                   {/* Preferred City (Searchable Dropdown) */}
                   <div className="relative">
                     <label className="block text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
@@ -901,7 +1024,7 @@ export const PTEExamBookingPage = () => {
 
                 {/* 4. Dates & Time Preference */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  
+
                   {/* Preferred Date */}
                   <div>
                     <label htmlFor="preferredDate" className="block text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
@@ -1021,10 +1144,125 @@ export const PTEExamBookingPage = () => {
         </div>
       </section>
 
+      {/* ── HOW PTE EXAM BOOKING WORKS (4 STEPS) ────────────────────────────────── */}
+      <section ref={howItWorksRef} id="how-it-works-section" className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
+              SIMPLE 4-STEP PROCESS
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              How PTE Exam Booking Works
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-medium mt-3">
+              A clear, transparent process from choosing your test to getting your booking details ready.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+            <div className="hidden lg:block absolute top-10 left-12 right-12 h-0.5 bg-neutral-200 dark:bg-[#292929] z-0" />
+            {[
+              {
+                step: '01',
+                title: 'Choose Your PTE Test',
+                desc: 'Select PTE Academic, PTE Core, or PTE Academic UKVI based on your specific university or immigration route.',
+                tint: '#005A9C',
+              },
+              {
+                step: '02',
+                title: 'Share Your Preferences',
+                desc: 'Tell us your preferred city, centre, preferred exam date, time slot, and alternative dates.',
+                tint: '#FF005C',
+              },
+              {
+                step: '03',
+                title: 'Get Booking Guidance',
+                desc: 'Our team reviews your request and personally guides you through the official Pearson booking steps.',
+                tint: '#6C3CE0',
+              },
+              {
+                step: '04',
+                title: 'Confirm Your Appointment',
+                desc: 'The exam appointment is officially confirmed once processed through Pearson’s official booking system.',
+                tint: '#10B981',
+              },
+            ].map((s) => (
+              <div
+                key={s.step}
+                className="relative z-10 rounded-3xl p-6 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+              >
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center font-mono font-black text-sm mb-5"
+                  style={{ backgroundColor: `${s.tint}15`, color: s.tint }}
+                >
+                  {s.step}
+                </div>
+                <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">
+                  {s.title}
+                </h3>
+                <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                  {s.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+
+        </Reveal>
+      </section>
+
+      {/* ── WHY APEX VOUCHERS (BENEFITS) ───────────────────────────────────────── */}
+      <section className="py-16 sm:py-24 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
+              WHY CHOOSE APEX VOUCHERS
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              More Than a Voucher
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-medium mt-3">
+              We provide human guidance, transparent processes, and dedicated booking support every step of the way.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { title: 'Clear Guidance', desc: 'Understand the booking process, requirements, and timeline before you proceed.', icon: HelpCircle },
+              { title: 'Right Test Selection', desc: 'Get unbiased guidance on the differences between PTE Academic, PTE Core, and PTE UKVI.', icon: FileCheck },
+              { title: 'Booking Support', desc: 'Get human help preparing all personal and identification details required for booking.', icon: Users },
+              { title: 'Transparent Process', desc: 'Know exactly what happens at each stage of your booking assistance request.', icon: ShieldCheck },
+              { title: 'Customer Support', desc: 'Get fast assistance by email, WhatsApp, and phone whenever you have questions.', icon: Phone },
+              { title: 'Official Voucher Discounts', desc: 'Save significantly on official Pearson exam fees with our genuine instant vouchers.', icon: Sparkles },
+            ].map((card, idx) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-3xl p-6 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    {card.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+        </Reveal>
+      </section>
+
       {/* ── WHICH PTE TEST DO YOU NEED? ─────────────────────────────────────────── */}
       <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
               EXAM SELECTION GUIDE
@@ -1043,7 +1281,7 @@ export const PTEExamBookingPage = () => {
               return (
                 <div
                   key={card.id}
-                  className="rounded-3xl p-6 sm:p-7 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] hover:border-brand-pink hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                  className="rounded-3xl p-6 sm:p-7 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] hover:border-brand-pink hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -1093,12 +1331,236 @@ export const PTEExamBookingPage = () => {
             </p>
           </div>
 
-        </div>
+        </Reveal>
+      </section>
+
+      {/* ── SAVE WITH AN OFFICIAL PTE VOUCHER (REAL PRICING) ───────────────────── */}
+      <section className="py-16 sm:py-24 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-brand-pink">
+              <Ticket className="w-3.5 h-3.5" /> REAL, GENUINE SAVINGS
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              Save With an Official PTE Voucher
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-medium mt-3">
+              Buy a genuine discounted exam voucher and apply the code directly at the Pearson checkout step when you book.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {pteVouchers.map((product) => (
+              <div
+                key={product.id}
+                className="rounded-3xl p-6 sm:p-7 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink border border-brand-pink/20">
+                    {product.badge}
+                  </span>
+                  <div className="flex items-center gap-1 text-amber-400">
+                    <Star className="w-3.5 h-3.5 fill-amber-400" />
+                    <span className="text-xs font-black text-neutral-700 dark:text-neutral-300">{product.rating}</span>
+                    <span className="text-[10px] font-bold text-neutral-400">({product.reviewsCount})</span>
+                  </div>
+                </div>
+
+                <h3 className="font-heading font-black text-xl text-neutral-900 dark:text-white mb-1.5">{product.name}</h3>
+                <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed mb-5">
+                  {product.description}
+                </p>
+
+                <div className="flex items-end gap-2.5 mb-4">
+                  <span className="font-heading font-black text-2xl sm:text-3xl text-neutral-900 dark:text-white">
+                    {formatPrice(product.discountedPrice)}
+                  </span>
+                  <span className="text-sm font-bold text-neutral-400 line-through mb-1">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-1">
+                    Save {formatPrice(product.savings)}
+                  </span>
+                </div>
+
+                <ul className="space-y-2 mb-6">
+                  {product.inclusions.slice(0, 3).map((inc, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span>{inc}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => navigate(`/exam-vouchers/${product.id}`)}
+                  className="mt-auto w-full btn-pink py-3.5! rounded-xl! text-xs! font-extrabold flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <span>View &amp; Buy This Voucher</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs font-medium text-neutral-400 mt-6 max-w-2xl mx-auto">
+            Vouchers are applied at the official Pearson checkout step, not on this page. Prices shown are live prices from our voucher shop.
+          </p>
+
+        </Reveal>
+      </section>
+
+      {/* ── PTE CITIES COVERAGE ─────────────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
+              NATIONWIDE ASSISTANCE
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              Find a PTE Test Centre Near You
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-2">
+              Assisting test takers across major Indian cities with authorized Pearson test centres.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
+            {visibleCoverageCities.map((city) => (
+              <button
+                key={city.name}
+                type="button"
+                onClick={() => {
+                  setPreferredCity(city.name);
+                  scrollToForm();
+                }}
+                className="p-3.5 rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] hover:border-brand-pink hover:bg-[#FFF0F5] dark:hover:bg-[#200A13] text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 text-neutral-400 group-hover:text-brand-pink text-xs font-bold mb-1">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{city.state.split('/')[0]}</span>
+                </div>
+                <div className="font-heading font-black text-sm text-neutral-900 dark:text-white group-hover:text-brand-pink">
+                  {city.name}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {sortedCoverageCities.length > 12 && (
+            <div className="text-center mb-8">
+              <button
+                type="button"
+                onClick={() => setCitiesExpanded((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-xs font-black text-brand-pink hover:underline cursor-pointer"
+              >
+                <span>{citiesExpanded ? 'Show fewer cities' : `Show all ${sortedCoverageCities.length} cities`}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${citiesExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          )}
+
+          {/* Official Availability Guidance strip */}
+          <div className="rounded-3xl p-6 sm:p-8 bg-neutral-50 dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-1.5 text-center md:text-left">
+              <span className="text-[11px] font-black uppercase tracking-widest text-brand-pink">
+                OFFICIAL AVAILABILITY GUIDANCE
+              </span>
+              <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-xl">
+                Test centres, dates and available times can change as appointments are booked, cancelled or rescheduled.
+                Check current official Pearson availability directly.
+              </p>
+            </div>
+            <a
+              href="https://www.pearsonpte.com/test-centers-and-fees"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-extrabold text-xs flex items-center gap-2 shadow-md hover:opacity-90 transition-opacity shrink-0"
+            >
+              <span>Check Official PTE Availability</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+
+        </Reveal>
+      </section>
+
+      {/* ── BEFORE YOU BOOK CHECKLIST ───────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-brand-pink">
+              <ListChecks className="w-3.5 h-3.5" /> PREPARATION CHECKLIST
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              Before You Book Your PTE Exam
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {BEFORE_YOU_BOOK_CHECKLIST.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-4 rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626]"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200 leading-relaxed pt-1">
+                    {item.text}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <span>Double-check your personal details before confirming your booking. Small mismatches can delay your appointment.</span>
+          </div>
+
+        </Reveal>
+      </section>
+
+      {/* ── BOOKING MISTAKES TO AVOID ───────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-brand-pink">
+              <Ban className="w-3.5 h-3.5" /> AVOID THESE PITFALLS
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              Common Booking Mistakes to Avoid
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {BOOKING_MISTAKES.map((m, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-3 p-5 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/40"
+              >
+                <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-heading font-black text-sm text-neutral-900 dark:text-white mb-1">{m.title}</h3>
+                  <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-300 leading-relaxed">{m.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </Reveal>
       </section>
 
       {/* ── EXAMS WE CAN HELP YOU NAVIGATE (PROVIDER LOGO STRIP) ──────────────── */}
       <section className="py-12 bg-neutral-50/50 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-400">
             EXAMS WE CAN HELP YOU NAVIGATE
           </span>
@@ -1122,234 +1584,22 @@ export const PTEExamBookingPage = () => {
             We provide guidance and booking assistance for selected examination services. Availability and eligibility
             depend on the official examination provider. Pearson, ETS, and IELTS are registered trademarks of their respective owners.
           </p>
-        </div>
-      </section>
-
-      {/* ── HOW PTE EXAM BOOKING WORKS (4 STEPS) ────────────────────────────────── */}
-      <section ref={howItWorksRef} id="how-it-works-section" className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-              SIMPLE 4-STEP PROCESS
-            </span>
-            <h2 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-neutral-900 dark:text-white mt-2">
-              How PTE Exam Booking Works
-            </h2>
-            <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-medium mt-3">
-              A clear, transparent process from choosing your test to getting your booking details ready.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                step: '01',
-                title: 'Choose Your PTE Test',
-                desc: 'Select PTE Academic, PTE Core, or PTE Academic UKVI based on your specific university or immigration route.',
-                tint: '#005A9C',
-              },
-              {
-                step: '02',
-                title: 'Share Your Preferences',
-                desc: 'Tell us your preferred city, centre, preferred exam date, time slot, and alternative dates.',
-                tint: '#FF005C',
-              },
-              {
-                step: '03',
-                title: 'Get Booking Guidance',
-                desc: 'Our team reviews your request and personally guides you through the official Pearson booking steps.',
-                tint: '#6C3CE0',
-              },
-              {
-                step: '04',
-                title: 'Confirm Your Appointment',
-                desc: 'The exam appointment is officially confirmed once processed through Pearson’s official booking system.',
-                tint: '#10B981',
-              },
-            ].map((s) => (
-              <div
-                key={s.step}
-                className="rounded-3xl p-6 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm relative overflow-hidden"
-              >
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center font-mono font-black text-sm mb-5"
-                  style={{ backgroundColor: `${s.tint}15`, color: s.tint }}
-                >
-                  {s.step}
-                </div>
-                <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">
-                  {s.title}
-                </h3>
-                <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                  {s.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── CHECK PTE DATES & TEST CENTRES ─────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl p-8 sm:p-10 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#262626] shadow-lg flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="space-y-3 text-center md:text-left max-w-xl">
-              <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-                OFFICIAL AVAILABILITY GUIDANCE
-              </span>
-              <h2 className="font-heading font-black text-2xl sm:text-3xl text-neutral-900 dark:text-white">
-                Looking for a PTE Test Centre?
-              </h2>
-              <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                PTE test centres, dates and available times can vary by city and change as appointments are booked,
-                cancelled or rescheduled. We guide you using current official Pearson test centre networks across India.
-              </p>
-            </div>
-            <a
-              href="https://www.pearsonpte.com/test-centers-and-fees"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-3.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-extrabold text-xs flex items-center gap-2 shadow-md hover:opacity-90 transition-opacity shrink-0"
-            >
-              <span>Check Official PTE Availability</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PTE CITIES COVERAGE ─────────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-              NATIONWIDE ASSISTANCE
-            </span>
-            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-2">
-              PTE Booking Assistance Across India
-            </h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-2">
-              Assisting test takers across all major Indian cities with authorized Pearson test centres.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
-            {PTE_INDIAN_CITIES.slice(0, 12).map((city) => (
-              <button
-                key={city.name}
-                type="button"
-                onClick={() => {
-                  setPreferredCity(city.name);
-                  scrollToForm();
-                }}
-                className="p-3.5 rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] hover:border-brand-pink hover:bg-[#FFF0F5] dark:hover:bg-[#200A13] text-left transition-all group"
-              >
-                <div className="flex items-center gap-1.5 text-neutral-400 group-hover:text-brand-pink text-xs font-bold mb-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{city.state.split('/')[0]}</span>
-                </div>
-                <div className="font-heading font-black text-sm text-neutral-900 dark:text-white group-hover:text-brand-pink">
-                  {city.name}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <p className="text-center text-xs font-bold text-neutral-400">
-            And other locations where PTE test centres are officially available. Availability changes based on Pearson schedules.
-          </p>
-
-        </div>
-      </section>
-
-      {/* ── WHY APEX VOUCHERS (TRUST SECTION) ──────────────────────────────────── */}
-      <section className="py-16 sm:py-24 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-              WHY CHOOSE APEX VOUCHERS
-            </span>
-            <h2 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-neutral-900 dark:text-white mt-2">
-              More Than a Voucher
-            </h2>
-            <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-medium mt-3">
-              We provide human guidance, transparent processes, and dedicated booking support every step of the way.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                title: 'Clear Guidance',
-                desc: 'Understand the booking process, requirements, and timeline before you proceed.',
-                icon: HelpCircle,
-              },
-              {
-                title: 'Right Test Selection',
-                desc: 'Get unbiased guidance on the differences between PTE Academic, PTE Core, and PTE UKVI.',
-                icon: FileCheck,
-              },
-              {
-                title: 'Booking Support',
-                desc: 'Get human help preparing all personal and identification details required for booking.',
-                icon: Users,
-              },
-              {
-                title: 'Transparent Process',
-                desc: 'Know exactly what happens at each stage of your booking assistance request.',
-                icon: ShieldCheck,
-              },
-              {
-                title: 'Customer Support',
-                desc: 'Get fast assistance by email, WhatsApp, and phone whenever you have questions.',
-                icon: Phone,
-              },
-              {
-                title: 'Official Voucher Discounts',
-                desc: 'Save significantly on official Pearson exam fees with our genuine instant vouchers.',
-                icon: Sparkles,
-              },
-            ].map((card, idx) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={idx}
-                  className="rounded-3xl p-6 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm"
-                >
-                  <div className="w-10 h-10 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                    {card.desc}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
+        </Reveal>
       </section>
 
       {/* ── SAFE & TRANSPARENT BOOKING (SECURITY FIRST) ────────────────────────── */}
       <section className="py-16 sm:py-20 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl p-8 sm:p-10 bg-linear-to-br from-[#121A2D] to-[#0A0E17] text-white border border-slate-800 shadow-2xl relative overflow-hidden">
             <div className="flex items-center gap-3 text-sky-400 text-xs font-black uppercase tracking-wider mb-3">
               <Lock className="w-4 h-4" />
               <span>SECURITY & PRIVACY GUARANTEE</span>
             </div>
-            
+
             <h2 className="font-heading font-black text-2xl sm:text-4xl text-white tracking-tight">
               Your Booking. Your Account. Your Control.
             </h2>
-            
+
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed mt-3 font-medium">
               Keep control of your official Pearson account and personal credentials. Apex Vouchers will{' '}
               <strong className="text-white">never ask you to share your Pearson password, OTP, UPI PIN, or bank credentials</strong>{' '}
@@ -1371,15 +1621,15 @@ export const PTEExamBookingPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── BOOKING REQUEST VS CONFIRMED BOOKING (PIPELINE) ───────────────────── */}
       <section className="py-16 sm:py-20 bg-neutral-50/50 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
-              TRANSPARENT STATUS PROGRESSION
+              WHAT HAPPENS AFTER YOU BOOK
             </span>
             <h2 className="font-heading font-black text-2xl sm:text-3xl text-neutral-900 dark:text-white mt-1">
               Booking Request vs Official Confirmation
@@ -1389,14 +1639,15 @@ export const PTEExamBookingPage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-5xl mx-auto relative">
+            <div className="hidden sm:block absolute top-8 left-8 right-8 h-0.5 bg-neutral-200 dark:bg-[#292929] z-0" />
             {[
               { status: 'Request Submitted', desc: 'Your preferred city, exam, and dates are safely received by our team.' },
               { status: 'Under Review', desc: 'Our team evaluates test centre schedules and requirements.' },
               { status: 'Booking Guidance', desc: 'We coordinate with you on official Pearson scheduling steps.' },
               { status: 'Official Confirmation', desc: 'Your appointment is confirmed once Pearson officially issues your admit card.' },
             ].map((item, idx) => (
-              <div key={idx} className="p-5 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+              <div key={idx} className="relative z-10 p-5 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                 <div className="w-7 h-7 rounded-xl bg-neutral-100 dark:bg-[#222] font-mono font-black text-xs flex items-center justify-center text-brand-pink mb-3">
                   0{idx + 1}
                 </div>
@@ -1405,12 +1656,12 @@ export const PTEExamBookingPage = () => {
               </div>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── WHAT IF MY PREFERRED SLOT IS UNAVAILABLE? ─────────────────────────── */}
       <section className="py-16 sm:py-20 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left">
+        <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left">
           <div className="rounded-3xl p-8 bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-md space-y-4">
             <span className="text-xs font-black uppercase tracking-widest text-sky-600 dark:text-sky-400">
               FLEXIBILITY & CONTINGENCY
@@ -1437,19 +1688,128 @@ export const PTEExamBookingPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
+
+      {/* ── RESCHEDULE / CANCEL ─────────────────────────────────────────────────── */}
+      <section className="py-16 sm:py-20 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
+        <Reveal className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-brand-pink">
+              <RefreshCcw className="w-3.5 h-3.5" /> CHANGING YOUR PLANS?
+            </span>
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-2">
+              Can I Reschedule or Cancel My PTE Exam?
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-3">
+              Rescheduling and cancellation are governed entirely by Pearson's official policy — not by Apex Vouchers.
+              Always check the latest official terms before requesting a change.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-4">
+                <RefreshCcw className="w-5 h-5" />
+              </div>
+              <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">Rescheduling</h3>
+              <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                You can reschedule your appointment directly through your official myPTE account, subject to Pearson's
+                deadlines and any applicable fee.
+              </p>
+            </div>
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+                <Ban className="w-5 h-5" />
+              </div>
+              <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-2">Cancellation & Refunds</h3>
+              <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                Cancellation eligibility and any refund amount are determined solely by Pearson's official policy at the
+                time of your request.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href="https://www.pearsonpte.com/help"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-opacity"
+            >
+              <span>Read Pearson's Official Policy</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
+            <a
+              href={whatsappHref('Hello Apex Vouchers, I need help understanding PTE reschedule/cancellation options.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Ask Us on WhatsApp</span>
+            </a>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── STUDENT TESTIMONIALS ────────────────────────────────────────────────── */}
+      {pteTestimonials.length > 0 && (
+        <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
+          <Reveal className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <span className="text-xs font-black uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
+                STUDENT REVIEWS
+              </span>
+              <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-neutral-900 dark:text-white mt-3">
+                What Students Say About Their Booking Experience
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {pteTestimonials.map((rev) => (
+                <div
+                  key={rev.id}
+                  className="bg-white dark:bg-[#161616] rounded-3xl p-6 border border-[#EAEAEA] dark:border-[#292929] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-amber-400">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-amber-400" />
+                        ))}
+                      </div>
+                      <Quote className="w-5 h-5 text-neutral-200 dark:text-neutral-700" />
+                    </div>
+                    <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 font-medium leading-relaxed italic">
+                      "{rev.comment}"
+                    </p>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-[#EAEAEA] dark:border-[#292929] flex items-center justify-between">
+                    <div>
+                      <h4 className="font-heading font-black text-sm text-neutral-900 dark:text-white">{rev.name}</h4>
+                      <span className="text-[11px] text-neutral-500 dark:text-[#B5B5B5] font-medium">{rev.city} • {rev.exam}</span>
+                    </div>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">Saved {rev.saved}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </section>
+      )}
 
       {/* ── FAQ SECTION ─────────────────────────────────────────────────────────── */}
       <section className="py-16 sm:py-24 bg-neutral-50/60 dark:bg-[#0D0D0D] border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+        <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
           <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
               QUESTIONS & ANSWERS
             </span>
             <h2 className="font-heading font-black text-3xl sm:text-4xl text-neutral-900 dark:text-white mt-1">
-              Frequently Asked Questions
+              PTE Exam Booking FAQs
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-2">
               Everything you need to know about PTE exam booking assistance with Apex Vouchers.
@@ -1462,18 +1822,23 @@ export const PTEExamBookingPage = () => {
               return (
                 <div
                   key={idx}
-                  className="rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626] overflow-hidden transition-colors"
+                  className={`rounded-2xl bg-white dark:bg-[#141414] border overflow-hidden transition-colors ${
+                    isOpen ? 'border-brand-pink/40 shadow-md' : 'border-[#EAEAEA] dark:border-[#262626]'
+                  }`}
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? -1 : idx)}
                     className="w-full p-5 text-left font-black text-sm sm:text-base text-neutral-900 dark:text-white flex items-center justify-between gap-4 cursor-pointer"
                   >
-                    <span>{faq.q}</span>
+                    <span className="flex items-center gap-3">
+                      <HelpCircle className={`w-4 h-4 shrink-0 ${isOpen ? 'text-brand-pink' : 'text-neutral-300 dark:text-neutral-600'}`} />
+                      <span>{faq.q}</span>
+                    </span>
                     <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-brand-pink' : ''}`} />
                   </button>
                   {isOpen && (
-                    <div className="px-5 pb-5 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-300 leading-relaxed border-t border-neutral-100 dark:border-[#202020] pt-3">
+                    <div className="px-5 pb-5 pl-12 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-300 leading-relaxed border-t border-neutral-100 dark:border-[#202020] pt-3">
                       {faq.a}
                     </div>
                   )}
@@ -1482,12 +1847,12 @@ export const PTEExamBookingPage = () => {
             })}
           </div>
 
-        </div>
+        </Reveal>
       </section>
 
       {/* ── FINAL CALL TO ACTION ────────────────────────────────────────────────── */}
       <section className="py-16 sm:py-24 border-b border-[#EAEAEA] dark:border-[#222]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <Reveal className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="rounded-3xl p-8 sm:p-14 bg-linear-to-tr from-[#FFF0F5] via-white to-[#F3EEFF] dark:from-[#1E0914] dark:via-[#141414] dark:to-[#160D26] border-2 border-brand-pink/30 shadow-2xl relative overflow-hidden">
             <span className="text-xs font-black uppercase tracking-widest text-brand-pink">
               READY TO BOOK YOUR PTE EXAM?
@@ -1496,31 +1861,29 @@ export const PTEExamBookingPage = () => {
               Tell Us Your Preferences
             </h2>
             <p className="text-sm sm:text-base font-medium text-neutral-600 dark:text-neutral-300 max-w-xl mx-auto mt-3">
-              Tell us your preferred test, city and date. We'll guide you through the next step with 100% genuine support.
+              Choose your preferred test, date and centre and we'll guide you through the next step with 100% genuine support.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
               <button
                 onClick={() => scrollToForm()}
-                className="w-full sm:w-auto btn-pink py-4! px-8! text-sm! font-black flex items-center justify-center gap-2 shadow-xl"
+                className="w-full sm:w-auto btn-pink py-4! px-8! text-sm! font-black flex items-center justify-center gap-2 shadow-xl cursor-pointer"
               >
-                <span>Start PTE Booking Assistance</span>
+                <span>Book My PTE Exam</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <a
-                href={`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                  'Hello Apex Vouchers, I have a question about PTE exam booking assistance.'
-                )}`}
+                href={whatsappHref('Hello Apex Vouchers, I have a question about PTE exam booking assistance.')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-opacity"
               >
                 <MessageCircle className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-                <span>Chat with Support on WhatsApp</span>
+                <span>Need Help? Contact Support</span>
               </a>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── NEED HELP BEFORE YOU BOOK? (CONTACT CHANNELS) ──────────────────────── */}
@@ -1550,6 +1913,34 @@ export const PTEExamBookingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ── STICKY BOOKING CTA (appears after scrolling past hero) ─────────────── */}
+      {!submittedData && (
+        <div
+          className={`fixed bottom-0 inset-x-0 z-30 transition-transform duration-300 ease-out ${
+            showStickyCta ? 'translate-y-0' : 'translate-y-full pointer-events-none'
+          }`}
+        >
+          <div className="bg-white/95 dark:bg-[#111111]/95 backdrop-blur-md border-t border-[#EAEAEA] dark:border-[#262626] shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+            {/* Right padding reserves space for the global floating WhatsApp/support widgets docked at bottom-right */}
+            <div className="max-w-7xl mx-auto pl-4 sm:pl-6 lg:pl-8 pr-24 sm:pr-28 py-3 flex items-center justify-between gap-4">
+              <div className="hidden sm:flex items-center gap-2 min-w-0">
+                <BadgeCheck className="w-4 h-4 text-brand-pink shrink-0" />
+                <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200 truncate">
+                  Ready to book your PTE exam?
+                </span>
+              </div>
+              <button
+                onClick={() => scrollToForm()}
+                className="w-full sm:w-auto btn-pink py-2.5! px-6! text-xs! font-extrabold flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+              >
+                <span>Book PTE Exam</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

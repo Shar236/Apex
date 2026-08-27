@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   authApi,
+  accountApi,
   clearAuth,
   getStoredUser,
   getToken,
@@ -56,7 +57,16 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     setError(null);
+    // Registration no longer logs the user in immediately — the account isn't
+    // usable until the email OTP step (verifyRegistrationOtp) succeeds.
     const res = await authApi.register(data);
+    if (!res.success) setError(res.message);
+    return res;
+  };
+
+  const verifyRegistrationOtp = async (email, otp) => {
+    setError(null);
+    const res = await authApi.verifyRegistrationOtp(email, otp);
     if (res.success) {
       setToken(res.token);
       const nextUser = normalizeUser(res.user);
@@ -66,6 +76,11 @@ export const AuthProvider = ({ children }) => {
     } else {
       setError(res.message);
     }
+    return res;
+  };
+
+  const resendRegistrationOtp = async (email) => {
+    const res = await authApi.resendRegistrationOtp(email);
     return res;
   };
 
@@ -85,6 +100,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = useCallback(() => {
+    if (getToken()) accountApi.logout().catch(() => {});
     clearAuth();
     setUser(null);
     setIsAuthenticated(false);
@@ -132,6 +148,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         error,
         register,
+        verifyRegistrationOtp,
+        resendRegistrationOtp,
         login,
         logout,
         refreshUser,

@@ -7,8 +7,8 @@ import { User } from '../models/User.js';
 export const hashPassword = (plain) => bcrypt.hash(plain, 12);
 export const comparePassword = (plain, hash) => bcrypt.compare(plain, hash);
 
-export const signToken = (payload) =>
-  jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+export const signToken = (payload, options = {}) =>
+  jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn, ...options });
 
 export const verifyToken = (token) => jwt.verify(token, config.jwtSecret);
 

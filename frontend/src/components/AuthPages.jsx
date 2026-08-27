@@ -3,7 +3,22 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApexLogo } from './ApexLogo';
 import { PhoneInput } from './PhoneInput';
-import { Mail, Lock, User, ArrowRight, Phone, ShieldCheck, ShieldAlert, Crown } from 'lucide-react';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { OtpInput } from './OtpInput';
+import { PasswordStrengthChecklist } from './PasswordStrengthChecklist';
+import { validatePasswordStrength } from '../lib/passwordRules';
+import { useResendCountdown } from '../lib/useResendCountdown';
+import {
+  Mail, Lock, User, ArrowRight, Phone, ShieldCheck, ShieldAlert, Crown,
+  CheckCircle2, Loader2, RotateCcw,
+} from 'lucide-react';
+
+const maskEmailForDisplay = (email) => {
+  const value = String(email || '');
+  const at = value.indexOf('@');
+  if (at <= 1) return value;
+  return `${value[0]}***${value.slice(at - 1)}`;
+};
 
 const PageShell = ({ title, subtitle, children, badge = null }) => (
   <section className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center py-16 px-4 transition-colors duration-300">
@@ -26,7 +41,7 @@ const PageShell = ({ title, subtitle, children, badge = null }) => (
 );
 
 export const LoginPage = () => {
-  const { login, error: authError } = useAuth();
+  const { login, resendRegistrationOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || '/account';
@@ -35,10 +50,14 @@ export const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
+  const [resendState, setResendState] = useState('idle'); // idle | sending | sent
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorCode('');
+    setResendState('idle');
     setLoading(true);
     const res = await login({ email, password });
     setLoading(false);
@@ -46,7 +65,14 @@ export const LoginPage = () => {
       navigate(res.user?.role === 'admin' ? '/admin' : from, { replace: true });
     } else {
       setError(res.message || 'Login failed');
+      setErrorCode(res.code || '');
     }
+  };
+
+  const handleResendVerification = async () => {
+    setResendState('sending');
+    await resendRegistrationOtp(email);
+    setResendState('sent');
   };
 
   return (
@@ -70,15 +96,37 @@ export const LoginPage = () => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        {(error || authError) && (
-          <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2">
-            {error || authError}
+        {error && (
+          <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2.5 space-y-2">
+            <p>{error}</p>
+            {errorCode === 'EMAIL_NOT_VERIFIED' && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendState !== 'idle'}
+                className="text-brand-pink hover:underline font-black disabled:opacity-60"
+              >
+                {resendState === 'sending' && 'Sending…'}
+                {resendState === 'sent' && 'Verification code sent — check your inbox'}
+                {resendState === 'idle' && 'Resend verification email'}
+              </button>
+            )}
+            {resendState === 'sent' && (
+              <Link
+                to="/register"
+                state={{ pendingEmail: email }}
+                className="block text-brand-pink hover:underline font-black"
+              >
+                Enter verification code →
+              </Link>
+            )}
           </div>
         )}
         <button
           disabled={loading}
           className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
         >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {loading ? 'Signing in…' : 'Log in'}
           {!loading && <ArrowRight className="w-4 h-4" />}
         </button>
@@ -175,79 +223,268 @@ export const AdminLoginPage = () => {
   );
 };
 
+const REGISTER_STEPS = ['Details', 'Verify Email', 'Done'];
+
+function StepProgress({ step }) {
+  return (
+    <div className="flex items-center gap-2 mb-6">
+      {REGISTER_STEPS.map((label, idx) => {
+        const stepNum = idx + 1;
+        const isDone = stepNum < step;
+        const isActive = stepNum === step;
+        return (
+          <React.Fragment key={label}>
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition-colors ${
+                  isDone
+                    ? 'bg-emerald-500 text-white'
+                    : isActive
+                    ? 'bg-brand-pink text-white'
+                    : 'bg-neutral-100 dark:bg-[#222] text-neutral-400'
+                }`}
+              >
+                {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : stepNum}
+              </div>
+              <span className={`text-[11px] font-bold hidden sm:inline ${isActive ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'}`}>
+                {label}
+              </span>
+            </div>
+            {idx < REGISTER_STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-neutral-100 dark:bg-[#222]'}`} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 export const RegisterPage = () => {
-  const { register } = useAuth();
+  const { register, verifyRegistrationOtp, resendRegistrationOtp } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', phoneCountry: 'IN', password: '' });
+  const location = useLocation();
+
+  const [step, setStep] = useState(location.state?.pendingEmail ? 2 : 1);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: location.state?.pendingEmail || '',
+    phone: '',
+    phoneCountry: 'IN',
+    password: '',
+    confirmPassword: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [resendActive, setResendActive] = useState(true);
+  const resendSeconds = useResendCountdown(resendActive);
+  const passwordError = form.password ? validatePasswordStrength(form.password) : null;
 
-  const onSubmit = async (e) => {
+  const onSubmitDetails = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError('Please enter your first and last name');
+      return;
+    }
+    if (!form.phone) {
+      setError('Phone number is required');
+      return;
+    }
+    let parsedPhone;
+    try {
+      parsedPhone = parsePhoneNumberFromString(form.phone, form.phoneCountry);
+    } catch {
+      parsedPhone = null;
+    }
+    if (!parsedPhone || !parsedPhone.isValid()) {
+      setError('Please enter a valid phone number for the selected country');
+      return;
+    }
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
-    const res = await register(form);
+    const res = await register({
+      name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
+      email: form.email,
+      phone: form.phone,
+      phoneCountry: form.phoneCountry,
+      password: form.password,
+    });
     setLoading(false);
-    if (res.success) navigate('/account', { replace: true });
-    else setError(res.message || 'Registration failed');
+    if (res.success) {
+      setStep(2);
+      setResendActive(true);
+    } else {
+      setError(res.message || 'Registration failed');
+    }
+  };
+
+  const onVerifyOtp = async (e) => {
+    e.preventDefault();
+    setOtpError('');
+    if (otp.length !== 6) {
+      setOtpError('Enter the 6-digit code');
+      return;
+    }
+    setVerifying(true);
+    const res = await verifyRegistrationOtp(form.email, otp);
+    setVerifying(false);
+    if (res.success) {
+      setStep(3);
+      setTimeout(() => navigate('/account', { replace: true }), 1400);
+    } else {
+      setOtpError(res.message || 'Incorrect verification code. Please try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    setResendActive(false);
+    setOtpError('');
+    const res = await resendRegistrationOtp(form.email);
+    if (!res.success) setOtpError(res.message || "We couldn't resend the code. Please try again.");
+    setTimeout(() => setResendActive(true), 0);
   };
 
   return (
-    <PageShell title="Create Your Account" subtitle="Sign up in under a minute. Manage your voucher codes for life.">
-      <form onSubmit={onSubmit} className="space-y-4">
-        <LabeledInput
-          icon={<User className="w-4 h-4" />}
-          label="Full Name"
-          placeholder="e.g. Aarav Sharma"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-        <LabeledInput
-          icon={<Mail className="w-4 h-4" />}
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-        />
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
-            <Phone className="w-3.5 h-3.5" /> WhatsApp / Phone (optional)
-          </span>
-          <PhoneInput
-            value={form.phone}
-            country={form.phoneCountry}
-            onChange={(phone, phoneCountry) => setForm({ ...form, phone, phoneCountry })}
-            onCountryChange={(phoneCountry) => setForm((current) => ({ ...current, phoneCountry }))}
-          />
-        </div>
-        <LabeledInput
-          icon={<Lock className="w-4 h-4" />}
-          label="Password (min 6 chars)"
-          type="password"
-          placeholder="••••••••"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-        />
-        {error && (
-          <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2">
-            {error}
+    <PageShell
+      title={step === 3 ? 'Account Created' : 'Create Your Apex Voucher Account'}
+      subtitle={
+        step === 1
+          ? 'Sign up in under a minute. Manage your voucher codes for life.'
+          : step === 2
+          ? 'One last step to secure your account.'
+          : 'Welcome aboard — redirecting you to your account…'
+      }
+    >
+      {step < 3 && <StepProgress step={step} />}
+
+      {step === 1 && (
+        <form onSubmit={onSubmitDetails} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <LabeledInput
+              icon={<User className="w-4 h-4" />}
+              label="First Name"
+              placeholder="e.g. Aarav"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              required
+            />
+            <LabeledInput
+              icon={<User className="w-4 h-4" />}
+              label="Last Name"
+              placeholder="e.g. Sharma"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              required
+            />
           </div>
-        )}
-        <button
-          disabled={loading}
-          className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg disabled:opacity-60"
-        >
-          {loading ? 'Creating account…' : 'Create My Apex Account'}
-        </button>
-        <p className="text-xs text-center font-semibold text-neutral-500 dark:text-[#B5B5B5]">
-          Already have an account?{' '}
-          <Link className="text-brand-pink" to="/login">Log in</Link>
-        </p>
-      </form>
+          <LabeledInput
+            icon={<Mail className="w-4 h-4" />}
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5" /> Phone Number
+            </span>
+            <PhoneInput
+              value={form.phone}
+              country={form.phoneCountry}
+              onChange={(phone, phoneCountry) => setForm({ ...form, phone, phoneCountry })}
+              onCountryChange={(phoneCountry) => setForm((current) => ({ ...current, phoneCountry }))}
+            />
+          </div>
+          <div>
+            <LabeledInput
+              icon={<Lock className="w-4 h-4" />}
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+            />
+            <PasswordStrengthChecklist password={form.password} />
+          </div>
+          <LabeledInput
+            icon={<Lock className="w-4 h-4" />}
+            label="Confirm Password"
+            type="password"
+            placeholder="••••••••"
+            value={form.confirmPassword}
+            onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+            required
+          />
+          {error && (
+            <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2">
+              {error}
+            </div>
+          )}
+          <button
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? 'Creating account…' : 'Continue'}
+          </button>
+          <p className="text-xs text-center font-semibold text-neutral-500 dark:text-[#B5B5B5]">
+            Already have an account?{' '}
+            <Link className="text-brand-pink" to="/login">Log in</Link>
+          </p>
+        </form>
+      )}
+
+      {step === 2 && (
+        <form onSubmit={onVerifyOtp} className="space-y-5">
+          <p className="text-xs text-center text-neutral-500 dark:text-[#B5B5B5] font-semibold">
+            We've sent a 6-digit verification code to{' '}
+            <strong className="text-neutral-900 dark:text-white">{maskEmailForDisplay(form.email)}</strong>
+          </p>
+          <OtpInput value={otp} onChange={setOtp} error={otpError} disabled={verifying} />
+          <button
+            disabled={verifying}
+            className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {verifying && <Loader2 className="w-4 h-4 animate-spin" />}
+            {verifying ? 'Verifying…' : 'Verify OTP'}
+          </button>
+          <div className="text-center text-xs font-bold">
+            {resendActive ? (
+              <button type="button" onClick={handleResend} className="text-brand-pink hover:underline flex items-center gap-1 justify-center mx-auto">
+                <RotateCcw className="w-3 h-3" /> Resend Code
+              </button>
+            ) : (
+              <span className="text-neutral-400">Resend available in {resendSeconds}s</span>
+            )}
+          </div>
+        </form>
+      )}
+
+      {step === 3 && (
+        <div className="text-center py-4">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <p className="font-black text-neutral-900 dark:text-white">Email verified — your account is ready!</p>
+        </div>
+      )}
     </PageShell>
   );
 };
@@ -286,7 +523,8 @@ export const ForgotPasswordPage = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg disabled:opacity-60">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Sending…' : 'Send Reset Link'}
           </button>
         </form>
@@ -299,6 +537,7 @@ export const ResetPasswordPage = () => {
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const token = params.get('token') || '';
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -306,6 +545,16 @@ export const ResetPasswordPage = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    const strengthError = validatePasswordStrength(password);
+    if (strengthError) {
+      setError(strengthError);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     const res = await resetPassword(token, password);
     setLoading(false);
@@ -321,12 +570,23 @@ export const ResetPasswordPage = () => {
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <LabeledInput
+              icon={<Lock className="w-4 h-4" />}
+              label="New Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <PasswordStrengthChecklist password={password} />
+          </div>
           <LabeledInput
             icon={<Lock className="w-4 h-4" />}
-            label="New password (min 6 chars)"
+            label="Confirm New Password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
           {error && (
@@ -334,7 +594,8 @@ export const ResetPasswordPage = () => {
               {error}
             </div>
           )}
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg disabled:opacity-60">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Updating…' : 'Update Password'}
           </button>
         </form>

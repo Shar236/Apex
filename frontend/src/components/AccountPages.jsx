@@ -2,8 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useVoucher } from '../context/VoucherContext';
 import { accountApi, pteBookingApi, formatPrice, apiBase } from '../lib/api';
+import { validatePasswordStrength as validatePasswordStrengthClient } from '../lib/passwordRules';
+import { useResendCountdown } from '../lib/useResendCountdown';
 import { ApexLogo } from './ApexLogo';
 import { PhoneInput } from './PhoneInput';
+import { OtpInput } from './OtpInput';
+import { PasswordStrengthChecklist } from './PasswordStrengthChecklist';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
   Ticket,
@@ -23,7 +27,6 @@ import {
   ShoppingBag,
   CheckCircle2,
   TrendingUp,
-  Settings,
   Shield,
   Camera,
   X,
@@ -32,16 +35,17 @@ import {
   Mail,
   Phone,
   Calendar,
-  Hash,
   Eye,
   EyeOff,
   Loader2,
-  ChevronRight,
   Lock,
   Trash2,
   Info,
   CalendarCheck,
-  MapPin,
+  MessageCircle,
+  HelpCircle,
+  RotateCcw,
+  PhoneCall,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -49,12 +53,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: Crown, mobileLabel: 'Overview' },
+  { id: 'profile', label: 'Personal Information', icon: UserIcon, mobileLabel: 'Profile' },
   { id: 'orders', label: 'My Orders', icon: ClipboardList, mobileLabel: 'Orders' },
   { id: 'vouchers', label: 'My Vouchers', icon: Ticket, mobileLabel: 'Vouchers' },
   { id: 'pte-bookings', label: 'PTE Booking Requests', icon: CalendarCheck, mobileLabel: 'PTE Requests' },
-  { id: 'profile', label: 'Profile', icon: UserIcon, mobileLabel: 'Profile' },
-  { id: 'settings', label: 'Account Settings', icon: Settings, mobileLabel: 'Settings' },
   { id: 'security', label: 'Security', icon: Shield, mobileLabel: 'Security' },
+  { id: 'support', label: 'Support', icon: HelpCircle, mobileLabel: 'Support' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,6 +92,13 @@ const avatarUrl = (url) => {
   return `${apiBase()}${url}`;
 };
 
+const maskEmailForDisplay = (email) => {
+  const value = String(email || '');
+  const at = value.indexOf('@');
+  if (at <= 1) return value;
+  return `${value[0]}***${value.slice(at - 1)}`;
+};
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AccountHome({ initialTab = 'overview' }) {
@@ -105,6 +116,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
     requestRefund,
     loadAccountData,
     showToast,
+    footerSettings,
   } = useVoucher();
 
   const [tab, setTab] = useState(initialTab);
@@ -120,11 +132,12 @@ export default function AccountHome({ initialTab = 'overview' }) {
   const [pteBookingsLoaded, setPteBookingsLoaded] = useState(false);
 
   // Profile state
-  const [profileLoading, setProfileLoading] = useState(false);
   const [profileDataLoading, setProfileDataLoading] = useState(true);
   const [profileLoadError, setProfileLoadError] = useState('');
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '', phoneCountry: 'IN' });
-  const [profileErrors, setProfileErrors] = useState({});
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileNameError, setProfileNameError] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
@@ -132,11 +145,8 @@ export default function AccountHome({ initialTab = 'overview' }) {
   const [avatarRemoving, setAvatarRemoving] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Email change state
-  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
-  const [emailChangeMessage, setEmailChangeMessage] = useState(null);
+  // Contact (email/phone) OTP change modal
+  const [contactModalType, setContactModalType] = useState(null); // 'email' | 'phone' | null
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState({ current: '', newPwd: '', confirm: '' });
@@ -148,18 +158,21 @@ export default function AccountHome({ initialTab = 'overview' }) {
 
   // Initialize form from user data
   useEffect(() => {
-    if (user) {
-      const phone = user.phone || '';
-      let phoneCountry = user.phoneCountry || 'IN';
-      if (phone) {
-        try {
-          const parsed = parsePhoneNumberFromString(phone);
-          if (parsed?.country) phoneCountry = parsed.country;
-        } catch {}
-      }
-      setProfileForm({ name: user.name || '', phone, phoneCountry });
-    }
+    if (user) setProfileName(user.name || '');
   }, [user]);
+
+  const profileDirty = editingProfile && profileName.trim() !== (user?.name || '');
+
+  // Warn before leaving the page with unsaved profile edits
+  useEffect(() => {
+    if (!profileDirty) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [profileDirty]);
 
   const loadProfile = useCallback(async () => {
     setProfileDataLoading(true);
@@ -176,15 +189,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
-
-  // Handle emailChanged query param (from email verification redirect)
-  useEffect(() => {
-    if (searchParams.get('emailChanged') === 'true') {
-      setTab('settings');
-      showToast?.('✅ Email address updated successfully!');
-      refreshUser();
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     setActiveTab('dashboard');
@@ -203,60 +207,41 @@ export default function AccountHome({ initialTab = 'overview' }) {
 
   // ── Profile actions ───────────────────────────────────────────────────────
 
-  const profileHasChanges = () => {
-    if (!user) return false;
-    return profileForm.name !== (user.name || '') || profileForm.phone !== (user.phone || '');
+  const startEditProfile = () => {
+    setProfileName(user?.name || '');
+    setProfileNameError('');
+    setEditingProfile(true);
+  };
+
+  const discardProfileEdit = () => {
+    setProfileName(user?.name || '');
+    setProfileNameError('');
+    setEditingProfile(false);
   };
 
   const saveProfile = async (e) => {
     e.preventDefault();
-    setProfileErrors({});
+    setProfileNameError('');
     setProfileSuccess(false);
-    const errors = {};
 
-    // Name validation
-    const name = profileForm.name.trim();
-    if (name.length < 2) errors.name = 'Name must be at least 2 characters';
-    else if (name.length > 80) errors.name = 'Name must be at most 80 characters';
-    else if (!/^[\p{L}\p{M}' \-\.]+$/u.test(name)) errors.name = 'Name contains invalid characters';
-
-    // Phone validation (client-side)
-    if (profileForm.phone && profileForm.phone.trim()) {
-      try {
-        const parsed = parsePhoneNumberFromString(profileForm.phone, profileForm.phoneCountry);
-        if (!parsed || !parsed.isValid()) {
-          errors.phone = 'Invalid phone number for the selected country';
-        }
-      } catch {
-        errors.phone = 'Could not validate phone number';
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setProfileErrors(errors);
-      return;
-    }
+    const name = profileName.trim();
+    if (name.length < 2) return setProfileNameError('Name must be at least 2 characters');
+    if (name.length > 80) return setProfileNameError('Name must be at most 80 characters');
+    if (!/^[\p{L}\p{M}' \-\.]+$/u.test(name)) return setProfileNameError('Name contains invalid characters');
 
     setProfileLoading(true);
-    const res = await accountApi.updateProfile({
-      name: name,
-      phone: profileForm.phone || '',
-      phoneCountry: profileForm.phoneCountry,
-    });
+    const res = await accountApi.updateProfile({ name });
     setProfileLoading(false);
 
     if (res.success) {
       updateAuthenticatedUser(res.user);
       setProfileSuccess(true);
+      setEditingProfile(false);
       showToast?.('✅ Profile updated successfully');
       loadAccountData();
       setTimeout(() => setProfileSuccess(false), 4000);
     } else {
-      if (res.data?.errors) {
-        setProfileErrors(res.data.errors);
-      } else {
-        showToast?.(res.message || 'Failed to update profile');
-      }
+      setProfileNameError(res.data?.errors?.name || res.message || 'Failed to update profile');
     }
   };
 
@@ -265,7 +250,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Client-side validation
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       showToast?.('❌ Invalid file type. Use JPG, PNG, or WebP.');
@@ -319,26 +303,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Email change
-  const submitEmailChange = async (e) => {
-    e.preventDefault();
-    if (!newEmail || !/^\S+@\S+\.\S+$/.test(newEmail)) {
-      setEmailChangeMessage({ type: 'error', text: 'Please enter a valid email address' });
-      return;
-    }
-    setEmailChangeLoading(true);
-    setEmailChangeMessage(null);
-    const res = await accountApi.requestEmailChange(newEmail);
-    setEmailChangeLoading(false);
-
-    if (res.success) {
-      setEmailChangeMessage({ type: 'success', text: res.message || `Verification email sent to ${newEmail}` });
-      setNewEmail('');
-    } else {
-      setEmailChangeMessage({ type: 'error', text: res.message || 'Failed to send verification email' });
-    }
-  };
-
   // Password change
   const submitPasswordChange = async (e) => {
     e.preventDefault();
@@ -347,9 +311,9 @@ export default function AccountHome({ initialTab = 'overview' }) {
     const errors = {};
 
     if (!passwordForm.current) errors.current = 'Current password is required';
+    const strengthError = validatePasswordStrengthClient(passwordForm.newPwd);
     if (!passwordForm.newPwd) errors.newPwd = 'New password is required';
-    else if (passwordForm.newPwd.length < 6) errors.newPwd = 'Password must be at least 6 characters';
-    else if (passwordForm.newPwd.length > 64) errors.newPwd = 'Password must be at most 64 characters';
+    else if (strengthError) errors.newPwd = strengthError;
     if (passwordForm.newPwd !== passwordForm.confirm) errors.confirm = 'Passwords do not match';
 
     if (Object.keys(errors).length > 0) {
@@ -454,10 +418,10 @@ export default function AccountHome({ initialTab = 'overview' }) {
               </span>
             </button>
             <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight text-neutral-900 dark:text-white">
-              Hi, {user?.name?.split(' ')[0] || 'Apex User'} 👋
+              Welcome, {user?.name?.split(' ')[0] || 'Apex User'}
             </h1>
             <p className="text-sm text-neutral-500 dark:text-[#B5B5B5] mt-1">
-              Manage your exam vouchers, orders, and account — all in one place.
+              Manage your account information, contact details, orders and security.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -482,7 +446,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <button
                     key={t.id}
                     onClick={() => setTab(t.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left w-full ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left w-full cursor-pointer ${
                       tab === t.id
                         ? 'bg-brand-pink text-white shadow-lg shadow-brand-pink/20'
                         : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-[#1A1A1A] hover:text-neutral-900 dark:hover:text-white'
@@ -496,7 +460,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               <div className="h-px bg-[#EAEAEA] dark:bg-[#292929] my-2" />
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all text-left w-full"
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all text-left w-full cursor-pointer"
               >
                 <LogOut className="w-4.5 h-4.5" strokeWidth={2.2} />
                 Log out
@@ -537,6 +501,55 @@ export default function AccountHome({ initialTab = 'overview' }) {
             {/* ── OVERVIEW TAB ──────────────────────────────────────────────── */}
             {tab === 'overview' && (
               <>
+                {/* Account info summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+                  <AccountInfoCard
+                    icon={<Mail className="w-4.5 h-4.5" />}
+                    label="Email Address"
+                    value={user?.email || '—'}
+                    verified={user?.emailVerified}
+                    verifiedLabel="Verified"
+                    unverifiedLabel="Not verified"
+                  />
+                  {user?.phone ? (
+                    <AccountInfoCard
+                      icon={<Phone className="w-4.5 h-4.5" />}
+                      label="Phone Number"
+                      value={user.phone}
+                      verified={user?.phoneVerified}
+                      verifiedLabel="Verified"
+                      unverifiedLabel="Not verified"
+                    />
+                  ) : (
+                    <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#161616] border border-dashed border-[#EAEAEA] dark:border-[#292929] flex flex-col justify-between">
+                      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+                        <Phone className="w-4 h-4" /> Phone Number
+                      </div>
+                      <p className="text-sm font-bold text-neutral-500 dark:text-neutral-400 mb-3">Phone number not added</p>
+                      <button
+                        onClick={() => setContactModalType('phone')}
+                        className="text-xs font-black text-brand-pink hover:underline text-left cursor-pointer"
+                      >
+                        + Add Phone Number
+                      </button>
+                    </div>
+                  )}
+                  <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
+                    <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+                      <Calendar className="w-4 h-4" /> Member Since
+                    </div>
+                    <div className="text-sm font-black text-neutral-900 dark:text-white">{formatDate(user?.createdAt)}</div>
+                  </div>
+                  <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
+                    <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+                      <Clock className="w-4 h-4" /> Last Login
+                    </div>
+                    <div className="text-sm font-black text-neutral-900 dark:text-white">
+                      {user?.lastLoginAt ? formatDate(user.lastLoginAt, true) : 'This session'}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-7">
                   {stats.map((s) => (
                     <div
@@ -566,7 +579,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <div className="lg:col-span-2 rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-black text-neutral-900 dark:text-white">Recent Orders</h3>
-                      <button onClick={() => setTab('orders')} className="text-xs font-black text-brand-pink flex items-center gap-1">
+                      <button onClick={() => setTab('orders')} className="text-xs font-black text-brand-pink flex items-center gap-1 cursor-pointer">
                         View all <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -582,7 +595,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-black text-neutral-900 dark:text-white">Voucher Wallet</h3>
-                      <button onClick={() => setTab('vouchers')} className="text-xs font-black text-brand-pink">See all</button>
+                      <button onClick={() => setTab('vouchers')} className="text-xs font-black text-brand-pink cursor-pointer">See all</button>
                     </div>
                     <div className="space-y-3">
                       {userVouchers?.slice(0, 3)?.length === 0 && (
@@ -650,10 +663,10 @@ export default function AccountHome({ initialTab = 'overview' }) {
                                 {isRevealed ? v.code : `${v.code?.slice(0, 4) || 'XXXX'}-XXXX-XXXX-XXXX`}
                               </span>
                               <div className="ml-auto flex items-center gap-2 shrink-0">
-                                <button onClick={() => toggleReveal(v.id)} className="p-1.5 rounded-lg bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 text-[10px] font-black">
+                                <button onClick={() => toggleReveal(v.id)} className="p-1.5 rounded-lg bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 text-[10px] font-black cursor-pointer">
                                   {isRevealed ? 'HIDE' : 'REVEAL'}
                                 </button>
-                                <button onClick={() => copy(v.id, v.code)} className="p-2 rounded-lg bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300">
+                                <button onClick={() => copy(v.id, v.code)} className="p-2 rounded-lg bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 cursor-pointer">
                                   {copiedId === v.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                                 </button>
                               </div>
@@ -664,13 +677,13 @@ export default function AccountHome({ initialTab = 'overview' }) {
                         <div className="flex flex-wrap gap-2 lg:justify-end">
                           {!['USED', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(v.status) && (
                             <>
-                              <button onClick={() => markVoucherUsed(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900/40 flex items-center gap-1.5">
+                              <button onClick={() => markVoucherUsed(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900/40 flex items-center gap-1.5 cursor-pointer">
                                 <ShieldCheck className="w-4 h-4" /> Mark Used
                               </button>
-                              <button onClick={() => setTransferModalId(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 flex items-center gap-1.5">
+                              <button onClick={() => setTransferModalId(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 flex items-center gap-1.5 cursor-pointer">
                                 <Send className="w-4 h-4" /> Transfer
                               </button>
-                              <button onClick={() => setRefundConfirmId(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center gap-1.5">
+                              <button onClick={() => setRefundConfirmId(v.id)} className="px-3.5 py-2.5 rounded-xl text-xs font-black bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center gap-1.5 cursor-pointer">
                                 <RefreshCw className="w-4 h-4" /> Request Refund
                               </button>
                             </>
@@ -698,7 +711,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   </div>
                   <button
                     onClick={() => { setActiveTab('exam-booking'); navigate('/exam-booking'); }}
-                    className="px-4 py-2.5 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink hover:bg-[#FFE0EB] text-xs font-black border border-brand-pink/30 flex items-center gap-1.5 transition-colors"
+                    className="px-4 py-2.5 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink hover:bg-[#FFE0EB] text-xs font-black border border-brand-pink/30 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <span>+ New Booking Request</span>
                   </button>
@@ -743,7 +756,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
                         </div>
                       </div>
 
-                      {/* Request Details Grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
                         <div>
                           <span className="text-[10px] uppercase text-neutral-400 block">Preferred City</span>
@@ -763,7 +775,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
                         </div>
                       </div>
 
-                      {/* Official Booking Confirmation Details if status is Booking Confirmed or Completed */}
                       {(b.status === 'Booking Confirmed' || b.status === 'Completed') && b.confirmationDetails?.bookingReference && (
                         <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 space-y-2 text-xs">
                           <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300">
@@ -798,7 +809,6 @@ export default function AccountHome({ initialTab = 'overview' }) {
                         </div>
                       )}
 
-                      {/* WhatsApp Follow-up link */}
                       <div className="flex items-center justify-end pt-1">
                         <a
                           href={`https://wa.me/919855926113?text=${encodeURIComponent(
@@ -818,7 +828,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
               </div>
             )}
 
-            {/* ── PROFILE TAB ───────────────────────────────────────────────── */}
+            {/* ── PERSONAL INFORMATION TAB ─────────────────────────────────── */}
             {tab === 'profile' && (
               <>
                 {profileDataLoading && (
@@ -840,286 +850,250 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   </div>
                 )}
                 <div className={`space-y-6 max-w-3xl ${profileDataLoading || profileLoadError ? 'hidden' : ''}`}>
-                {/* Profile card header */}
-                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-                    {/* Avatar */}
-                    <div className="relative group shrink-0">
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-neutral-100 dark:bg-[#1A1A1A] flex items-center justify-center">
-                        {avatarPreview ? (
-                          <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
-                        ) : user?.profileImageUrl ? (
-                          <img src={avatarUrl(user.profileImageUrl)} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-4xl font-black text-neutral-300 dark:text-neutral-600 select-none">
-                            {(user?.name?.[0] || 'A').toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      {/* Overlay */}
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 rounded-3xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all cursor-pointer"
-                      >
-                        <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={handleAvatarSelect}
-                        className="hidden"
-                      />
-                    </div>
-
-                    <div className="flex-1 text-center sm:text-left">
-                      <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">{user?.name || 'Apex User'}</h2>
-                      <p className="text-sm font-bold text-neutral-500 dark:text-[#B5B5B5] mt-0.5">{user?.email}</p>
-                      <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-                        {user?.emailVerified && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40">
-                            <Check className="w-3 h-3" /> Email verified
-                          </span>
-                        )}
-                        {user?.phone && (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                            user?.phoneVerified
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/40'
-                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40'
-                          }`}>
-                            {user?.phoneVerified ? <Check className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                            {user?.phoneVerified ? 'Phone verified' : 'Phone not verified'}
-                          </span>
-                        )}
+                  {/* Profile card header */}
+                  <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                      <div className="relative group shrink-0">
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-neutral-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                          {avatarPreview ? (
+                            <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                          ) : user?.profileImageUrl ? (
+                            <img src={avatarUrl(user.profileImageUrl)} alt={user.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl font-black text-neutral-300 dark:text-neutral-600 select-none">
+                              {(user?.name?.[0] || 'A').toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute inset-0 rounded-3xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all cursor-pointer"
+                        >
+                          <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleAvatarSelect}
+                          className="hidden"
+                        />
                       </div>
 
-                      {/* Avatar action buttons */}
-                      <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
-                        {avatarPreview ? (
-                          <>
-                            <button
-                              onClick={uploadAvatar}
-                              disabled={avatarUploading}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-brand-pink text-white shadow disabled:opacity-60"
-                            >
-                              {avatarUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                              {avatarUploading ? 'Uploading...' : 'Save Photo'}
-                            </button>
-                            <button onClick={cancelAvatarPreview} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300">
-                              <X className="w-3.5 h-3.5" /> Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
-                            >
-                              <Camera className="w-3.5 h-3.5" /> Change Photo
-                            </button>
-                            {user?.profileImageUrl && (
+                      <div className="flex-1 text-center sm:text-left">
+                        <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white">{user?.name || 'Apex User'}</h2>
+                        <p className="text-sm font-bold text-neutral-500 dark:text-[#B5B5B5] mt-0.5">{user?.email}</p>
+                        <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
+                          <VerifiedBadge verified={user?.emailVerified} verifiedLabel="Email verified" unverifiedLabel="Email not verified" />
+                          {user?.phone && (
+                            <VerifiedBadge verified={user?.phoneVerified} verifiedLabel="Phone verified" unverifiedLabel="Phone not verified" />
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
+                          {avatarPreview ? (
+                            <>
                               <button
-                                onClick={removeAvatar}
-                                disabled={avatarRemoving}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-60"
+                                onClick={uploadAvatar}
+                                disabled={avatarUploading}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-brand-pink text-white shadow disabled:opacity-60 cursor-pointer"
                               >
-                                {avatarRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                Remove
+                                {avatarUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                {avatarUploading ? 'Uploading...' : 'Save Photo'}
                               </button>
-                            )}
-                          </>
-                        )}
+                              <button onClick={cancelAvatarPreview} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300 cursor-pointer">
+                                <X className="w-3.5 h-3.5" /> Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                              >
+                                <Camera className="w-3.5 h-3.5" /> Change Photo
+                              </button>
+                              {user?.profileImageUrl && (
+                                <button
+                                  onClick={removeAvatar}
+                                  disabled={avatarRemoving}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-60 cursor-pointer"
+                                >
+                                  {avatarRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                  Remove
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Personal information form */}
-                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                  <h3 className="font-black text-lg mb-5 text-neutral-900 dark:text-white flex items-center gap-2">
-                    <UserIcon className="w-5 h-5 text-brand-pink" />
-                    Personal Information
-                  </h3>
+                  {/* Personal information card */}
+                  <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-black text-lg text-neutral-900 dark:text-white flex items-center gap-2">
+                        <UserIcon className="w-5 h-5 text-brand-pink" />
+                        Personal Information
+                      </h3>
+                      {!editingProfile && (
+                        <button
+                          type="button"
+                          onClick={startEditProfile}
+                          className="text-xs font-black text-brand-pink hover:underline cursor-pointer"
+                        >
+                          Edit Profile
+                        </button>
+                      )}
+                    </div>
 
-                  <form onSubmit={saveProfile} className="space-y-5">
-                    <Field
-                      label="Full Name"
-                      value={profileForm.name}
-                      onChange={(e) => { setProfileForm({ ...profileForm, name: e.target.value }); setProfileErrors({ ...profileErrors, name: null }); }}
-                      required
-                      error={profileErrors.name}
-                      icon={<UserIcon className="w-4 h-4" />}
-                    />
-
-                    <div>
-                      <label className="block">
-                        <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5" />
-                          Email Address
+                    {profileDirty && (
+                      <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <span className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" /> You have unsaved changes.
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2">
+                          <button type="button" onClick={discardProfileEdit} className="px-3 py-1.5 rounded-lg text-[11px] font-black bg-white dark:bg-[#161616] border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 cursor-pointer">
+                            Discard Changes
+                          </button>
+                          <button type="button" onClick={saveProfile} className="px-3 py-1.5 rounded-lg text-[11px] font-black bg-amber-600 text-white cursor-pointer">
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <form onSubmit={saveProfile} className="space-y-5">
+                      {/* Full Name — read-only or editable */}
+                      {editingProfile ? (
+                        <Field
+                          label="Full Name"
+                          value={profileName}
+                          onChange={(e) => { setProfileName(e.target.value); setProfileNameError(''); }}
+                          required
+                          error={profileNameError}
+                          icon={<UserIcon className="w-4 h-4" />}
+                        />
+                      ) : (
+                        <ReadOnlyRow icon={<UserIcon className="w-3.5 h-3.5" />} label="Full Name" value={user?.name || '—'} />
+                      )}
+
+                      {/* Email — always read-only here, changed via modal */}
+                      <div>
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5" /> Email Address
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
                           <input
                             type="email"
                             value={user?.email || ''}
                             disabled
-                            className="flex-1 px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold opacity-60 cursor-not-allowed"
+                            className="flex-1 min-w-0 px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold opacity-70 cursor-not-allowed"
                           />
-                          {user?.emailVerified && (
-                            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 shrink-0">
-                              <Check className="w-3 h-3" /> Verified
-                            </span>
-                          )}
+                          <VerifiedBadge verified={user?.emailVerified} verifiedLabel="Verified" unverifiedLabel="Not verified" />
                         </div>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setEmailChangeOpen(!emailChangeOpen)}
-                        className="mt-2 text-xs font-black text-brand-pink hover:underline flex items-center gap-1"
-                      >
-                        <Mail className="w-3 h-3" /> Change Email Address
-                        <ChevronRight className={`w-3 h-3 transition-transform ${emailChangeOpen ? 'rotate-90' : ''}`} />
-                      </button>
-
-                      {/* Email change form */}
-                      {emailChangeOpen && (
-                        <div className="mt-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-                          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] mb-3">
-                            A verification link will be sent to the new email. Your email will only be updated after you verify it.
-                          </p>
-                          <form onSubmit={submitEmailChange} className="flex flex-col sm:flex-row gap-2">
-                            <input
-                              type="email"
-                              value={newEmail}
-                              onChange={(e) => setNewEmail(e.target.value)}
-                              placeholder="new@email.com"
-                              className="flex-1 px-4 py-2.5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-xl text-neutral-900 dark:text-white text-sm font-bold focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/20"
-                              required
-                            />
-                            <button
-                              type="submit"
-                              disabled={emailChangeLoading}
-                              className="px-4 py-2.5 rounded-xl btn-pink text-white text-xs font-black disabled:opacity-60 whitespace-nowrap"
-                            >
-                              {emailChangeLoading ? 'Sending...' : 'Send Verification'}
-                            </button>
-                          </form>
-                          {emailChangeMessage && (
-                            <p className={`mt-2 text-xs font-bold ${emailChangeMessage.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                              {emailChangeMessage.type === 'success' ? '✓' : '✗'} {emailChangeMessage.text}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5" />
-                        Phone Number
-                      </span>
-                      <PhoneInput
-                        value={profileForm.phone}
-                        country={profileForm.phoneCountry}
-                        onChange={(phone, country) => {
-                          setProfileForm({ ...profileForm, phone, phoneCountry: country });
-                          setProfileErrors({ ...profileErrors, phone: null });
-                        }}
-                        onCountryChange={(country) => setProfileForm(prev => ({ ...prev, phoneCountry: country }))}
-                        error={profileErrors.phone}
-                      />
-                      {user?.phone && (
-                        <div className="mt-1.5">
-                          {user.phoneVerified ? (
-                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              <Check className="w-3 h-3" /> Verified
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" /> Not verified
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Passport name reminder */}
-                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 flex gap-3">
-                      <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-0.5">Government ID Match Required</p>
-                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400/80">
-                          Pearson and other exam providers require the name on your exam booking to exactly match your government-issued photo ID (passport, national ID, etc.).
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setContactModalType('email')}
+                          className="mt-2 text-xs font-black text-brand-pink hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Mail className="w-3 h-3" /> Change Email
+                        </button>
                       </div>
-                    </div>
 
-                    {/* Save button */}
-                    <div className="flex items-center gap-3 pt-1">
-                      <button
-                        type="submit"
-                        disabled={profileLoading || !profileHasChanges()}
-                        className="btn-pink text-white px-6 py-3 rounded-2xl font-black shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {profileLoading ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                      {/* Phone — always read-only here, changed via modal */}
+                      <div>
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5" /> Phone Number
+                        </span>
+                        {user?.phone ? (
+                          <>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="text"
+                                value={user.phone}
+                                disabled
+                                className="flex-1 min-w-0 px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold opacity-70 cursor-not-allowed"
+                              />
+                              <VerifiedBadge verified={user?.phoneVerified} verifiedLabel="Verified" unverifiedLabel="Not verified" />
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <button
+                                type="button"
+                                onClick={() => setContactModalType('phone')}
+                                className="text-xs font-black text-brand-pink hover:underline flex items-center gap-1 cursor-pointer"
+                              >
+                                <Phone className="w-3 h-3" /> Change Phone
+                              </button>
+                              {!user?.phoneVerified && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    showToast?.(
+                                      'Phone verification by SMS is currently unavailable. Your phone number can still be updated and will be verified when SMS verification is enabled.'
+                                    )
+                                  }
+                                  className="text-xs font-black text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ShieldCheck className="w-3 h-3" /> Verify Phone Number
+                                </button>
+                              )}
+                            </div>
+                          </>
                         ) : (
-                          'Save Changes'
+                          <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-dashed border-[#EAEAEA] dark:border-[#292929] flex items-center justify-between gap-3">
+                            <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400">Phone number not added</span>
+                            <button
+                              type="button"
+                              onClick={() => setContactModalType('phone')}
+                              className="text-xs font-black text-brand-pink hover:underline shrink-0 cursor-pointer"
+                            >
+                              + Add Phone Number
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
+
+                      {/* Passport name reminder */}
+                      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 flex gap-3">
+                        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-0.5">Government ID Match Required</p>
+                          <p className="text-xs font-bold text-amber-700 dark:text-amber-400/80">
+                            Pearson and other exam providers require the name on your exam booking to exactly match your government-issued photo ID (passport, national ID, etc.).
+                          </p>
+                        </div>
+                      </div>
+
+                      {editingProfile && (
+                        <div className="flex items-center gap-3 pt-1">
+                          <button
+                            type="submit"
+                            disabled={profileLoading}
+                            className="btn-pink text-white px-6 py-3 rounded-2xl font-black shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                          >
+                            {profileLoading ? (
+                              <><Loader2 className="w-4 h-4 animate-spin" /> Saving changes...</>
+                            ) : (
+                              'Save Changes'
+                            )}
+                          </button>
+                          <button type="button" onClick={discardProfileEdit} className="px-5 py-3 rounded-2xl text-sm font-black bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-300 cursor-pointer">
+                            Cancel
+                          </button>
+                        </div>
+                      )}
                       {profileSuccess && (
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in slide-in-from-left-2">
                           <CheckCircle2 className="w-4 h-4" /> Profile updated successfully
                         </span>
                       )}
-                    </div>
-                  </form>
-                </div>
+                    </form>
+                  </div>
                 </div>
               </>
-            )}
-
-            {/* ── ACCOUNT SETTINGS TAB ──────────────────────────────────────── */}
-            {tab === 'settings' && (
-              <div className="space-y-6 max-w-3xl">
-                {/* Account information card */}
-                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                  <h3 className="font-black text-lg mb-5 text-neutral-900 dark:text-white flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-brand-pink" />
-                    Account Information
-                  </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <InfoItem icon={<Hash className="w-4 h-4" />} label="Account ID" value={user?._id || user?.id || '—'} mono />
-                    <InfoItem icon={<Mail className="w-4 h-4" />} label="Email" value={user?.email || '—'} />
-                    <InfoItem icon={<Calendar className="w-4 h-4" />} label="Member Since" value={formatDate(user?.createdAt)} />
-                    <InfoItem
-                      icon={<Mail className="w-4 h-4" />}
-                      label="Email Status"
-                      value={user?.emailVerified ? '✓ Verified' : 'Not verified'}
-                      valueClass={user?.emailVerified ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}
-                    />
-                    <InfoItem
-                      icon={<Phone className="w-4 h-4" />}
-                      label="Phone Status"
-                      value={user?.phone ? (user?.phoneVerified ? '✓ Verified' : '⚠ Not verified') : 'Not provided'}
-                      valueClass={user?.phoneVerified ? 'text-emerald-600 dark:text-emerald-400' : user?.phone ? 'text-amber-600 dark:text-amber-400' : ''}
-                    />
-                    <InfoItem icon={<Clock className="w-4 h-4" />} label="Last Updated" value={formatDate(user?.updatedAt, true)} />
-                  </div>
-                </div>
-
-                {/* Quick actions */}
-                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                  <h3 className="font-black text-lg mb-4 text-neutral-900 dark:text-white">Quick Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <QuickAction icon={<UserIcon className="w-5 h-5" />} label="Edit Profile" desc="Update your name, phone, and photo" onClick={() => setTab('profile')} />
-                    <QuickAction icon={<Shield className="w-5 h-5" />} label="Change Password" desc="Update your account password" onClick={() => setTab('security')} />
-                    <QuickAction icon={<Ticket className="w-5 h-5" />} label="My Vouchers" desc="View and manage your voucher codes" onClick={() => setTab('vouchers')} />
-                    <QuickAction icon={<ClipboardList className="w-5 h-5" />} label="Order History" desc="View all your past orders" onClick={() => setTab('orders')} />
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* ── SECURITY TAB ──────────────────────────────────────────────── */}
@@ -1142,15 +1116,18 @@ export default function AccountHome({ initialTab = 'overview' }) {
                       placeholder="Enter your current password"
                     />
 
-                    <PasswordField
-                      label="New Password"
-                      value={passwordForm.newPwd}
-                      onChange={(e) => { setPasswordForm({ ...passwordForm, newPwd: e.target.value }); setPasswordErrors({ ...passwordErrors, newPwd: null }); }}
-                      show={showNewPwd}
-                      onToggle={() => setShowNewPwd(!showNewPwd)}
-                      error={passwordErrors.newPwd}
-                      placeholder="Minimum 6 characters"
-                    />
+                    <div>
+                      <PasswordField
+                        label="New Password"
+                        value={passwordForm.newPwd}
+                        onChange={(e) => { setPasswordForm({ ...passwordForm, newPwd: e.target.value }); setPasswordErrors({ ...passwordErrors, newPwd: null }); }}
+                        show={showNewPwd}
+                        onToggle={() => setShowNewPwd(!showNewPwd)}
+                        error={passwordErrors.newPwd}
+                        placeholder="Choose a strong new password"
+                      />
+                      <PasswordStrengthChecklist password={passwordForm.newPwd} />
+                    </div>
 
                     <Field
                       label="Confirm New Password"
@@ -1166,7 +1143,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
                       <button
                         type="submit"
                         disabled={passwordLoading || (!passwordForm.current && !passwordForm.newPwd)}
-                        className="btn-pink text-white px-6 py-3 rounded-2xl font-black shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="btn-pink text-white px-6 py-3 rounded-2xl font-black shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
                       >
                         {passwordLoading ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
@@ -1183,7 +1160,26 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   </form>
                 </div>
 
-                {/* Security info */}
+                {/* Verification status summary */}
+                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                  <h4 className="font-black text-sm text-neutral-900 dark:text-white mb-4">Verification Status</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
+                      <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email</span>
+                      <VerifiedBadge verified={user?.emailVerified} verifiedLabel="Verified" unverifiedLabel="Not verified" />
+                    </div>
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
+                      <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Phone</span>
+                      {user?.phone ? (
+                        <VerifiedBadge verified={user?.phoneVerified} verifiedLabel="Verified" unverifiedLabel="Not verified" />
+                      ) : (
+                        <span className="text-[10px] font-black text-neutral-400">Not added</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security tips */}
                 <div className="rounded-3xl p-5 sm:p-7 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
                   <h4 className="font-black text-sm text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-brand-pink" />
@@ -1195,6 +1191,80 @@ export default function AccountHome({ initialTab = 'overview' }) {
                     <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Keep your phone number and email up to date for order notifications</li>
                     <li className="flex items-start gap-2"><span className="text-brand-pink mt-0.5">•</span> Contact support if you notice any unauthorized activity</li>
                   </ul>
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" /> Log Out of This Account
+                </button>
+              </div>
+            )}
+
+            {/* ── SUPPORT TAB ───────────────────────────────────────────────── */}
+            {tab === 'support' && (
+              <div className="space-y-6 max-w-2xl">
+                <div className="rounded-3xl p-5 sm:p-7 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                  <h3 className="font-black text-lg mb-2 text-neutral-900 dark:text-white flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-brand-pink" />
+                    Need Help?
+                  </h3>
+                  <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-5">
+                    Our support team can help with orders, vouchers, account changes, and PTE booking questions.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a
+                      href={`https://wa.me/${(footerSettings?.phone || '+91 9855926113').replace(/\D/g, '')}?text=${encodeURIComponent('Hello Apex Vouchers, I need help with my account.')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <MessageCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-emerald-800 dark:text-emerald-300">WhatsApp Support</div>
+                        <div className="text-xs font-bold text-emerald-700/80 dark:text-emerald-400/80">Usually replies within minutes</div>
+                      </div>
+                    </a>
+                    <a
+                      href={`tel:${(footerSettings?.phone || '+91 9855926113').replace(/\s+/g, '')}`}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 transition"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
+                        <PhoneCall className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-neutral-900 dark:text-white">Call Support</div>
+                        <div className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{footerSettings?.phone || '+91 9855926113'}</div>
+                      </div>
+                    </a>
+                    <a
+                      href={`mailto:${footerSettings?.email || 'apexvouchers@gmail.com'}`}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 transition"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
+                        <Mail className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-neutral-900 dark:text-white">Email Support</div>
+                        <div className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{footerSettings?.email || 'apexvouchers@gmail.com'}</div>
+                      </div>
+                    </a>
+                    <button
+                      onClick={() => { setActiveTab('faq'); navigate('/'); }}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 transition text-left cursor-pointer"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
+                        <HelpCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-neutral-900 dark:text-white">Browse FAQs</div>
+                        <div className="text-xs font-bold text-neutral-500 dark:text-neutral-400">Common questions answered</div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1209,8 +1279,8 @@ export default function AccountHome({ initialTab = 'overview' }) {
             <form onSubmit={submitTransfer} className="space-y-4">
               <Field label="Recipient email" type="email" value={transferEmail} onChange={(e) => setTransferEmail(e.target.value)} required placeholder="friend@example.com" icon={<Mail className="w-4 h-4" />} />
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => setTransferModalId(null)} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black">Cancel</button>
-                <button className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black">Confirm transfer</button>
+                <button type="button" onClick={() => setTransferModalId(null)} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black cursor-pointer">Cancel</button>
+                <button className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer">Confirm transfer</button>
               </div>
             </form>
           </Modal>
@@ -1222,25 +1292,313 @@ export default function AccountHome({ initialTab = 'overview' }) {
               Unused vouchers qualify for 100% refund within 7 days, 80% within 30 days, 50% within 90 days.
             </p>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setRefundConfirmId(null)} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black">Cancel</button>
+              <button onClick={() => setRefundConfirmId(null)} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black cursor-pointer">Cancel</button>
               <button
                 onClick={() => { requestRefund(refundConfirmId); setRefundConfirmId(null); }}
-                className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black"
+                className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer"
               >Confirm request</button>
             </div>
           </Modal>
+        )}
+
+        {contactModalType === 'email' && (
+          <ContactOtpModal
+            currentValue={user?.email}
+            onClose={() => setContactModalType(null)}
+            onSuccess={(nextUser) => updateAuthenticatedUser(nextUser)}
+            showToast={showToast}
+          />
+        )}
+
+        {contactModalType === 'phone' && (
+          <PhoneUpdateModal
+            currentValue={user?.phone}
+            onClose={() => setContactModalType(null)}
+            onSuccess={(nextUser) => updateAuthenticatedUser(nextUser)}
+            showToast={showToast}
+          />
         )}
       </div>
     </section>
   );
 }
 
+// ── Change Email OTP modal ──────────────────────────────────────────────────────
+
+function ContactOtpModal({ currentValue, onClose, onSuccess, showToast }) {
+  const [step, setStep] = useState(1); // 1 = enter new email, 2 = verify OTP
+  const [value, setValue] = useState('');
+  const [fieldError, setFieldError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [maskedDestination, setMaskedDestination] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [resendActive, setResendActive] = useState(false);
+  const resendSeconds = useResendCountdown(resendActive);
+
+  const validateClientSide = () => {
+    if (!value || !/^\S+@\S+\.\S+$/.test(value.trim())) return 'Please enter a valid email address';
+    if (value.trim().toLowerCase() === String(currentValue || '').toLowerCase()) return 'This is already your current email';
+    return null;
+  };
+
+  const doSend = () => accountApi.sendEmailOtp(value.trim().toLowerCase());
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    const clientError = validateClientSide();
+    if (clientError) {
+      setFieldError(clientError);
+      return;
+    }
+    setFieldError('');
+    setSending(true);
+    const res = await doSend();
+    setSending(false);
+    if (res.success) {
+      setMaskedDestination(res.maskedDestination || '');
+      setStep(2);
+      setResendActive(true);
+    } else {
+      setFieldError(res.message || "We couldn't send the verification code. Please try again in a moment.");
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setOtpError('');
+    if (otp.length !== 6) {
+      setOtpError('Enter the 6-digit code');
+      return;
+    }
+    setVerifying(true);
+    const res = await accountApi.verifyEmailOtp(otp);
+    setVerifying(false);
+    if (res.success) {
+      onSuccess(res.user);
+      showToast?.('✅ Email address updated and verified');
+      onClose();
+    } else {
+      setOtpError(res.message || 'Incorrect verification code. Please try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    if (!resendActive) return;
+    setResendActive(false);
+    setOtpError('');
+    const res = await doSend();
+    if (!res.success) setOtpError(res.message || "We couldn't resend the code. Please try again.");
+    setTimeout(() => setResendActive(true), 0);
+  };
+
+  return (
+    <Modal title="Change Email Address" onClose={onClose}>
+      {step === 1 && (
+        <form onSubmit={handleSendOtp} className="space-y-4">
+          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
+            Enter your new email address. We'll send a 6-digit code to verify it before making any change.
+          </p>
+          <Field
+            label="New Email Address"
+            type="email"
+            value={value}
+            onChange={(e) => { setValue(e.target.value); setFieldError(''); }}
+            required
+            placeholder="new@email.com"
+            icon={<Mail className="w-4 h-4" />}
+            error={fieldError}
+          />
+          <div className="flex gap-2 justify-end pt-1">
+            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black cursor-pointer">
+              Cancel
+            </button>
+            <button
+              disabled={sending}
+              className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+            >
+              {sending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {sending ? 'Sending OTP…' : 'Send Verification Code'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {step === 2 && (
+        <form onSubmit={handleVerifyOtp} className="space-y-5">
+          <p className="text-xs text-center font-bold text-neutral-500 dark:text-[#B5B5B5]">
+            We've sent a 6-digit code to{' '}
+            <strong className="text-neutral-900 dark:text-white">{maskedDestination || maskEmailForDisplay(value)}</strong>
+          </p>
+          <OtpInput value={otp} onChange={setOtp} error={otpError} disabled={verifying} />
+          <button
+            disabled={verifying}
+            className="w-full btn-pink text-white py-3 rounded-2xl text-sm font-black disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {verifying && <Loader2 className="w-4 h-4 animate-spin" />}
+            {verifying ? 'Verifying…' : 'Verify OTP'}
+          </button>
+          <div className="text-center text-xs font-bold">
+            {resendActive ? (
+              <button type="button" onClick={handleResend} className="text-brand-pink hover:underline flex items-center gap-1 justify-center mx-auto cursor-pointer">
+                <RotateCcw className="w-3 h-3" /> Resend Code
+              </button>
+            ) : (
+              <span className="text-neutral-400">Resend available in {resendSeconds}s</span>
+            )}
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
+// ── Change Phone modal (no SMS verification available — direct, password-confirmed) ────
+
+function PhoneUpdateModal({ currentValue, onClose, onSuccess, showToast }) {
+  const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState('IN');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [fieldError, setFieldError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFieldError('');
+    setPasswordError('');
+
+    if (!phone) {
+      setFieldError('Please enter a phone number');
+      return;
+    }
+    try {
+      const parsed = parsePhoneNumberFromString(phone, phoneCountry);
+      if (!parsed || !parsed.isValid()) {
+        setFieldError('Invalid phone number for the selected country');
+        return;
+      }
+    } catch {
+      setFieldError('Could not validate phone number');
+      return;
+    }
+    if (!currentPassword) {
+      setPasswordError('Please confirm your current password');
+      return;
+    }
+
+    setSaving(true);
+    const res = await accountApi.updatePhone(phone, phoneCountry, currentPassword);
+    setSaving(false);
+
+    if (res.success) {
+      onSuccess(res.user);
+      showToast?.('✅ Phone number updated successfully');
+      onClose();
+    } else if (res.code === 'WRONG_PASSWORD') {
+      setPasswordError('Current password is incorrect');
+    } else {
+      setFieldError(res.message || "We couldn't update your phone number right now. Please try again.");
+    }
+  };
+
+  return (
+    <Modal title={currentValue ? 'Change Phone Number' : 'Add Phone Number'} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-neutral-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
+            SMS verification isn't available yet, so this number is saved as <strong>not verified</strong>. It will be
+            verified automatically once SMS verification is enabled.
+          </p>
+        </div>
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+            <Phone className="w-3.5 h-3.5" /> New Phone Number
+          </span>
+          <PhoneInput
+            value={phone}
+            country={phoneCountry}
+            onChange={(v, c) => { setPhone(v); setPhoneCountry(c); setFieldError(''); }}
+            onCountryChange={setPhoneCountry}
+            error={fieldError}
+          />
+          {fieldError && <p className="mt-1.5 text-xs font-bold text-rose-500">{fieldError}</p>}
+        </div>
+        <Field
+          label="Current Password"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(''); }}
+          required
+          placeholder="Confirm it's you"
+          icon={<Lock className="w-4 h-4" />}
+          error={passwordError}
+        />
+        <div className="flex gap-2 justify-end pt-1">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-xs font-black cursor-pointer">
+            Cancel
+          </button>
+          <button
+            disabled={saving}
+            className="btn-pink text-white px-5 py-2.5 rounded-xl text-xs font-black disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saving ? 'Updating phone number…' : 'Save Phone Number'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // ── Shared Components ─────────────────────────────────────────────────────────
+
+function AccountInfoCard({ icon, label, value, verified, verifiedLabel, unverifiedLabel }) {
+  return (
+    <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
+      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+        {icon} {label}
+      </div>
+      <div className="text-sm font-black text-neutral-900 dark:text-white truncate mb-2">{value}</div>
+      <VerifiedBadge verified={verified} verifiedLabel={verifiedLabel} unverifiedLabel={unverifiedLabel} />
+    </div>
+  );
+}
+
+function VerifiedBadge({ verified, verifiedLabel = 'Verified', unverifiedLabel = 'Not verified' }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0 ${
+        verified
+          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/40'
+          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40'
+      }`}
+    >
+      {verified ? <Check className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+      {verified ? verifiedLabel : unverifiedLabel}
+    </span>
+  );
+}
+
+function ReadOnlyRow({ icon, label, value }) {
+  return (
+    <div>
+      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+        {icon} {label}
+      </span>
+      <div className="px-4 py-3 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold">
+        {value}
+      </div>
+    </div>
+  );
+}
 
 function Field({ label, value, onChange, type = 'text', disabled, placeholder, required, error, icon }) {
   return (
     <label className="block">
-      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
+      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
         {icon}
         {label}
       </span>
@@ -1263,7 +1621,7 @@ function Field({ label, value, onChange, type = 'text', disabled, placeholder, r
 function PasswordField({ label, value, onChange, show, onToggle, error, placeholder }) {
   return (
     <label className="block">
-      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block flex items-center gap-1.5">
+      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
         <Lock className="w-3.5 h-3.5" />
         {label}
       </span>
@@ -1280,45 +1638,13 @@ function PasswordField({ label, value, onChange, show, onToggle, error, placehol
         <button
           type="button"
           onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition cursor-pointer"
         >
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
       {error && <p className="mt-1.5 text-xs font-bold text-rose-500">{error}</p>}
     </label>
-  );
-}
-
-function InfoItem({ icon, label, value, mono = false, valueClass = '' }) {
-  return (
-    <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-      <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-1.5">
-        {icon}
-        {label}
-      </div>
-      <div className={`text-sm font-bold text-neutral-900 dark:text-white ${mono ? 'font-mono tracking-wider' : ''} ${valueClass}`}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ icon, label, desc, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] transition-all text-left group w-full"
-    >
-      <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 border border-brand-pink/20 flex items-center justify-center text-brand-pink group-hover:scale-110 transition-transform shrink-0">
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-black text-sm text-neutral-900 dark:text-white">{label}</div>
-        <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">{desc}</div>
-      </div>
-      <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-brand-pink transition shrink-0" />
-    </button>
   );
 }
 
@@ -1358,12 +1684,13 @@ function VoucherMini({ v }) {
   );
 }
 
-function EmptyState({ icon, title, desc }) {
+function EmptyState({ icon, title, desc, action }) {
   return (
     <div className="text-center py-10 rounded-2xl border border-dashed border-[#EAEAEA] dark:border-[#292929]">
       <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-neutral-100 dark:bg-[#262626] flex items-center justify-center">{icon}</div>
       <div className="font-black text-neutral-900 dark:text-white">{title}</div>
       <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] mt-1 max-w-sm mx-auto">{desc}</div>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -1371,10 +1698,10 @@ function EmptyState({ icon, title, desc }) {
 function Modal({ title, children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white dark:bg-[#161616] p-7 border border-[#EAEAEA] dark:border-[#292929] shadow-2xl text-neutral-900 dark:text-white">
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white dark:bg-[#161616] p-7 border border-[#EAEAEA] dark:border-[#292929] shadow-2xl text-neutral-900 dark:text-white max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-black text-lg">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-200 text-xs font-black">Close</button>
+          <button onClick={onClose} className="p-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-200 text-xs font-black cursor-pointer">Close</button>
         </div>
         {children}
       </div>

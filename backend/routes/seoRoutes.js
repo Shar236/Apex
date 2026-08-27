@@ -11,10 +11,6 @@ import {
   createRedirect,
   updateRedirect,
   deleteRedirect,
-  listBlogsAdmin,
-  createBlog,
-  updateBlog,
-  deleteBlog,
   getGlobalSEOSettings,
   updateGlobalSEOSettings,
 } from '../controllers/seoController.js';
@@ -40,10 +36,7 @@ r.post('/redirects', createRedirect);
 r.patch('/redirects/:id', updateRedirect);
 r.delete('/redirects/:id', deleteRedirect);
 
-r.get('/blogs', listBlogsAdmin);
-r.post('/blogs', createBlog);
-r.patch('/blogs/:id', updateBlog);
-r.delete('/blogs/:id', deleteBlog);
+// Blog CRUD moved to /api/admin/blogs (routes/blogRoutes.js)
 
 r.get('/global-settings', getGlobalSEOSettings);
 r.patch('/global-settings', updateGlobalSEOSettings);

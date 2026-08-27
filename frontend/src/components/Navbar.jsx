@@ -14,6 +14,7 @@ import {
   HelpCircle,
   CalendarCheck,
   ArrowRight,
+  Trophy,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
@@ -51,12 +52,19 @@ export const Navbar = () => {
   const isShopActive = location.pathname === '/' && activeTab === 'shop';
   const isHowItWorksActive = location.pathname === '/' && activeTab === 'how-it-works';
   const isCalculatorActive = location.pathname === '/' && activeTab === 'calculator';
-  const isGuidesActive = location.pathname === '/' && activeTab === 'exam-guides';
+  const isGuidesActive = location.pathname.startsWith('/blog');
   const isFaqActive = location.pathname === '/' && activeTab === 'faq';
+  const isAwardsActive = location.pathname === '/' && activeTab === 'awards';
 
   const handleNav = (tabName) => {
     setActiveTab(tabName);
     navigate('/');
+    setIsMenuOpen(false);
+  };
+
+  const handleBlogNav = () => {
+    setActiveTab('home');
+    navigate('/blog');
     setIsMenuOpen(false);
   };
 
@@ -271,7 +279,7 @@ export const Navbar = () => {
 
               {/* Blog */}
               <button
-                onClick={() => handleNav('exam-guides')}
+                onClick={handleBlogNav}
                 className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
                   isGuidesActive
                     ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
@@ -279,6 +287,18 @@ export const Navbar = () => {
                 }`}
               >
                 Blog
+              </button>
+
+              {/* Awards & Achievements */}
+              <button
+                onClick={() => handleNav('awards')}
+                className={`hidden xl:inline-block px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
+                  isAwardsActive
+                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
+                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
+                }`}
+              >
+                Awards
               </button>
 
               {/* FAQ */}
@@ -395,11 +415,19 @@ export const Navbar = () => {
             </button>
 
             <button
-              onClick={() => handleNav('exam-guides')}
+              onClick={handleBlogNav}
               className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
             >
               <BookOpen className="w-4 h-4 text-brand-pink" />
-              <span>Exam Guides & Blog</span>
+              <span>Students Diary & Blog</span>
+            </button>
+
+            <button
+              onClick={() => handleNav('awards')}
+              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+            >
+              <Trophy className="w-4 h-4 text-brand-pink" />
+              <span>Awards & Achievements</span>
             </button>
 
             <button

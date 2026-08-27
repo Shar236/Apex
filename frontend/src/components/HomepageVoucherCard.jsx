@@ -41,7 +41,8 @@ function HomepageProductLogo({ product }) {
   }
 
   return (
-    <div className="w-full h-27.5 flex items-center justify-center p-3">
+    /* White pill — keeps any dark-colored logo image visible on the card */
+    <div className="w-full h-27.5 flex items-center justify-center p-3 bg-white rounded-2xl">
       <img
         src={product.logo}
         alt={`${product.name} logo`}

@@ -1513,12 +1513,23 @@ export const seedAdmin = async () => {
 
   const exists = await User.findOne({ role: 'admin' });
   if (exists) return exists;
+
+  // Backfill: pre-existing users created before email verification existed have
+  // no `emailVerified` field; treat them as verified so the login gate doesn't
+  // lock them out. Users created through the new flow always set the field.
+  try {
+    await User.updateMany({ emailVerified: { $exists: false } }, { $set: { emailVerified: true } });
+  } catch (e) {
+    // Non-fatal: only affects legacy accounts that never went through verification.
+  }
+
   const admin = new User({
     name: config.admin.name,
     email: config.admin.email,
     passwordHash: await hashPassword(config.admin.password),
     role: 'admin',
     status: 'active',
+    emailVerified: true,
   });
   await admin.save();
   console.log(`[seed] admin created: ${admin.email}`);
@@ -2199,6 +2210,7 @@ export const getWebsiteSettings = async (req, res, next) => {
     const announcementSettings = (await Setting.findOne({ key: 'announcementSettings' }))?.value || null;
     const benefitCards = (await Setting.findOne({ key: 'benefitCards' }))?.value || null;
     const footerSettings = (await Setting.findOne({ key: 'footerSettings' }))?.value || null;
+    const policySettings = (await Setting.findOne({ key: 'policySettings' }))?.value || null;
 
     res.json({
       success: true,
@@ -2207,6 +2219,7 @@ export const getWebsiteSettings = async (req, res, next) => {
         announcementSettings,
         benefitCards,
         footerSettings,
+        policySettings,
       },
     });
   } catch (err) {
@@ -2216,7 +2229,7 @@ export const getWebsiteSettings = async (req, res, next) => {
 
 export const updateWebsiteSettings = async (req, res, next) => {
   try {
-    const { heroSettings, announcementSettings, benefitCards, footerSettings } = req.body;
+    const { heroSettings, announcementSettings, benefitCards, footerSettings, policySettings } = req.body;
 
     if (heroSettings) {
       await Setting.findOneAndUpdate({ key: 'heroSettings' }, { key: 'heroSettings', value: heroSettings }, { upsert: true });
@@ -2229,6 +2242,9 @@ export const updateWebsiteSettings = async (req, res, next) => {
     }
     if (footerSettings) {
       await Setting.findOneAndUpdate({ key: 'footerSettings' }, { key: 'footerSettings', value: footerSettings }, { upsert: true });
+    }
+    if (policySettings) {
+      await Setting.findOneAndUpdate({ key: 'policySettings' }, { key: 'policySettings', value: policySettings }, { upsert: true });
     }
 
     await recordAudit(req, 'WEBSITE_SETTINGS_UPDATED', 'Setting', null, {

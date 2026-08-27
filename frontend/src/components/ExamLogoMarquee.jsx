@@ -3,15 +3,45 @@ import { PearsonPTELogo, IELTSLogo, ETSToeflLogo, DuolingoTestLogo, ETSGreLogo }
 
 export const ExamLogoMarquee = () => {
   const logos = [
-    { id: 'pte', component: PearsonPTELogo, label: 'Pearson PTE Academic' },
-    { id: 'ielts', component: IELTSLogo, label: 'IELTS Academic' },
-    { id: 'toefl', component: ETSToeflLogo, label: 'ETS TOEFL iBT' },
+    { id: 'pte',      component: PearsonPTELogo,  label: 'Pearson PTE Academic' },
+    { id: 'ielts',    component: IELTSLogo,        label: 'IELTS Academic' },
+    { id: 'toefl',    component: ETSToeflLogo,     label: 'ETS TOEFL iBT' },
     { id: 'duolingo', component: DuolingoTestLogo, label: 'Duolingo English Test' },
-    { id: 'gre', component: ETSGreLogo, label: 'ETS GRE General' },
+    { id: 'gre',      component: ETSGreLogo,       label: 'ETS GRE General' },
   ];
 
+  /*
+   * Pills always use a WHITE background in BOTH light and dark modes.
+   * This ensures dark-colored logos (Pearson navy, TOEFL near-black, GRE purple)
+   * are always readable — the page background changes, but the pill never goes dark.
+   */
+  const pillClass = [
+    'h-10 sm:h-12 px-5 py-2 rounded-2xl border shadow-sm',
+    'flex items-center justify-center',
+    'bg-white dark:bg-white',
+    'border-slate-200 dark:border-slate-200/30',
+    'hover:border-brand-pink hover:shadow-md',
+    'transition-all duration-200',
+  ].join(' ');
+
+  const LogoGroup = ({ prefix }) => (
+    <div className="flex items-center space-x-8 sm:space-x-12 shrink-0">
+      {logos.map((item) => {
+        const LogoComp = item.component;
+        return (
+          <React.Fragment key={`${prefix}-${item.id}`}>
+            <div className={pillClass} aria-label={item.label}>
+              <LogoComp inverted={false} />
+            </div>
+            <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <section 
+    <section
       aria-label="Exam platforms supported by Apex Vouchers"
       className="py-6 sm:py-8 bg-white dark:bg-[#111111] border-y border-slate-200/80 dark:border-[#292929] relative overflow-hidden transition-colors duration-300"
     >
@@ -21,65 +51,14 @@ export const ExamLogoMarquee = () => {
         </span>
       </div>
 
-      {/* Marquee Wrapper with Fade Mask Edges */}
       <div className="relative w-full overflow-hidden">
-        
-        {/* Left Fade Gradient Mask */}
-        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-linear-to-r from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
-
-        {/* Right Fade Gradient Mask */}
-        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-linear-to-l from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
-
-        {/* Infinite Continuous Marquee Track */}
+        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent dark:from-[#111111] dark:via-[#111111]/80 dark:to-transparent z-10 pointer-events-none" />
         <div className="flex w-max animate-marquee hover:[animation-play-state:paused] items-center space-x-8 sm:space-x-12 py-2">
-          
-          {/* Group 1 */}
-          <div className="flex items-center space-x-8 sm:space-x-12 shrink-0">
-            {logos.map((item) => {
-              const LogoComp = item.component;
-              return (
-                <React.Fragment key={`g1-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
-                    <LogoComp />
-                  </div>
-                  <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* Group 2 (Duplicate for Seamless Infinite Loop) */}
-          <div className="flex items-center space-x-8 sm:space-x-12 shrink-0">
-            {logos.map((item) => {
-              const LogoComp = item.component;
-              return (
-                <React.Fragment key={`g2-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
-                    <LogoComp />
-                  </div>
-                  <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* Group 3 (Duplicate for Ultrawide Displays) */}
-          <div className="flex items-center space-x-8 sm:space-x-12 shrink-0">
-            {logos.map((item) => {
-              const LogoComp = item.component;
-              return (
-                <React.Fragment key={`g3-${item.id}`}>
-                  <div className="h-10 sm:h-12 px-4 py-2 bg-[#F0F7FF] dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] shadow-sm flex items-center justify-center hover:border-brand-pink transition-colors">
-                    <LogoComp />
-                  </div>
-                  <span className="text-slate-300 dark:text-slate-600 font-bold text-sm select-none">•</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-
+          <LogoGroup prefix="g1" />
+          <LogoGroup prefix="g2" />
+          <LogoGroup prefix="g3" />
         </div>
-
       </div>
     </section>
   );

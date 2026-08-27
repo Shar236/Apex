@@ -1,11 +1,23 @@
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
 import { User } from '../models/User.js';
+import { AuditLog } from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { safeUser, generateResetToken, hashResetToken } from '../utils/index.js';
+import { safeUser } from '../utils/index.js';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { sendEmailChangeVerification } from '../services/email.js';
+import { sendEmailOtpCode, sendEmailChangedSecurityNotice } from '../services/email.js';
+import {
+  generateOtp,
+  hashOtp,
+  verifyOtpHash,
+  checkOtpSendWindow,
+  maskEmail,
+  maskPhone,
+  OTP_EXPIRY_MS,
+  OTP_MAX_VERIFY_ATTEMPTS,
+} from '../utils/otp.js';
 import { comparePassword, hashPassword } from '../middleware/auth.js';
+import { validatePasswordStrength } from '../utils/password.js';
 import { config } from '../config/index.js';
 import sharp from 'sharp';
 import fs from 'fs';
@@ -62,46 +74,21 @@ export const getAccount = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, phoneCountry } = req.body;
+    // Name only — email changes go through the OTP-verified flow below (sendEmailOtp/
+    // verifyEmailOtp), phone changes go through the password-confirmed updatePhone below.
+    const { name } = req.body;
     const user = req.user;
-    const errors = {};
 
-    // Validate & set name
-    if (name !== undefined) {
-      const nameError = validateName(name);
-      if (nameError) {
-        errors.name = nameError;
-      } else {
-        user.name = name.trim();
-      }
+    if (name === undefined) {
+      return res.status(400).json({ success: false, message: 'Nothing to update' });
     }
 
-    // Validate & set phone
-    if (phone !== undefined) {
-      if (phone === '' || phone === null) {
-        // Allow clearing phone
-        user.phone = null;
-        user.phoneCountry = null;
-        user.phoneVerified = false;
-      } else {
-        const { error, formatted, countryCode } = validatePhone(phone, phoneCountry);
-        if (error) {
-          errors.phone = error;
-        } else if (formatted) {
-          const phoneChanged = user.phone !== formatted;
-          user.phone = formatted;
-          user.phoneCountry = countryCode || phoneCountry || null;
-          if (phoneChanged) {
-            user.phoneVerified = false;
-          }
-        }
-      }
+    const nameError = validateName(name);
+    if (nameError) {
+      return res.status(400).json({ success: false, message: nameError, errors: { name: nameError } });
     }
 
-    if (Object.keys(errors).length > 0) {
-      return res.status(400).json({ success: false, message: 'Validation failed', errors });
-    }
-
+    user.name = name.trim();
     await user.save();
     res.json({ success: true, user: safeUser(user), message: 'Profile updated successfully' });
   } catch (err) {
@@ -182,9 +169,9 @@ export const removeProfileImage = async (req, res, next) => {
   }
 };
 
-// ── Request Email Change ──────────────────────────────────────────────────────
+// ── Change Email: Send OTP ──────────────────────────────────────────────────────
 
-export const requestEmailChange = async (req, res, next) => {
+export const sendEmailOtp = async (req, res, next) => {
   try {
     const { newEmail } = req.body;
     if (!newEmail || !/^\S+@\S+\.\S+$/.test(newEmail)) {
@@ -196,87 +183,175 @@ export const requestEmailChange = async (req, res, next) => {
       return next(new AppError('New email is the same as current email', 400, 'SAME_EMAIL'));
     }
 
-    // Check if email is already in use
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
-      return next(new AppError('This email is already associated with another account', 409, 'EMAIL_IN_USE'));
+      return next(new AppError('This email address is already associated with another account.', 409, 'EMAIL_IN_USE'));
     }
 
-    // Generate verification token
-    const token = generateResetToken();
-    const hashedToken = hashResetToken(token);
+    const user = await User.findById(req.user._id).select(
+      '+pendingEmailRequestedAt +pendingEmailSendCount +pendingEmailWindowStart'
+    );
+    const window = checkOtpSendWindow(user.pendingEmailRequestedAt, user.pendingEmailSendCount, user.pendingEmailWindowStart);
+    if (!window.allowed) {
+      const message =
+        window.reason === 'COOLDOWN'
+          ? `Please wait ${Math.ceil(window.retryAfterMs / 1000)} seconds before requesting another code.`
+          : 'Too many verification codes requested. Please try again later.';
+      return next(new AppError(message, 429, window.reason));
+    }
 
-    // Store pending change (select: false fields need explicit update)
-    await User.findByIdAndUpdate(req.user._id, {
-      pendingEmail: normalizedEmail,
-      pendingEmailToken: hashedToken,
-      pendingEmailExpires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    });
+    const otp = generateOtp();
+    user.pendingEmail = normalizedEmail;
+    user.pendingEmailOtpHash = hashOtp(otp);
+    user.pendingEmailOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.pendingEmailOtpAttempts = 0;
+    user.pendingEmailRequestedAt = window.nextRequestedAt;
+    user.pendingEmailSendCount = window.nextSendCount;
+    user.pendingEmailWindowStart = window.nextWindowStart;
+    await user.save();
 
-    // Send verification email to the NEW address
     try {
-      await sendEmailChangeVerification(req.user, normalizedEmail, token);
+      await sendEmailOtpCode(req.user, normalizedEmail, otp);
     } catch (emailErr) {
-      console.error('[email-change] Failed to send verification email:', emailErr.message);
-      return next(new AppError('Failed to send verification email. Please try again.', 500, 'EMAIL_SEND_FAILED'));
+      console.error('[email-otp] Failed to send verification email:', emailErr.message);
+      return next(new AppError("We couldn't send the verification code. Please try again in a moment.", 500, 'EMAIL_SEND_FAILED'));
     }
 
     res.json({
       success: true,
-      message: `Verification email sent to ${normalizedEmail}. Please check your inbox.`,
+      message: `Verification code sent to ${maskEmail(normalizedEmail)}.`,
+      maskedDestination: maskEmail(normalizedEmail),
     });
   } catch (err) {
     next(err);
   }
 };
 
-// ── Verify Email Change ───────────────────────────────────────────────────────
+// ── Change Email: Verify OTP ────────────────────────────────────────────────────
 
-export const verifyEmailChange = async (req, res, next) => {
+export const verifyEmailOtp = async (req, res, next) => {
   try {
-    const { token } = req.body || {};
-    const queryToken = req.query?.token;
-    const verifyToken = token || queryToken;
-
-    if (!verifyToken) {
-      return next(new AppError('Verification token required', 400, 'NO_TOKEN'));
+    const { otp } = req.body || {};
+    if (!otp) {
+      return next(new AppError('Verification code required', 400, 'NO_OTP'));
     }
 
-    const hashedToken = hashResetToken(verifyToken);
-    const user = await User.findOne({
-      pendingEmailToken: hashedToken,
-      pendingEmailExpires: { $gt: new Date() },
-    }).select('+pendingEmail +pendingEmailToken +pendingEmailExpires');
+    const user = await User.findById(req.user._id).select(
+      '+pendingEmail +pendingEmailOtpHash +pendingEmailOtpExpires +pendingEmailOtpAttempts'
+    );
 
-    if (!user) {
-      return next(new AppError('Invalid or expired verification token', 400, 'INVALID_TOKEN'));
+    if (!user.pendingEmail || !user.pendingEmailOtpHash) {
+      return next(new AppError('No pending email change found. Please start again.', 400, 'NO_PENDING_CHANGE'));
     }
 
-    // Check that the pending email isn't taken in the meantime
+    if (!user.pendingEmailOtpExpires || user.pendingEmailOtpExpires < new Date()) {
+      return next(new AppError('The verification code has expired. Please request a new code.', 400, 'OTP_EXPIRED'));
+    }
+
+    if (user.pendingEmailOtpAttempts >= OTP_MAX_VERIFY_ATTEMPTS) {
+      return next(new AppError('Too many verification attempts. Please request a new code.', 429, 'OTP_MAX_ATTEMPTS'));
+    }
+
+    if (!verifyOtpHash(otp, user.pendingEmailOtpHash)) {
+      user.pendingEmailOtpAttempts += 1;
+      await user.save();
+      return next(new AppError('Incorrect verification code. Please try again.', 400, 'OTP_INVALID'));
+    }
+
+    // Re-check the pending email isn't taken in the meantime (race condition guard)
     const existing = await User.findOne({ email: user.pendingEmail, _id: { $ne: user._id } });
     if (existing) {
       user.pendingEmail = undefined;
-      user.pendingEmailToken = undefined;
-      user.pendingEmailExpires = undefined;
+      user.pendingEmailOtpHash = undefined;
+      user.pendingEmailOtpExpires = undefined;
+      user.pendingEmailOtpAttempts = 0;
       await user.save();
-      return next(new AppError('This email has been claimed by another account', 409, 'EMAIL_IN_USE'));
+      return next(new AppError('This email address is already associated with another account.', 409, 'EMAIL_IN_USE'));
     }
 
-    // Perform the email change
-    user.email = user.pendingEmail;
+    const oldEmail = user.email;
+    const newEmail = user.pendingEmail;
+    user.email = newEmail;
     user.emailVerified = true;
     user.pendingEmail = undefined;
-    user.pendingEmailToken = undefined;
-    user.pendingEmailExpires = undefined;
+    user.pendingEmailOtpHash = undefined;
+    user.pendingEmailOtpExpires = undefined;
+    user.pendingEmailOtpAttempts = 0;
+    user.pendingEmailRequestedAt = undefined;
+    user.pendingEmailSendCount = 0;
     await user.save();
 
-    // If it's a GET request (from email link), redirect to frontend
-    if (req.method === 'GET') {
-      const clientUrl = config.clientUrl || 'http://localhost:3000';
-      return res.redirect(`${clientUrl}/account?emailChanged=true`);
-    }
+    sendEmailChangedSecurityNotice(user, oldEmail, newEmail).catch((err) =>
+      console.error('[email-otp] Failed to send security notice:', err.message)
+    );
+    AuditLog.create({
+      adminId: user._id,
+      adminEmail: newEmail,
+      action: 'user.email_changed',
+      resourceType: 'User',
+      resourceId: String(user._id),
+      details: { from: maskEmail(oldEmail), to: maskEmail(newEmail) },
+      ipAddress: req.ip,
+    }).catch(() => {});
 
     res.json({ success: true, user: safeUser(user), message: 'Email updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Change Phone (no SMS verification available yet — direct, password-confirmed update) ──
+//
+// SMS delivery is not wired up (no paid SMS provider). Phone numbers are still validated,
+// normalized, and kept unique, but changing one does not go through an OTP gate. Current
+// password is required as a lightweight security check in place of the OTP that would
+// normally confirm this sensitive change. phoneVerified is always reset to false — a
+// number is only ever marked verified once SMS verification is enabled in the future.
+
+export const updatePhone = async (req, res, next) => {
+  try {
+    const { phone, phoneCountry, currentPassword } = req.body;
+
+    if (!currentPassword) {
+      return next(new AppError('Please confirm your current password to change your phone number.', 400, 'PASSWORD_REQUIRED'));
+    }
+
+    const { error, formatted, countryCode } = validatePhone(phone, phoneCountry);
+    if (error || !formatted) {
+      return next(new AppError(error || 'Valid phone number required', 400, 'INVALID_PHONE'));
+    }
+
+    if (formatted === req.user.phone) {
+      return next(new AppError('New phone number is the same as current phone number', 400, 'SAME_PHONE'));
+    }
+
+    const existing = await User.findOne({ phone: formatted, _id: { $ne: req.user._id } });
+    if (existing) {
+      return next(new AppError('This phone number is already associated with another account.', 409, 'PHONE_IN_USE'));
+    }
+
+    const user = await User.findById(req.user._id).select('+passwordHash');
+    const passwordOk = await comparePassword(currentPassword, user.passwordHash);
+    if (!passwordOk) {
+      return next(new AppError('Current password is incorrect', 401, 'WRONG_PASSWORD'));
+    }
+
+    user.phone = formatted;
+    user.phoneCountry = countryCode || phoneCountry || null;
+    user.phoneVerified = false;
+    await user.save();
+
+    AuditLog.create({
+      adminId: user._id,
+      adminEmail: user.email,
+      action: 'user.phone_changed',
+      resourceType: 'User',
+      resourceId: String(user._id),
+      details: { to: maskPhone(user.phone) },
+      ipAddress: req.ip,
+    }).catch(() => {});
+
+    res.json({ success: true, user: safeUser(user), message: 'Phone number updated successfully' });
   } catch (err) {
     next(err);
   }
@@ -290,11 +365,9 @@ export const changePassword = async (req, res, next) => {
     if (!currentPassword || !newPassword) {
       return next(new AppError('Current and new password required', 400, 'MISSING_FIELDS'));
     }
-    if (newPassword.length < 6) {
-      return next(new AppError('New password must be at least 6 characters', 400, 'PASSWORD_TOO_SHORT'));
-    }
-    if (newPassword.length > 64) {
-      return next(new AppError('New password must be at most 64 characters', 400, 'PASSWORD_TOO_LONG'));
+    const strengthError = validatePasswordStrength(newPassword);
+    if (strengthError) {
+      return next(new AppError(strengthError, 400, 'WEAK_PASSWORD'));
     }
 
     // Fetch user with password hash
@@ -311,7 +384,37 @@ export const changePassword = async (req, res, next) => {
     user.passwordHash = await hashPassword(newPassword);
     await user.save();
 
+    AuditLog.create({
+      adminId: user._id,
+      adminEmail: user.email,
+      action: 'user.password_changed',
+      resourceType: 'User',
+      resourceId: String(user._id),
+      ipAddress: req.ip,
+    }).catch(() => {});
+
     res.json({ success: true, message: 'Password changed successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Logout ───────────────────────────────────────────────────────────────────
+// JWT auth is stateless — there is no server-side session to revoke. This endpoint
+// exists for API symmetry and audit logging; the client is responsible for
+// discarding its stored token.
+
+export const logout = async (req, res, next) => {
+  try {
+    AuditLog.create({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: 'user.logout',
+      resourceType: 'User',
+      resourceId: String(req.user._id),
+      ipAddress: req.ip,
+    }).catch(() => {});
+    res.json({ success: true, message: 'Logged out successfully' });
   } catch (err) {
     next(err);
   }

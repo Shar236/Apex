@@ -1,92 +1,171 @@
-import React, { useState } from 'react';
-import { Clock, ArrowRight, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { Clock, ArrowRight, Calendar, Loader2, BookOpen } from 'lucide-react';
+import { publicBlogApi, awardApi } from '../lib/api';
+import {
+  normalizeAward,
+  AwardCard,
+  AwardDetailModal,
+  AwardVideoModal,
+} from './AwardsAndAchievements';
 
-export const ExamGuides = () => {
-  const [selectedArticle, setSelectedArticle] = useState(null);
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
 
-  const featuredArticle = {
-    id: 'featured',
-    category: 'IELTS',
-    title: 'IELTS Score for Canada: The 8-7-7-7 Rule for PR 2026',
-    excerpt: 'The IELTS score for Canada is not just about your overall band. IRCC converts each IELTS skill score into CLB levels. Here is the full breakdown.',
-    readTime: '6 min read',
-    date: 'Aug 10, 2026',
-    image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&auto=format&fit=crop&q=80',
-    content: `
-      ### Understanding the 8-7-7-7 IELTS Rule for Canada PR
+/**
+ * Awards & Achievements Section for Blog Page
+ * Consumes the existing Awards API/database and displays active/featured awards in a responsive 3-col grid.
+ * Hides completely if no awards exist.
+ */
+const BlogAwardsSection = () => {
+  const [awards, setAwards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAward, setSelectedAward] = useState(null);
+  const [playVideo, setPlayVideo] = useState(null);
 
-      If you are planning to immigrate to Canada under the Federal Skilled Worker Program (FSWP) through Express Entry, achieving Canadian Language Benchmark (CLB) Level 9 is the single biggest booster for your CRS score.
-
-      #### What is the 8-7-7-7 Rule?
-      The famous 8-7-7-7 score corresponds to:
-      - **Listening**: 8.0 Band
-      - **Reading**: 7.0 Band
-      - **Writing**: 7.0 Band
-      - **Speaking**: 7.0 Band
-
-      #### Why CLB 9 Matters
-      When you achieve CLB 9 (8-7-7-7), you unlock maximum points under Skill Transferability factors. A candidate under 30 years with CLB 9 gains an extra **50+ CRS points** automatically!
-
-      #### PTE Core Alternative
-      Did you know? IRCC now accepts **PTE Core** for Canada PR! The PTE Core score equivalent for CLB 9 is:
-      - Listening: 84 - 88
-      - Reading: 78 - 87
-      - Writing: 88 - 89
-      - Speaking: 84 - 88
-
-      You can book your **PTE Core Voucher** on Apex Vouchers for just ₹15,200 (Market price ₹18,900) and save ₹3,700 instantly!
-    `
-  };
-
-  const articlesList = [
-    {
-      id: '1',
-      category: 'IELTS',
-      title: 'IELTS Score for USA 2026: What 5.5 to 8.0 Bands Mean for Admission?',
-      excerpt: 'Find the right IELTS score for USA applications across top public state universities.',
-      readTime: '4 min read'
-    },
-    {
-      id: '2',
-      category: 'IELTS',
-      title: 'IELTS Score for UK 2026: Which Band Do You Need?',
-      excerpt: 'This guide breaks down the IELTS score for UK undergraduate and postgraduate applications.',
-      readTime: '5 min read'
-    },
-    {
-      id: '3',
-      category: 'DUOLINGO',
-      title: 'Duolingo English Test Syllabus 2026: All 13 Tasks & Timings',
-      excerpt: 'Check the full Duolingo English Test syllabus guide 2026 with production subscore tips.',
-      readTime: '7 min read'
-    },
-    {
-      id: '4',
-      category: 'IELTS',
-      title: 'IELTS Band Score Chart 2026: Meaning + Free Calculator',
-      excerpt: 'Confused by 6.5 vs 7.0? Here is the full IELTS band score chart and scoring formula.',
-      readTime: '4 min read'
-    },
-    {
-      id: '5',
-      category: 'TOEFL',
-      title: 'TOEFL Dates & Test Centres in India 2026 (Live List)',
-      excerpt: 'Plan your TOEFL 2026 test in India with details on exam dates and center locations.',
-      readTime: '3 min read'
-    },
-    {
-      id: '6',
-      category: 'PTE',
-      title: 'PTE Academic Score for Australia PR & University Cutoffs 2026',
-      excerpt: 'Complete score guide for Australian student visas and skilled independent 189/190 visas.',
-      readTime: '6 min read'
+  const loadAwards = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await awardApi.list({ limit: 12 });
+      if (res.success && Array.isArray(res.data)) {
+        setAwards(res.data.map(normalizeAward));
+      } else {
+        setAwards([]);
+      }
+    } catch {
+      setAwards([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, []);
+
+  useEffect(() => {
+    loadAwards();
+  }, [loadAwards]);
+
+  // Modal accessibility: Prevent body scroll and close on Escape
+  useEffect(() => {
+    const anyOpen = !!selectedAward || !!playVideo;
+    if (!anyOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedAward(null);
+        setPlayVideo(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [selectedAward, playVideo]);
+
+  // Empty state requirement: If no awards, do not show an empty section — simply hide
+  if (!loading && awards.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-16 sm:mt-24 pt-16 sm:pt-20 border-t border-[#EAEAEA] dark:border-[#292929]">
+      {/* Section Header */}
+      <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
+        <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
+          RECOGNITIONS & ACHIEVEMENTS
+        </span>
+        <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-white tracking-tight mt-3">
+          Awards & Achievements
+        </h2>
+        <p className="text-neutral-500 dark:text-[#B5B5B5] font-medium text-sm sm:text-base mt-2">
+          Recognitions and achievements that make Apex Vouchers proud.
+        </p>
+      </div>
+
+      {/* Responsive Grid Layout: Desktop 3-col, Tablet 2-col, Mobile 1-col */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        {awards.map((award, index) => (
+          <AwardCard
+            key={award.id || index}
+            award={award}
+            index={index}
+            onView={(a) => setSelectedAward(a)}
+            onPlay={(a) => setPlayVideo(a)}
+          />
+        ))}
+      </div>
+
+      {/* Award Detail Modal (Reusing existing modal) */}
+      {selectedAward && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedAward(null);
+          }}
+        >
+          <AwardDetailModal
+            award={selectedAward}
+            onClose={() => setSelectedAward(null)}
+            onPlay={() => {
+              const toPlay = selectedAward;
+              setSelectedAward(null);
+              setPlayVideo(toPlay);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Award Video Modal (Reusing existing modal) */}
+      {playVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPlayVideo(null);
+          }}
+        >
+          <AwardVideoModal
+            award={playVideo}
+            onClose={() => setPlayVideo(null)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Students Diary & Exam Guides — dynamic homepage section.
+ * Loads the latest published blog posts from the CMS and links to each
+ * article's dedicated SEO-friendly URL (/blog/:slug). No modals.
+ */
+export const ExamGuides = () => {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    publicBlogApi.list({ limit: 6 })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success) setPosts(res.data || []);
+        else setError(res.message || 'Failed to load articles');
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Failed to load articles');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const featured = posts.find((p) => p.featured);
+  const gridPosts = featured ? posts.filter((p) => p._id !== featured._id) : posts;
 
   return (
     <section className="py-16 sm:py-24 bg-white dark:bg-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#292929] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
@@ -98,132 +177,112 @@ export const ExamGuides = () => {
           <p className="text-neutral-500 dark:text-[#B5B5B5] font-medium text-sm sm:text-base mt-2">
             Guides on PTE, GRE, TOEFL, IELTS, admissions, and education loans written specifically for Indian students.
           </p>
+          <Link
+            to="/blog"
+            className="inline-flex items-center gap-1.5 mt-5 px-4 py-2.5 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink font-black text-xs border border-brand-pink/30 hover:bg-[#FFE0EB] dark:hover:bg-[#3a0f22] transition-colors cursor-pointer"
+          >
+            <BookOpen className="w-3.5 h-3.5" /> View All Articles <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        {/* 2-Column Diary Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          
-          {/* Left Column: Featured Hero Card */}
-          <div className="lg:col-span-6 flex">
-            <div className="relative bg-[#161616] rounded-3xl overflow-hidden shadow-xl flex flex-col justify-end text-white p-6 sm:p-8 w-full group border border-[#292929]">
-              <img
-                src={featuredArticle.image}
-                alt={featuredArticle.title}
-                className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
-
-              <div className="relative z-10 space-y-3">
-                <span className="px-3 py-1 rounded-md bg-brand-pink text-white font-extrabold text-xs tracking-wider uppercase inline-block">
-                  {featuredArticle.category}
-                </span>
-
-                <h3 className="font-heading font-extrabold text-2xl sm:text-3xl text-white leading-snug">
-                  {featuredArticle.title}
-                </h3>
-
-                <p className="text-neutral-300 text-sm font-medium line-clamp-3">
-                  {featuredArticle.excerpt}
-                </p>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => setSelectedArticle(featuredArticle)}
-                    className="btn-pink !py-3 !px-6 !text-xs !rounded-xl"
-                  >
-                    <span>Read Blog</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center justify-center py-12 text-neutral-400 gap-2.5">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-pink" />
+            <span className="text-xs font-bold">Loading latest guides…</span>
           </div>
+        )}
 
-          {/* Right Column: Article List Items */}
-          <div className="lg:col-span-6 space-y-3 flex flex-col justify-between">
-            {articlesList.map((art) => (
-              <div
-                key={art.id}
-                onClick={() => setSelectedArticle(art)}
-                className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-[#161616] hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition-all cursor-pointer group flex items-start justify-between gap-4"
+        {/* Error state */}
+        {!loading && error && (
+          <div className="py-12 text-center">
+            <p className="text-sm font-bold text-neutral-400">{error}</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && posts.length === 0 && (
+          <div className="py-12 text-center space-y-2">
+            <p className="font-heading font-black text-lg text-neutral-900 dark:text-white">New guides coming soon!</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-[#B5B5B5]">
+              Our editorial team is preparing fresh exam guides for you.
+            </p>
+          </div>
+        )}
+
+        {/* Featured + Grid (all cards are links — no modals) */}
+        {!loading && !error && posts.length > 0 && (
+          <>
+            {featured && (
+              <Link
+                to={`/blog/${featured.slug}`}
+                className="group relative grid md:grid-cols-2 rounded-3xl overflow-hidden border border-brand-pink/25 bg-[#161616] card-shadow hover:shadow-2xl transition-all duration-300 mb-10"
               >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-extrabold text-brand-pink uppercase tracking-widest">
-                    {art.category}
+                <div className="relative aspect-video md:aspect-auto md:min-h-72 overflow-hidden">
+                  {featured.coverImage ? (
+                    <img src={featured.coverImage} alt={featured.coverImageAlt || featured.title} width={800} height={450} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-[#0E0E0E]">No image</div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
+                  <span className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-brand-pink text-white text-[11px] font-black uppercase tracking-wider shadow-md">
+                    {featured.category}
                   </span>
-                  <h4 className="font-heading font-extrabold text-sm sm:text-base text-neutral-900 dark:text-white group-hover:text-brand-pink transition-colors leading-snug">
-                    {art.title}
-                  </h4>
-                  <p className="text-neutral-500 dark:text-[#B5B5B5] text-xs font-medium line-clamp-1">
-                    {art.excerpt}
-                  </p>
                 </div>
-
-                <div className="shrink-0 text-neutral-400 group-hover:text-brand-pink transition-colors pt-1">
-                  <ArrowRight className="w-4 h-4" />
+                <div className="flex flex-col justify-center p-6 sm:p-10 space-y-3.5 bg-[#161616] text-white">
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-neutral-400">
+                    <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-brand-pink" /> {fmtDate(featured.publishedAt)}</span>
+                    {featured.readingTime ? <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-pink" /> {featured.readingTime} min read</span> : null}
+                  </div>
+                  <h3 className="font-heading font-extrabold text-2xl sm:text-3xl leading-snug">{featured.title}</h3>
+                  <p className="text-neutral-300 text-sm font-medium leading-relaxed line-clamp-3">{featured.excerpt}</p>
+                  <span className="inline-flex items-center gap-2 text-brand-pink font-black text-sm pt-1 group-hover:gap-3 transition-all">
+                    Read Article <ArrowRight className="w-4 h-4" strokeWidth={3} />
+                  </span>
                 </div>
-              </div>
-            ))}
-          </div>
+              </Link>
+            )}
 
-        </div>
+            {/* Article Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              {gridPosts.map((post, idx) => (
+                <Link
+                  key={post._id || post.slug}
+                  to={`/blog/${post.slug}`}
+                  className="group flex flex-col rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-up"
+                  style={{ animationDelay: `${Math.min(idx * 60, 300)}ms` }}
+                >
+                  <div className="relative aspect-[16/9] bg-neutral-100 dark:bg-[#0E0E0E] overflow-hidden">
+                    {post.coverImage ? (
+                      <img src={post.coverImage} alt={post.coverImageAlt || post.title} width={480} height={270} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600 text-xs font-bold">No image</div>
+                    )}
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-brand-pink text-white text-[10px] font-black uppercase tracking-wider shadow-md">{post.category}</span>
+                  </div>
+                  <div className="flex flex-col flex-1 p-5 space-y-2.5">
+                    <h4 className="font-heading font-black text-base leading-snug text-neutral-900 dark:text-white line-clamp-2 group-hover:text-brand-pink transition-colors">{post.title}</h4>
+                    <p className="text-xs font-medium text-neutral-500 dark:text-[#B5B5B5] line-clamp-2 flex-1">{post.excerpt}</p>
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#EAEAEA] dark:border-[#292929]">
+                      <div className="flex items-center gap-3 text-[10px] font-bold text-neutral-400">
+                        <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> {fmtDate(post.publishedAt)}</span>
+                        {post.readingTime ? <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readingTime} min</span> : null}
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-brand-pink group-hover:gap-1.5 transition-all">Read <ArrowRight className="w-3 h-3" /></span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* NEW — Awards & Achievements Section (Below Blog Listing) */}
+        <BlogAwardsSection />
 
       </div>
-
-      {/* Full Article Reader Modal */}
-      {selectedArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-[#161616] rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#EAEAEA] dark:border-[#292929] relative overflow-y-auto max-h-[90vh] space-y-5">
-            
-            <button
-              onClick={() => setSelectedArticle(null)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="space-y-2">
-              <span className="px-3 py-1 rounded-md bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink text-xs font-extrabold uppercase">
-                {selectedArticle.category}
-              </span>
-              <h3 className="font-heading font-extrabold text-2xl text-neutral-900 dark:text-white leading-snug">
-                {selectedArticle.title}
-              </h3>
-              <p className="text-xs text-neutral-400 font-bold flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5" />
-                <span>{selectedArticle.readTime || '5 min read'} • Published by Apex Student Desk</span>
-              </p>
-            </div>
-
-            <div className="prose text-neutral-700 dark:text-[#B5B5B5] text-sm leading-relaxed space-y-4 pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <p>{selectedArticle.excerpt}</p>
-              <p>
-                Preparing for standardized language exams requires a clear understanding of university entry criteria, band scoring formulas, and official testing dates.
-              </p>
-              <p>
-                When booking your test, always check if your target university requires specific subscore minimums (e.g. minimum 6.0 in Writing for UK universities or CLB 9 for Canada PR).
-              </p>
-              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20">
-                <p className="font-extrabold text-brand-pink text-xs uppercase tracking-wider mb-1">💡 Apex Saver Tip:</p>
-                <p className="text-xs text-neutral-700 dark:text-neutral-200 font-semibold">
-                  Always use official Apex Exam Vouchers to save up to ₹4,000 on your test registration fee. All codes are 100% genuine and delivered instantly to your email.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <button
-                onClick={() => setSelectedArticle(null)}
-                className="w-full btn-pink !py-3 !text-sm"
-              >
-                Close Article
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </section>
   );
 };
+
+export default ExamGuides;
