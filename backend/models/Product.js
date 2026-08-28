@@ -78,7 +78,9 @@ const productSchema = new mongoose.Schema(
     description: { type: String, trim: true, default: '' },
     richDescription: { type: String, trim: true, default: '' },
     logo: { type: String, default: '' },
+    logoPublicId: { type: String, default: '' },
     image: { type: String, default: '' },
+    imagePublicId: { type: String, default: '' },
     imageSeo: imageSeoSchema,
     originalPrice: {
       type: Number,

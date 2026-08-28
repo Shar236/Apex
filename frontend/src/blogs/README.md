@@ -50,8 +50,17 @@ stay driven by CMS data.
    ```
 3. **Styles** — `src/blogs/styles/articles/my-article.css`, every selector
    prefixed `.blog-my-article` (no bare `body`/`h2`/`img`/`button`).
-4. **Images** — `public/images/blogs/my-article/…`, referenced as
-   `/images/blogs/my-article/hero.webp`.
+4. **Images** — put source files in `public/images/blogs/my-article/…` and
+   reference them by that path (`/images/blogs/my-article/hero.webp`).
+   `ArticleFigure` routes every `src` through `imageUrl()` (`src/lib/imageUrl.js`),
+   so once the image has been migrated it is served from Cloudinary with
+   `f_auto,q_auto` + a responsive `srcSet` automatically — no code change.
+   To migrate: `cd backend && npm run migrate:images -- --upload --public-map`
+   (adds the `/images/blogs/…` → Cloudinary URL entry to `src/lib/imageMap.js`).
+   Alternatively, upload the image in the Blog editor's **In-Article Images**
+   panel and name it with the article key (`hero`, `my-article-chart`); the
+   component can then pull it from the CMS via
+   `articleImage(post, 'hero', '/images/blogs/my-article/hero.webp')`.
 5. **Register** — add one line to `registry.js`:
    ```js
    'my-article-slug': lazy(() => import('./articles/MyArticle.jsx')),

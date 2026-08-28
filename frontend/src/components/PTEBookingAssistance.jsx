@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
 import { ArrowRight, GraduationCap, ShieldCheck, HeadphonesIcon, CalendarClock, Users, Building2 } from 'lucide-react';
 import { PearsonOfficialLogo } from './OfficialBrandLogos';
+import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
 const EXAM_CARDS = [
   {
@@ -239,8 +240,12 @@ export const PTEBookingAssistance = () => {
                 {/* ── Illustration ── */}
                 <div className="pte-illus">
                   <img
-                    src={card.illustration}
+                    src={imageUrl(card.illustration, { width: 600 })}
+                    srcSet={cldSrcSet(card.illustration, [300, 480, 600]) || undefined}
+                    sizes="(max-width: 640px) 90vw, 380px"
                     alt={card.illustrationAlt}
+                    width={1200}
+                    height={896}
                     loading="lazy"
                     decoding="async"
                   />

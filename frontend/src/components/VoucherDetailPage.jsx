@@ -21,6 +21,7 @@ import { useVoucher, adaptProduct } from '../context/VoucherContext';
 import { productApi, applyPageMetadata, setStructuredData } from '../lib/api';
 import { getRedemptionGuide, getRedemptionSteps } from '../lib/redemptionGuides';
 import { BrandLogoContainer } from './OfficialBrandLogos';
+import { imageUrl } from '../lib/imageUrl.js';
 
 /* ───────────────────────────── Screenshot / Lightbox ───────────────────────────── */
 
@@ -39,7 +40,7 @@ const GuideScreenshot = ({ image, alt, caption, onOpen }) => {
       onClick={() => onOpen({ image, alt, caption })}
       className="w-full aspect-video rounded-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-neutral-50 dark:bg-[#111111] cursor-zoom-in group relative"
     >
-      <img src={image} alt={alt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+      <img src={imageUrl(image, { width: 900 })} alt={alt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
     </button>
   );
 };
@@ -74,7 +75,7 @@ const Lightbox = ({ item, onClose }) => {
         <X className="w-6 h-6" />
       </button>
       <div className="max-w-3xl w-full space-y-3" onClick={(e) => e.stopPropagation()}>
-        <img src={item.image} alt={item.alt} className="w-full max-h-[80vh] object-contain rounded-2xl" />
+        <img src={imageUrl(item.image, { width: 1600 })} alt={item.alt} className="w-full max-h-[80vh] object-contain rounded-2xl" />
         {item.caption && <p className="text-center text-sm font-bold text-white/80">{item.caption}</p>}
       </div>
     </div>
@@ -294,7 +295,7 @@ export const VoucherDetailPage = () => {
               <div className="w-full max-w-55">
                 {product.logo ? (
                   <div className="w-full aspect-square rounded-2xl bg-[#090D16] border border-[#1E293B] flex items-center justify-center p-6">
-                    <img src={product.logo} alt={`${product.name} logo`} className="max-h-full max-w-full object-contain" />
+                    <img src={imageUrl(product.logo, { width: 440 })} alt={`${product.name} logo`} className="max-h-full max-w-full object-contain" />
                   </div>
                 ) : (
                   <div className="w-full aspect-square rounded-2xl bg-[#090D16] border border-[#1E293B] flex items-center justify-center p-6">

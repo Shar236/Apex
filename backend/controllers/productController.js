@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
 import { config } from '../config/index.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 const baseUrl = () => config.siteUrl || config.business?.website || config.clientUrl || 'http://localhost:5173';
 
@@ -40,6 +41,10 @@ const applyAvailability = async (products) => {
 
     return {
       ...raw,
+      // Deliver every image through Cloudinary's f_auto,q_auto transform when it
+      // is a Cloudinary asset; legacy/local paths pass through untouched.
+      image: resolveImageUrl(raw.image),
+      logo: resolveImageUrl(raw.logo),
       availability: isUnlimited ? null : avail,
       availableStock: isUnlimited ? null : avail,
       inStock,

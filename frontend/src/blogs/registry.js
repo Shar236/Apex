@@ -20,11 +20,25 @@ import { lazy } from 'react';
  */
 export const codeBlogRegistry = {
   'ielts-score-canada-8-7-7-7-rule-2026': lazy(() => import('./articles/IeltsCanada2026.jsx')),
+  'pte-tests-comparison-2026': lazy(() => import('./articles/PteTestsComparison.jsx')),
+  'pte-academic-vs-pte-core-comparison-2026': lazy(() => import('./articles/PteTestsComparison.jsx')),
+  'pte-tests-comparison': lazy(() => import('./articles/PteTestsComparison.jsx')),
+  'pte-academic-score-australia-pr-2026': lazy(() => import('./articles/PteAcademicAustralia.jsx')),
+  'pte-academic-score-australia-pr-university-cutoffs-2026': lazy(() => import('./articles/PteAcademicAustralia.jsx')),
+  'pte-academic-score-australia-pr': lazy(() => import('./articles/PteAcademicAustralia.jsx')),
+  'pte-academic-australia': lazy(() => import('./articles/PteAcademicAustralia.jsx')),
 };
 
 /** Human-readable component name per slug — used by the admin selector only. */
 export const codeBlogLabels = {
   'ielts-score-canada-8-7-7-7-rule-2026': 'IeltsCanada2026',
+  'pte-tests-comparison-2026': 'PteTestsComparison',
+  'pte-academic-vs-pte-core-comparison-2026': 'PteTestsComparison',
+  'pte-tests-comparison': 'PteTestsComparison',
+  'pte-academic-score-australia-pr-2026': 'PteAcademicAustralia',
+  'pte-academic-score-australia-pr-university-cutoffs-2026': 'PteAcademicAustralia',
+  'pte-academic-score-australia-pr': 'PteAcademicAustralia',
+  'pte-academic-australia': 'PteAcademicAustralia',
 };
 
 /** Lazy component for a slug, or null when there is no registered code article. */

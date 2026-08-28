@@ -216,3 +216,25 @@ export const blogImageUpload = multer({
   },
 });
 
+// ── Product Image Upload (primary product photo → Cloudinary) ────────────────
+// Memory storage: the buffer is streamed straight to Cloudinary, so there is no
+// temp file to clean up and no local-disk fallback path for the primary image.
+const imageFileFilter = (_req, file, cb) => {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExts.includes(ext) && allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid image format. Supported: JPG, JPEG, PNG, WebP'), false);
+  }
+};
+
+export const productImageUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+});
+

@@ -617,3 +617,154 @@ html, body {
   outline-offset: 2px;
   border-radius: 12px;
 }
+
+/* ========================================================================== */
+/* Reusable Article Table of Contents (ca-toc-auto)                            */
+/* Shared by code-based articles and CMS articles.                            */
+/* ========================================================================== */
+
+.ca-toc-auto {
+  display: block;
+  margin: 1.6rem 0;
+  border-radius: 16px;
+  border: 1px solid #eaeaea;
+  background: #ffffff;
+  box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+.dark .ca-toc-auto {
+  background: #161616;
+  border-color: #292929;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+}
+
+.ca-toc-auto__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.95rem 1.15rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #18181b;
+}
+.dark .ca-toc-auto__toggle {
+  color: #ffffff;
+}
+.ca-toc-auto__toggle svg {
+  color: #ff005c;
+  flex-shrink: 0;
+}
+.ca-toc-auto__chevron {
+  margin-left: auto;
+  color: #ff005c;
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+.ca-toc-auto__toggle[aria-expanded="true"] .ca-toc-auto__chevron {
+  transform: rotate(90deg);
+}
+
+.ca-toc-auto__list {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0.75rem 0.85rem;
+  border-top: 1px solid #f0f0f2;
+}
+.dark .ca-toc-auto__list {
+  border-top-color: #26262a;
+}
+.ca-toc-auto__list.is-open {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .ca-toc-auto__toggle {
+    display: none;
+  }
+  .ca-toc-auto__list {
+    display: block;
+    border-top: none;
+  }
+}
+
+.ca-toc-auto__section > a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #27272a;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dark .ca-toc-auto__section > a {
+  color: #e4e4e7;
+}
+.ca-toc-auto__section > a:hover {
+  background: #fff0f5;
+  color: #ff005c;
+}
+.dark .ca-toc-auto__section > a:hover {
+  background: #2a0a17;
+}
+.ca-toc-auto__section > a:focus-visible {
+  outline: 2px solid #ff005c;
+  outline-offset: 1px;
+}
+.ca-toc-auto__num {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ff005c;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.ca-toc-auto__sub {
+  list-style: none;
+  margin: 0.15rem 0 0.35rem;
+  padding-left: 1.55rem;
+}
+.ca-toc-auto__link--sub {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5b6472;
+  border-radius: 10px;
+  display: block;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dark .ca-toc-auto__link--sub {
+  color: #a6adba;
+}
+.ca-toc-auto__link--sub:hover {
+  background: #fff0f5;
+  color: #ff005c;
+}
+.dark .ca-toc-auto__link--sub:hover {
+  background: #2a0a17;
+}
+.ca-toc-auto__link--sub:focus-visible {
+  outline: 2px solid #ff005c;
+  outline-offset: 1px;
+}
+
+/* Headings targeted by TOC anchors need a scroll offset for the sticky header. */
+.blog-article .ca-body h2[id],
+.blog-article .ca-body h3[id] {
+  scroll-margin-top: 96px;
+}
+.blog-cms-content h2[id],
+.blog-cms-content h3[id] {
+  scroll-margin-top: 96px;
+}

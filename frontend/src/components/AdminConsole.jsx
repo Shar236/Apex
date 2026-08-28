@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import { adminApi, formatPrice, apiBase, getToken } from '../lib/api';
+import { imageUrl } from '../lib/imageUrl.js';
 import { useAuth } from '../context/AuthContext';
 import { useVoucher } from '../context/VoucherContext';
 import { useNavigate } from 'react-router-dom';
@@ -619,6 +620,7 @@ function ProductsAdmin() {
       description: '',
       logo: '',
       image: '',
+      imagePublicId: '',
       originalPrice: 18900,
       sellingPrice: 15499,
       validityDays: 180,
@@ -911,7 +913,10 @@ function ProductsAdmin() {
                 <Field label="Validity (Days)" type="number" value={draft.validityDays} onChange={(v) => setDraft({ ...draft, validityDays: v })} />
                 <Field label="Delivery Type" value={draft.deliveryType || ''} onChange={(v) => setDraft({ ...draft, deliveryType: v })} placeholder="Instant Delivery" />
                 <ProductLogoUploader value={draft.logo || ''} onChange={(url) => setDraft({ ...draft, logo: url })} />
-                <Field label="Product Image URL" value={draft.image || ''} onChange={(v) => setDraft({ ...draft, image: v })} placeholder="https://..." />
+                <ProductImageUploader
+                  value={draft.image || ''}
+                  onChange={(url, publicId) => setDraft({ ...draft, image: url, imagePublicId: publicId ?? draft.imagePublicId })}
+                />
                 <div>
                   <Label>Stock Type</Label>
                   <select value={draft.stockType || 'LIMITED'} onChange={(e) => setDraft({ ...draft, stockType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink">
@@ -2842,6 +2847,133 @@ function ProductLogoUploader({ value, onChange }) {
   );
 }
 
+// Primary product photo. Uploads straight to Cloudinary via the backend
+// (apex_products/images) and stores both the delivery URL and the public_id so
+// the old asset can be cleaned up on replace. A manual URL field remains for
+// pasting an external image.
+function ProductImageUploader({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState(value || '');
+  const fileInputRef = useRef(null);
+
+  useEffect(() => { setPreview(value || ''); }, [value]);
+
+  const handleFile = (file) => {
+    if (!file || uploading) return;
+    setError('');
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setError('Unsupported format. Use JPG, PNG, or WebP.');
+      return;
+    }
+    if (file.size > LOGO_MAX_SIZE) {
+      setError('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = getToken();
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${apiBase()}/api/admin/products/image-upload`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      setUploading(false);
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+          onChange(data.url, data.publicId || '');
+          setPreview(data.url);
+        } else {
+          setError(data.message || 'Upload failed');
+        }
+      } catch {
+        setError('Upload failed');
+      }
+    };
+    xhr.onerror = () => {
+      setUploading(false);
+      setError('Network error during upload');
+    };
+    xhr.send(formData);
+  };
+
+  const removeImage = () => {
+    onChange('', '');
+    setPreview('');
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div>
+      <Label>Product Image</Label>
+      <div className="flex items-center gap-3">
+        <div className="w-16 h-16 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center overflow-hidden shrink-0">
+          {preview ? (
+            <img src={preview} alt="Product image preview" className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-neutral-300" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {uploading ? (
+            <div>
+              <div className="text-xs font-bold text-neutral-500 mb-1">Uploading... {progress}%</div>
+              <div className="h-2 rounded-full bg-neutral-200 dark:bg-[#292929] overflow-hidden">
+                <div className="h-full bg-brand-pink transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black"
+              >
+                {preview ? 'Replace Image' : 'Upload Image'}
+              </button>
+              {preview && (
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[11px] font-black"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          {error && <p className="text-[11px] font-bold text-rose-500 mt-1.5">{error}</p>}
+          {!error && preview && !uploading && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1.5">✓ Image ready</p>}
+        </div>
+      </div>
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value, '')}
+        placeholder="…or paste an image URL"
+        className="mt-2 w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
+      />
+    </div>
+  );
+}
+
 function SEOScoreBadge({ score, grade, gradeColor, size = 'md' }) {
   const safeScore = Math.max(0, Math.min(100, Number(score) || 0));
   const circumference = 2 * Math.PI * 45;
@@ -2920,7 +3052,7 @@ function GooglePreview({ title, description, url, siteName = 'Apex Vouchers' }) 
 function SocialPreview({ variant = 'og', title, description, image, url, siteName = 'Apex Vouchers' }) {
   const safeTitle = title || (variant === 'og' ? 'Open Graph Title' : 'Twitter Title');
   const safeDesc = description || '';
-  const safeImage = image || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=420&fit=crop&auto=format';
+  const safeImage = imageUrl(image, { width: 800 }) || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=420&fit=crop&auto=format';
   const isTwitter = variant === 'twitter';
   return (
     <div className={`rounded-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-white dark:bg-[#0E0E0E] ${isTwitter ? 'max-w-sm' : ''}`}>
@@ -3267,7 +3399,7 @@ function SEOProductEditor({ product, onClose, onSaved }) {
           {seoSubTab === 'image' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-[#F3EEFF] dark:bg-[#1e1638] border border-[#6C3CE0]/20 flex items-start gap-3">
-                {product?.image ? <img src={product.image} alt="" className="w-24 h-24 rounded-xl object-cover shrink-0 border border-[#6C3CE0]/30" /> : <div className="w-24 h-24 rounded-xl bg-white dark:bg-[#161616] flex items-center justify-center font-black text-[10px] text-neutral-400 border border-dashed border-[#6C3CE0]/30">No Image</div>}
+                {product?.image ? <img src={imageUrl(product.image, { width: 192 })} alt="" className="w-24 h-24 rounded-xl object-cover shrink-0 border border-[#6C3CE0]/30" /> : <div className="w-24 h-24 rounded-xl bg-white dark:bg-[#161616] flex items-center justify-center font-black text-[10px] text-neutral-400 border border-dashed border-[#6C3CE0]/30">No Image</div>}
                 <div>
                   <div className="font-black text-xs text-[#6C3CE0] mb-1">Current Product Image</div>
                   <div className="text-[10px] font-bold text-neutral-500 break-all">{product?.image || 'Not set — upload image first in General tab.'}</div>

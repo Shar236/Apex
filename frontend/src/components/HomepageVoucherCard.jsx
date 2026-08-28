@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { BrandLogoContainer } from './OfficialBrandLogos';
+import { imageUrl } from '../lib/imageUrl.js';
 
 /* ─────────────────────────────────────────────
    Product Logo (light card version)
@@ -44,7 +45,7 @@ function HomepageProductLogo({ product }) {
     /* White pill — keeps any dark-colored logo image visible on the card */
     <div className="w-full h-27.5 flex items-center justify-center p-3 bg-white rounded-2xl">
       <img
-        src={product.logo}
+        src={imageUrl(product.logo, { width: 320 })}
         alt={`${product.name} logo`}
         loading="lazy"
         className="max-h-full max-w-full object-contain"

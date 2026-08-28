@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Clock, ArrowRight, Search, Calendar, User, Sparkles, Loader2, ChevronRight, TriangleAlert } from 'lucide-react';
 import { publicBlogApi, applyPageMetadata, setStructuredData } from '../lib/api';
+import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
 
@@ -15,7 +16,7 @@ function ArticleCard({ post, index = 0 }) {
     <Link to={`/blog/${post.slug}`} className="group relative flex flex-col rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-up" style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}>
       <div className="aspect-[16/9] bg-neutral-100 dark:bg-[#0E0E0E] overflow-hidden">
         {post.coverImage ? (
-          <img src={post.coverImage} alt={post.coverImageAlt || post.title} width={480} height={270} loading={index < 2 ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img src={imageUrl(post.coverImage, { width: 600 })} srcSet={cldSrcSet(post.coverImage, [300, 480, 600]) || undefined} sizes="(max-width: 768px) 100vw, 380px" alt={post.coverImageAlt || post.title} width={480} height={270} loading={index < 2 ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600 text-xs font-bold">No image</div>
         )}
@@ -216,7 +217,7 @@ export function BlogIndexPage() {
             <Link to={`/blog/${featured.slug}`} className="group relative grid md:grid-cols-2 rounded-3xl overflow-hidden border border-brand-pink/25 bg-white dark:bg-[#161616] card-shadow hover:shadow-2xl transition-all duration-300">
               <div className="relative aspect-video md:aspect-auto md:min-h-80 overflow-hidden bg-neutral-100 dark:bg-[#0E0E0E]">
                 {featured.coverImage ? (
-                  <img src={featured.coverImage} alt={featured.coverImageAlt || featured.title} width={800} height={450} loading="eager" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img src={imageUrl(featured.coverImage, { width: 900 })} srcSet={cldSrcSet(featured.coverImage, [480, 800, 1000]) || undefined} sizes="(max-width: 768px) 100vw, 600px" alt={featured.coverImageAlt || featured.title} width={800} height={450} loading="eager" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600">No image</div>
                 )}

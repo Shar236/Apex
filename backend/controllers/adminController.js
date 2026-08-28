@@ -13,6 +13,8 @@ import {
   uploadBufferToCloudinary,
   deleteCloudinaryAsset,
   buildOptimizedImageUrl,
+  uploadImage,
+  isCloudinaryUrl,
 } from '../services/cloudinaryService.js';
 
 
@@ -669,6 +671,17 @@ export const updateProduct = async (req, res, next) => {
     const updatePayload = normalizeProductPayload(req.body);
     const product = await Product.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
 
+    // If the primary image was swapped for a different Cloudinary asset, clean up
+    // the previous one (only when no other product still points at it).
+    const oldImagePublicId = oldProduct.imagePublicId;
+    if (
+      oldImagePublicId &&
+      isCloudinaryUrl(oldProduct.image || '') &&
+      product.imagePublicId !== oldImagePublicId
+    ) {
+      await deleteProductImageIfUnused(oldImagePublicId, product._id);
+    }
+
     const diffs = {};
     if (oldProduct.sellingPrice !== product.sellingPrice) {
       diffs.oldPrice = oldProduct.sellingPrice;
@@ -896,6 +909,56 @@ export const uploadProductLogo = async (req, res, next) => {
     res.json({ success: true, url });
   } catch (err) {
     next(err);
+  }
+};
+
+/**
+ * Upload a product's primary image straight to Cloudinary (apex_products/images).
+ * Unlike the logo endpoint there is no local-disk fallback — the primary image
+ * must be an authoritative CDN asset, so a Cloudinary failure returns 502 and the
+ * admin keeps the previous image.
+ */
+export const uploadProductImage = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file || !file.buffer) return next(new AppError('No image file uploaded', 400));
+
+    let result;
+    try {
+      result = await uploadImage(file.buffer, { folder: 'apex_products/images' });
+    } catch (cloudErr) {
+      console.error('[Upload] Product image Cloudinary upload failed:', cloudErr.message);
+      return next(new AppError('Image upload to Cloudinary failed. Please try again.', 502));
+    }
+
+    res.json({
+      success: true,
+      url: result.url,
+      publicId: result.publicId,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Best-effort delete a product image from Cloudinary, but only when no other
+ * product still references the same public_id. Never throws.
+ */
+const deleteProductImageIfUnused = async (publicId, exceptProductId) => {
+  try {
+    if (!publicId) return;
+    const stillUsed = await Product.exists({
+      _id: { $ne: exceptProductId },
+      imagePublicId: publicId,
+    });
+    if (stillUsed) return;
+    await deleteCloudinaryAsset(publicId, 'image');
+  } catch (err) {
+    console.warn(`[Cloudinary] Product image cleanup skipped for ${publicId}:`, err.message);
   }
 };
 

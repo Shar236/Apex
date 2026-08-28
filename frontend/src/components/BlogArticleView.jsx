@@ -1,43 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, User, CalendarDays, ChevronRight, Share2, ChevronDown, ArrowRight, BookOpen, PenLine } from 'lucide-react';
+import { Clock, User, CalendarDays, ChevronRight, Share2, ChevronDown, ArrowRight, PenLine } from 'lucide-react';
+import TableOfContents from '../blogs/components/TableOfContents';
+import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
 
-const slugify = (text) =>
-  String(text || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
 /**
- * Parse article HTML and assign stable ids to h2/h3 headings so the TOC
- * and in-page anchors work. Returns { htmlWithIds, toc }.
+ * FAQ accordion — shared by CMS renderer and code-based articles.
+ * Only the FAQ content collapses; the article body is never inside an accordion.
  */
-const prepareContent = (html) => {
-  if (!html) return { htmlWithIds: '', toc: [] };
-  try {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const headings = Array.from(doc.querySelectorAll('h2, h3'));
-    const toc = [];
-    const used = {};
-    headings.forEach((h) => {
-      const raw = slugify(h.textContent) || 'section';
-      const id = used[raw] ? `${raw}-${++used[raw]}` : raw;
-      used[raw] = used[raw] ? used[raw] : 0;
-      h.id = id;
-      toc.push({ id, level: h.tagName.toLowerCase(), text: h.textContent.trim() });
-    });
-    return { htmlWithIds: doc.body.innerHTML, toc };
-  } catch {
-    return { htmlWithIds: html, toc: [] };
-  }
-};
-
 export function FaqAccordion({ faqs }) {
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = React.useState(0);
   return (
     <section className="mt-12 pt-10 border-t border-[#EAEAEA] dark:border-[#292929]" aria-label="Frequently Asked Questions">
       <h2 className="font-heading font-black text-2xl sm:text-3xl mb-6">Frequently Asked Questions</h2>
@@ -68,71 +42,17 @@ export function FaqAccordion({ faqs }) {
   );
 }
 
-function TableOfContents({ toc }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  if (!toc || toc.length === 0) return null;
-  return (
-    <nav className="mb-10 lg:mb-0" aria-label="Table of contents">
-      <div className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] bg-white dark:bg-[#161616] overflow-hidden">
-        {/* Mobile toggle */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-expanded={mobileOpen}
-          className="lg:hidden w-full flex items-center justify-between gap-2 px-4 py-3.5 text-left cursor-pointer"
-        >
-          <span className="inline-flex items-center gap-2 font-heading font-black text-sm text-neutral-900 dark:text-white"><BookOpen className="w-4 h-4 text-brand-pink" /> Table of Contents</span>
-          <ChevronDown className={`w-4 h-4 text-brand-pink transition-transform duration-200 ${mobileOpen ? 'rotate-180' : ''}`} />
-        </button>
-        <div className={`${mobileOpen ? 'block' : 'hidden'} lg:block`}>
-          <div className="hidden lg:flex items-center gap-2 px-4 py-3.5 border-b border-[#EAEAEA] dark:border-[#292929]">
-            <BookOpen className="w-4 h-4 text-brand-pink" />
-            <span className="font-heading font-black text-sm text-neutral-900 dark:text-white">Table of Contents</span>
-          </div>
-          <ol className="p-3 space-y-0.5 max-h-96 overflow-y-auto">
-            {toc.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById(item.id);
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      history.replaceState(null, '', `#${item.id}`);
-                    }
-                    setMobileOpen(false);
-                  }}
-                  className={`block px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                    item.level === 'h3' ? 'pl-6 text-neutral-500 dark:text-neutral-400' : 'text-neutral-700 dark:text-neutral-200 font-black'
-                  } hover:text-brand-pink hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17]`}
-                >
-                  {item.text}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-/**
- * Related-articles grid. Exported so code-based articles
- * (frontend/src/blogs/) render the exact same UI without duplicating markup.
- * Data still comes from the existing public blog API.
- */
-export function RelatedArticles({ relatedPosts = [], heading = 'You may also like' }) {
+/** Related articles grid — shared by CMS renderer and code-based articles. */
+export function RelatedArticles({ relatedPosts = [] }) {
   if (!relatedPosts || relatedPosts.length === 0) return null;
   return (
     <section className="mt-14 pt-10 border-t border-[#EAEAEA] dark:border-[#292929]" aria-label="Related articles">
-      <h2 className="font-heading font-black text-2xl mb-5">{heading}</h2>
+      <h2 className="font-heading font-black text-2xl mb-5">You may also like</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {relatedPosts.slice(0, 6).map((r) => (
           <Link key={r._id || r.slug} to={`/blog/${r.slug}`} className="group rounded-2xl overflow-hidden bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink transition-all hover:-translate-y-0.5 card-shadow">
             <div className="aspect-video bg-neutral-100 dark:bg-[#0E0E0E]">
-              {r.coverImage && <img src={r.coverImage} alt={r.coverImageAlt || r.title} width={480} height={270} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />}
+              {r.coverImage && <img src={imageUrl(r.coverImage, { width: 480 })} alt={r.coverImageAlt || r.title} width={480} height={270} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />}
             </div>
             <div className="p-4">
               {r.category && <span className="text-[10px] font-black text-brand-pink uppercase tracking-wider">{r.category}</span>}
@@ -146,10 +66,10 @@ export function RelatedArticles({ relatedPosts = [], heading = 'You may also lik
 }
 
 export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) {
-  const { htmlWithIds, toc } = useMemo(() => prepareContent(post?.content), [post?.content]);
+  const contentRef = React.useRef(null);
 
   useEffect(() => {
-    if (!post) return;
+    if (!post) return undefined;
     const anchor = window.location.hash;
     if (anchor) {
       const t = setTimeout(() => {
@@ -164,7 +84,6 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
   if (!post) return null;
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const hasToc = toc.length > 0;
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -173,6 +92,8 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
       try { await navigator.clipboard.writeText(shareUrl); alert('Link copied to clipboard'); } catch {}
     }
   };
+
+  const hasHeadings = /<h[23][^>]*>/i.test(post.content || '');
 
   return (
     <div className="bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white transition-colors duration-300">
@@ -199,17 +120,17 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          {/* Sticky TOC sidebar (desktop) */}
-          {hasToc && (
+          {/* Sticky TOC sidebar (desktop) — automatic from article H2/H3 headings */}
+          {hasHeadings && (
             <aside className="lg:col-span-3 order-2 lg:order-1">
               <div className="lg:sticky lg:top-24">
-                <TableOfContents toc={toc} />
+                <TableOfContents scope=".blog-cms-content" title="Table of Contents" />
               </div>
             </aside>
           )}
 
           {/* Article body */}
-          <div className={`${hasToc ? 'lg:col-span-9' : 'lg:col-span-12 lg:mx-auto lg:max-w-4xl'} order-1 lg:order-2`}>
+          <div className={`${hasHeadings ? 'lg:col-span-9' : 'lg:col-span-12 lg:mx-auto lg:max-w-4xl'} order-1 lg:order-2`}>
             <article>
               <header>
                 <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -235,7 +156,7 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
                   {post.author && (
                     <span className="inline-flex items-center gap-1.5">
                       <span className="w-6 h-6 rounded-full bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 flex items-center justify-center overflow-hidden">
-                        {post.authorImage ? <img src={post.authorImage} alt={post.author} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-brand-pink" />}
+                        {post.authorImage ? <img src={imageUrl(post.authorImage, { width: 128 })} alt={post.author} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-brand-pink" />}
                       </span>
                       {post.author}
                     </span>
@@ -253,7 +174,9 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
               {post.coverImage && (
                 <figure className="rounded-3xl overflow-hidden mb-8 bg-neutral-100 dark:bg-[#161616] card-shadow">
                   <img
-                    src={post.coverImage}
+                    src={imageUrl(post.coverImage, { width: 1200 })}
+                    srcSet={cldSrcSet(post.coverImage, [480, 800, 1200]) || undefined}
+                    sizes="(max-width: 768px) 100vw, 1200px"
                     alt={post.coverImageAlt || post.title}
                     title={post.coverImageTitle || undefined}
                     width={1200}
@@ -267,10 +190,11 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
                 </figure>
               )}
 
-              {/* Article content */}
+              {/* Article content — automatic TOC scans H2/H3 inside this wrapper */}
               <div
-                className="prose-blog max-w-none"
-                dangerouslySetInnerHTML={{ __html: htmlWithIds || post.content }}
+                ref={contentRef}
+                className="prose-blog max-w-none blog-cms-content"
+                dangerouslySetInnerHTML={{ __html: post.content }}
               />
 
               {/* Tags */}
@@ -289,7 +213,7 @@ export function BlogArticleView({ post, relatedPosts = [], isPreview = false }) 
               {(post.author || post.authorBio) && (
                 <div className="mt-10 p-5 sm:p-6 rounded-3xl bg-neutral-50 dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/25 flex items-center justify-center overflow-hidden shrink-0">
-                    {post.authorImage ? <img src={post.authorImage} alt={post.author} className="w-full h-full object-cover" /> : <PenLine className="w-5 h-5 text-brand-pink" />}
+                    {post.authorImage ? <img src={imageUrl(post.authorImage, { width: 128 })} alt={post.author} className="w-full h-full object-cover" /> : <PenLine className="w-5 h-5 text-brand-pink" />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-black uppercase tracking-widest text-brand-pink mb-0.5">Written by</p>

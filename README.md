@@ -1265,3 +1265,46 @@ Upon initial server startup, the backend automatically seeds the system administ
 - **Orders**: `/api/orders`, `/api/orders/:id`, `/api/orders/:id/pay`
 - **Admin**: `/api/admin/dashboard`, `/api/admin/users`, `/api/admin/products`, `/api/admin/vouchers`, `/api/admin/orders`, `/api/admin/promotions`
 
+### Image storage (Cloudinary)
+
+All website/content images (product photos & logos, blog featured + in-article
+images, awards, SEO OG images) are stored on Cloudinary and delivered through its
+CDN with `f_auto,q_auto` (automatic modern format + quality) plus responsive
+widths. Small UI assets — the favicon, Lucide icons, inline SVGs — stay in the
+repo.
+
+**Config** (backend `.env`, never exposed to the frontend):
+
+```
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+**How uploads work** — the admin picks a file in the Blog / Product / Awards
+editor; the backend (`services/cloudinaryService.js`) streams it to Cloudinary
+and stores `{ url, publicId }` on the record. Replacing a product image deletes
+the old Cloudinary asset when no other product references it. Cloudinary folders:
+`apex_products/images`, `apex_products/logos`, `apex_blog/featured`,
+`apex_blog/images`, `apex_blog/articles/<slug>`, `apex_awards/images`,
+`apex_general`.
+
+**Migrating existing images** — `backend/scripts/migrateImagesToCloudinary.js`:
+
+```
+cd backend
+npm run migrate:images                        # dry run — report only, no changes
+npm run migrate:images -- --upload            # upload local/legacy images to Cloudinary
+npm run migrate:images -- --upload --commit   # + rewrite DB image fields
+npm run migrate:images -- --upload --public-map  # + regenerate frontend/src/lib/imageMap.js
+```
+
+Idempotent and re-runnable (deterministic `public_id` per source); never deletes
+local files. A per-viewer fallback keeps local images working until migrated:
+`frontend/src/lib/imageUrl.js` resolves any `src` — legacy local paths route
+through `imageMap.js`, Cloudinary URLs get the optimization transform, everything
+else passes through untouched.
+
+**Verifying an image comes from Cloudinary** — its `src` in the rendered page is
+`https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,.../...`.
+

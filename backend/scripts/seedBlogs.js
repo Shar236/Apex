@@ -1,7 +1,7 @@
 /**
  * Migrate the previously hard-coded "Students Diary & Exam Guides" articles
  * (frontend/src/components/ExamGuides.jsx) into the BlogPost CMS.
- * Idempotent: skips posts whose slug already exists.
+ * Idempotent / upsert: creates new posts and updates existing ones with coverImage / contentSource.
  */
 import { BlogPost } from '../models/index.js';
 import { connectDB } from '../config/db.js';
@@ -11,11 +11,14 @@ const ARTICLES = [
     title: 'IELTS Score for Canada: The 8-7-7-7 Rule for PR 2026',
     slug: 'ielts-score-canada-8-7-7-7-rule-2026',
     category: 'IELTS',
+    contentSource: 'code',
     tags: ['IELTS Canada PR', 'CLB 9', 'Express Entry', '8 7 7 7 rule'],
     excerpt: 'The IELTS score for Canada is not just about your overall band. IRCC converts each IELTS skill score into CLB levels. Here is the full breakdown of the 8-7-7-7 rule for PR 2026.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
     featured: true,
+    coverImage: '/images/blogs/ielts-canada/hero.webp',
+    coverImageAlt: 'IELTS 8-7-7-7 score requirements for Canada Express Entry mapped to CLB 9',
     content: `<h2>Understanding the 8-7-7-7 IELTS Rule for Canada PR</h2>
 <p>If you are planning to immigrate to Canada under the Federal Skilled Worker Program (FSWP) through Express Entry, achieving Canadian Language Benchmark (CLB) Level 9 is the single biggest booster for your CRS score.</p>
 <h3>What is the 8-7-7-7 Rule?</h3>
@@ -52,6 +55,8 @@ const ARTICLES = [
     excerpt: 'Find the right IELTS score for USA applications across top public state universities — from 5.5 for pathway programmes to 8.0 for competitive graduate schools.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/images/blogs/covers/ielts-usa-score-hero.webp',
+    coverImageAlt: 'USA university admissions and IELTS score requirements',
     content: `<h2>IELTS Scores Accepted by US Universities</h2>
 <p>Unlike UK universities, US institutions accept both IELTS Academic and TOEFL iBT. Most US universities require an overall IELTS band of <strong>6.5 to 7.5</strong> for undergraduate and graduate admission.</p>
 <h3>5.5 Band: Pathway and Foundation Programmes</h3>
@@ -81,6 +86,8 @@ const ARTICLES = [
     excerpt: 'This guide breaks down the IELTS score for UK undergraduate and postgraduate applications, including UKVI Academic requirements and 2026 updates.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/images/blogs/covers/ielts-uk-score-hero.webp',
+    coverImageAlt: 'UK university admissions and IELTS score requirements',
     content: `<h2>UK University IELTS Requirements</h2>
 <p>UK universities typically require an overall IELTS band of <strong>6.0 to 7.5</strong> depending on the course level and institution.</p>
 <h3>Undergraduate Courses</h3>
@@ -109,6 +116,8 @@ const ARTICLES = [
     excerpt: 'Check the full Duolingo English Test syllabus guide 2026 with all 13 question types, timings, scoring subscores, and preparation tips.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/images/blogs/covers/duolingo-syllabus-hero.webp',
+    coverImageAlt: 'Duolingo English test syllabus with 13 tasks and scoring',
     content: `<h2>Duolingo English Test: What Is Tested</h2>
 <p>The Duolingo English Test (DET) is a computer-adaptive test that takes just <strong>1 hour</strong> and costs a fraction of other exams. It is accepted by 5,000+ universities worldwide.</p>
 <h3>Test Structure</h3>
@@ -138,6 +147,8 @@ const ARTICLES = [
     excerpt: 'Confused by 6.5 vs 7.0? Here is the full IELTS band score chart 2026, how each skill is scored, and what universities and immigration need.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/images/blogs/covers/ielts-band-chart-hero.webp',
+    coverImageAlt: 'IELTS 9 band score meter and calculator chart',
     content: `<h2>How IELTS Band Scores Work</h2>
 <p>IELTS results are reported on a 9-band scale from 1 (non-user) to 9 (expert user). Your overall band score is the <strong>average of four skills</strong>, rounded to the nearest half band.</p>
 <h3>The 9 Bands Explained</h3>
@@ -164,6 +175,8 @@ const ARTICLES = [
     excerpt: 'Plan your TOEFL 2026 test in India with details on exam dates, test centre locations, registration deadlines, and voucher savings.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/images/blogs/covers/toefl-dates-hero.webp',
+    coverImageAlt: 'TOEFL iBT test centres and exam dates in India',
     content: `<h2>TOEFL iBT in India 2026</h2>
 <p>The TOEFL iBT is offered multiple times every month across 40+ test centres in India, including Delhi, Mumbai, Bangalore, Chennai, Hyderabad, Pune, Kolkata and Ahmedabad.</p>
 <h3>How to Choose Your Test Date</h3>
@@ -187,10 +200,13 @@ const ARTICLES = [
     title: 'PTE Academic Score for Australia PR & University Cutoffs 2026',
     slug: 'pte-academic-score-australia-pr-2026',
     category: 'PTE',
+    contentSource: 'code',
     tags: ['PTE Academic', 'Australia PR', 'student visa'],
     excerpt: 'Complete score guide for Australian student visas and skilled independent 189/190 visas, including 2026 PTE score requirements and university cutoffs.',
     author: 'Apex Vouchers Editorial Team',
     authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    coverImage: '/pte-academic-illustration.jpg',
+    coverImageAlt: 'PTE Academic score requirements for Australia PR and universities',
     content: `<h2>PTE Academic for Australia</h2>
 <p>The PTE Academic is fully accepted by the Australian Department of Home Affairs for student visas and skilled migration, and by all Australian universities.</p>
 <h3>Skilled Visas (189 / 190 / 491)</h3>
@@ -210,21 +226,84 @@ const ARTICLES = [
       secondaryKeywords: ['PTE Australia 2026', 'PTE for student visa Australia', 'PTE university cutoffs'],
     },
   },
+  {
+    title: 'PTE Tests Comparison 2026: PTE Academic vs PTE Core vs PTE UKVI vs PTE Home',
+    slug: 'pte-tests-comparison-2026',
+    category: 'PTE',
+    contentSource: 'code',
+    tags: ['PTE Academic', 'PTE Core', 'PTE UKVI', 'PTE Home', 'PTE Comparison 2026', 'PTE vs IELTS'],
+    excerpt: 'Compare all Pearson PTE exams in 2026: PTE Academic vs PTE Core vs PTE UKVI vs PTE Home. Complete breakdown of test formats, question tasks, scoring scales, CLB mapping, and country acceptance for Canada, Australia, UK, and USA.',
+    author: 'Apex Vouchers Editorial Team',
+    authorBio: 'The Apex Vouchers editorial team writes practical, up-to-date guides on exam vouchers, scoring and study abroad for Indian students.',
+    featured: false,
+    coverImage: '/images/blogs/pte-tests-comparison/hero.webp',
+    coverImageAlt: 'Comparison chart of PTE Academic, PTE Core, PTE Academic UKVI and PTE Home test formats and acceptance',
+    content: `<h2>Understanding the Pearson PTE Test Family</h2>
+<p>Pearson Test of English offers four distinct test variants: PTE Academic, PTE Core, PTE Academic UKVI, and PTE Home (A1, A2, B1). Choosing the correct test depends strictly on your destination country, visa category, and institution requirements.</p>
+<h3>PTE Academic vs PTE Core</h3>
+<p>PTE Academic is tailored for university study worldwide and Australian/New Zealand immigration. PTE Core is approved by IRCC exclusively for Canadian economic permanent residency (Express Entry, PNP) and work permits.</p>
+<h3>PTE Academic UKVI</h3>
+<p>Identical in format and difficulty to standard PTE Academic, but includes a SELT Unique Electronic Reference Number (UERN) required on UK visa application forms.</p>
+<h3>PTE Home (A1/A2/B1)</h3>
+<p>Short 22-30 minute speaking and listening tests for UK family, spouse, settlement, and citizenship visas.</p>`,
+    faqs: [
+      {
+        question: 'What is the main difference between PTE Academic and PTE Core?',
+        answer: 'PTE Academic is designed for university study abroad and international migration (accepted by 3,300+ universities worldwide and immigration authorities in Australia, New Zealand, and the UK). PTE Core is specifically tailored for Canadian permanent residency and work permits under IRCC economic immigration programs, focusing on everyday vocational language instead of university lectures.',
+      },
+      {
+        question: 'Can I use PTE Academic for Canada PR (Express Entry)?',
+        answer: 'No. For Canadian permanent residency (Express Entry, PNP, FSWP, CEC), IRCC only accepts PTE Core (or IELTS General Training / CELPIP General). PTE Academic is accepted by Canadian institutions for study permits, but not for economic PR streams.',
+      },
+      {
+        question: 'Is PTE Academic UKVI harder than standard PTE Academic?',
+        answer: 'No, the test format, questions, difficulty level, and scoring are 100% identical. The only difference is that PTE Academic UKVI is administered at Home Office-approved SELT test centres with additional identity verification and provides a Unique Electronic Reference Number (UERN) required on UK visa applications.',
+      },
+      {
+        question: 'Which PTE test should I take for Australia and New Zealand migration?',
+        answer: 'PTE Academic is the accepted test for all Australian Department of Home Affairs and Immigration New Zealand visa categories (Subclass 189, 190, 491, 500, etc.). PTE Core is not accepted for Australia or New Zealand visas.',
+      },
+      {
+        question: 'How long are PTE test results valid?',
+        answer: 'Pearson PTE score reports are officially valid for 2 years from the date of the exam for universities and most immigration departments (note: Australian skilled migration allows PTE Academic scores up to 3 years old at time of invitation).',
+      },
+      {
+        question: 'Can I save money on my PTE exam booking in India?',
+        answer: 'Yes! By purchasing an official PTE voucher code from Apex Vouchers before booking on Pearson\'s website, you can save up to ₹3,900 on your test fee with guaranteed instant code delivery.',
+      },
+    ],
+    seo: {
+      title: 'PTE Tests Comparison 2026: Academic vs Core vs UKVI vs Home',
+      description: 'Complete 2026 comparison of Pearson PTE exams: PTE Academic vs PTE Core vs UKVI vs Home. Differences in test pattern, scoring, visa acceptance, and pricing.',
+      focusKeyword: 'PTE tests comparison',
+      secondaryKeywords: ['PTE Academic vs PTE Core', 'PTE UKVI vs PTE Academic', 'PTE test types', 'PTE for Canada PR', 'PTE for study abroad'],
+    },
+  },
 ];
 
 async function run() {
   await connectDB();
   let created = 0;
-  let skipped = 0;
+  let updated = 0;
   for (const article of ARTICLES) {
-    const exists = await BlogPost.exists({ slug: article.slug });
-    if (exists) { skipped++; continue; }
+    const existing = await BlogPost.findOne({ slug: article.slug });
+    if (existing) {
+      existing.coverImage = article.coverImage;
+      existing.coverImageAlt = article.coverImageAlt || existing.coverImageAlt;
+      if (article.contentSource) existing.contentSource = article.contentSource;
+      if (article.seo) existing.seo = { ...existing.seo, ...article.seo };
+      if (article.faqs && article.faqs.length) existing.faqs = article.faqs;
+      await existing.save();
+      updated++;
+      console.log(`[seed-blog] updated: ${article.slug}`);
+      continue;
+    }
     const post = new BlogPost({ ...article, status: 'published', publishedAt: new Date() });
     await post.save();
     created++;
     console.log(`[seed-blog] created: ${article.slug}`);
   }
-  console.log(`[seed-blog] done — ${created} created, ${skipped} skipped`);
+  console.log(`[seed-blog] done — ${created} created, ${updated} updated`);
   process.exit(0);
 }
 

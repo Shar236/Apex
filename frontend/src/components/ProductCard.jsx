@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
 import { Check, ArrowRight, Compass, ShoppingCart, Zap, Star, Flame, Sparkles, ExternalLink, Clock } from 'lucide-react';
 import { BrandLogoContainer } from './OfficialBrandLogos';
+import { imageUrl } from '../lib/imageUrl.js';
 
 // Renders the admin-uploaded product logo when present; falls back to the
 // generic brand banner if there's no logo or the image fails to load.
@@ -16,7 +17,7 @@ function ProductLogo({ product }) {
        are always visible on the dark card background */
     <div className="w-full h-24 rounded-2xl bg-white border border-white/10 flex items-center justify-center p-3">
       <img
-        src={product.logo}
+        src={imageUrl(product.logo, { width: 320 })}
         alt={`${product.name} logo`}
         loading="lazy"
         className="max-h-full max-w-full object-contain"

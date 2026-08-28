@@ -51,6 +51,7 @@ import {
   updateVideoSettings,
   uploadMedia,
   uploadProductLogo,
+  uploadProductImage,
 } from '../controllers/adminController.js';
 import { getOrderByIdAdmin } from '../controllers/orderController.js';
 import {
@@ -71,7 +72,7 @@ import {
   uploadAwardMedia,
 } from '../controllers/awardController.js';
 import { protectAdmin } from '../middleware/auth.js';
-import { mediaUpload, productLogoUpload, awardMediaUpload } from '../middleware/upload.js';
+import { mediaUpload, productLogoUpload, productImageUpload, awardMediaUpload } from '../middleware/upload.js';
 
 const r = Router();
 
@@ -86,6 +87,7 @@ r.patch('/users/:id/status', setUserStatus);
 r.get('/products', listAdminProducts);
 r.patch('/products/reorder', reorderProducts);
 r.post('/products/logo-upload', productLogoUpload.single('logo'), uploadProductLogo);
+r.post('/products/image-upload', productImageUpload.single('image'), uploadProductImage);
 r.get('/products/:id', getAdminProduct);
 r.post('/products', createProduct);
 r.patch('/products/:id', updateProduct);

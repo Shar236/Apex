@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
 export const NightHero3DGraphic = () => {
   const containerRef = useRef(null);
@@ -92,8 +93,14 @@ export const NightHero3DGraphic = () => {
         {/* Central 3D Student Character Image */}
         <div className="relative z-10 flex items-center justify-center">
           <img
-            src="/apex_hero_student_3d.png"
+            src={imageUrl('/apex_hero_student_3d.png', { width: 800 })}
+            srcSet={cldSrcSet('/apex_hero_student_3d.png', [400, 600, 800]) || undefined}
+            sizes="(max-width: 768px) 370px, 400px"
             alt="Apex Vouchers Student with Laptop"
+            width={400}
+            height={400}
+            loading="eager"
+            fetchPriority="high"
             className="w-[320px] sm:w-[370px] md:w-[400px] max-w-full h-auto object-contain drop-shadow-[0_20px_35px_rgba(255,0,92,0.2)] select-none pointer-events-none"
           />
         </div>

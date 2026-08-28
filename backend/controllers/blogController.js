@@ -10,8 +10,28 @@ import { searchInternalLinks } from '../services/internalLinkIndex.js';
 import { uploadBlogImage, deleteBlogImage } from '../services/blogImageService.js';
 import { getBlogStructuredData } from '../utils/blogStructuredData.js';
 import { config } from '../config/index.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 const baseUrl = () => (config.siteUrl || config.clientUrl || 'http://localhost:5173').replace(/\/$/, '');
+
+/**
+ * Output-only: deliver every blog image through Cloudinary's f_auto,q_auto
+ * transform when it is a Cloudinary asset. Legacy/local paths pass through.
+ * Accepts a Mongoose doc or a plain object; always returns a plain object.
+ */
+const serializePublicPost = (post) => {
+  if (!post) return post;
+  const obj = typeof post.toObject === 'function' ? post.toObject() : { ...post };
+  if (obj.coverImage) obj.coverImage = resolveImageUrl(obj.coverImage);
+  if (obj.authorImage) obj.authorImage = resolveImageUrl(obj.authorImage);
+  if (Array.isArray(obj.images)) {
+    obj.images = obj.images.map((img) => ({ ...img, url: resolveImageUrl(img.url) }));
+  }
+  return obj;
+};
+
+const serializePublicList = (posts = []) =>
+  posts.map((p) => ({ ...p, coverImage: resolveImageUrl(p.coverImage) }));
 
 const recordAudit = async (req, action, resourceId, details) => {
   try {
@@ -525,7 +545,7 @@ export const listPublicBlogs = async (req, res, next) => {
       page: pageNum,
       pages: Math.max(1, Math.ceil(total / limitNum)),
       hasMore: pageNum * limitNum < total,
-      data: posts,
+      data: serializePublicList(posts),
     });
   } catch (err) {
     next(err);
@@ -572,7 +592,12 @@ export const getPublicBlog = async (req, res, next) => {
 
     const structuredData = await getBlogStructuredData(post);
 
-    res.json({ success: true, data: post, relatedPosts, structuredData });
+    res.json({
+      success: true,
+      data: serializePublicPost(post),
+      relatedPosts: serializePublicList(relatedPosts),
+      structuredData,
+    });
   } catch (err) {
     next(err);
   }

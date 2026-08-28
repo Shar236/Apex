@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { imageUrl, cldSrcSet } from '../../lib/imageUrl.js';
 
 /**
  * Responsive, lazy figure for code articles.
@@ -20,6 +21,14 @@ export default function ArticleFigure({
   const [failed, setFailed] = useState(false);
   const ratio = width && height ? `${width} / ${height}` : '16 / 9';
 
+  // Cloudinary assets get f_auto,q_auto + a responsive srcset for free; local or
+  // external images pass straight through untouched.
+  const resolvedSrc = imageUrl(src);
+  const autoSrcSet = srcSet || cldSrcSet(src);
+  const autoSizes = autoSrcSet
+    ? sizes || '(max-width: 768px) 100vw, 800px'
+    : undefined;
+
   return (
     <figure className={`ca-figure ${className}`.trim()}>
       {failed ? (
@@ -28,9 +37,9 @@ export default function ArticleFigure({
         </div>
       ) : (
         <img
-          src={src}
-          srcSet={srcSet}
-          sizes={srcSet ? sizes : undefined}
+          src={resolvedSrc}
+          srcSet={autoSrcSet || undefined}
+          sizes={autoSizes}
           alt={alt}
           width={width}
           height={height}

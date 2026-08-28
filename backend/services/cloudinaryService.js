@@ -124,6 +124,74 @@ export const buildOptimizedImageUrl = (secureUrl) => {
   return secureUrl.replace('/upload/', '/upload/f_auto,q_auto/');
 };
 
+/**
+ * True when a string is a Cloudinary delivery URL (res.cloudinary.com/.../upload/...).
+ */
+export const isCloudinaryUrl = (value) =>
+  typeof value === 'string' &&
+  value.includes('res.cloudinary.com') &&
+  value.includes('/upload/');
+
+/**
+ * Build a responsive srcset of Cloudinary-derived widths from a delivery URL.
+ * Any transform segment already present (e.g. f_auto,q_auto from
+ * buildOptimizedImageUrl) is stripped first so widths don't stack transforms.
+ * Returns '' for non-Cloudinary URLs.
+ */
+export const buildResponsiveSrcSet = (secureUrl, widths = [400, 800, 1200]) => {
+  if (!isCloudinaryUrl(secureUrl)) return '';
+  const base = secureUrl.replace(/\/upload\/[^/]*f_auto[^/]*\//, '/upload/');
+  return widths
+    .map((w) => {
+      const variant = base.replace('/upload/', `/upload/w_${w},c_limit,f_auto,q_auto/`);
+      return `${variant} ${w}w`;
+    })
+    .join(', ');
+};
+
+/**
+ * Centralised image upload. Returns a normalized descriptor with the optimized
+ * (f_auto,q_auto) delivery URL. Throws if Cloudinary is not configured so callers
+ * never persist a broken reference.
+ */
+export const uploadImage = async (buffer, { folder = 'apex_general', publicId, overwrite = false } = {}) => {
+  if (!isCloudinaryConfigured()) {
+    throw new Error('Cloudinary is not configured (missing CLOUDINARY_CLOUD_NAME)');
+  }
+  const opts = { resource_type: 'image', folder };
+  if (publicId) {
+    opts.public_id = publicId;
+    opts.overwrite = overwrite;
+    opts.invalidate = overwrite;
+  }
+  const res = await uploadBufferToCloudinary(buffer, opts);
+  return {
+    url: buildOptimizedImageUrl(res.secure_url),
+    secureUrl: res.secure_url,
+    publicId: res.public_id,
+    width: res.width,
+    height: res.height,
+    format: res.format,
+    bytes: res.bytes ?? (buffer ? buffer.length : undefined),
+  };
+};
+
+/**
+ * Upload a replacement image, then best-effort delete the previous asset.
+ * A delete failure never rejects — the new upload is what matters.
+ */
+export const replaceImage = async (oldPublicId, buffer, options = {}) => {
+  const result = await uploadImage(buffer, options);
+  if (oldPublicId && oldPublicId !== result.publicId && isCloudinaryConfigured()) {
+    try {
+      await deleteCloudinaryAsset(oldPublicId, 'image');
+    } catch (err) {
+      console.warn(`[Cloudinary] Could not delete replaced asset ${oldPublicId}:`, err.message);
+    }
+  }
+  return result;
+};
+
 export default {
   buildDirectVideoUrl,
   buildVideoThumbnailUrl,
@@ -131,4 +199,9 @@ export default {
   uploadBufferToCloudinary,
   deleteCloudinaryAsset,
   buildOptimizedImageUrl,
+  buildResponsiveSrcSet,
+  isCloudinaryUrl,
+  isCloudinaryConfigured,
+  uploadImage,
+  replaceImage,
 };
