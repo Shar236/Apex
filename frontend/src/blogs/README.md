@@ -25,7 +25,7 @@ src/blogs/
 │   ├── ArticleFigure.jsx     responsive/lazy <figure> for code articles
 │   ├── ArticleInfoBox.jsx · ScoreCards.jsx · ComparisonTable.jsx   in-article blocks
 │   ├── BlogCard.jsx · BlogFeaturedCard.jsx · BlogCategoryFilter.jsx · BlogSearch.jsx
-│   ├── RichTextEditor.jsx    the admin TipTap editor
+│   ├── editor/               the visual article builder (see below)
 │   └── index.js              barrel — import building blocks from here
 │
 ├── admin/
@@ -87,10 +87,45 @@ Never hand-build a TOC.
 
 ## How to create a CMS article (no developer needed)
 
-**Admin → Blog → Create Article** → fill title, slug, category, content
-(RichTextEditor), featured image (uploads to Cloudinary automatically), FAQs, SEO
-→ **Save** → **Publish**. It appears at `/blog` and `/blog/:slug` immediately.
+**Admin → Blog → Create Article** → fill title, slug, category, body (the visual
+editor), featured image (uploads to Cloudinary automatically), FAQs, SEO →
+**Save** → **Publish**. It appears at `/blog` and `/blog/:slug` immediately.
 Unpublish hides it (kept in the DB); Delete asks for confirmation.
+
+## The visual article builder — `components/editor/`
+
+A block editor (TipTap v3) that produces **sanitized semantic HTML** stored in
+`BlogPost.content`. Architecture is unchanged: `contentSource: "cms"` renders
+this HTML through `<ArticleBody>`; `"code"` still renders the registered
+component and keeps this HTML as the fallback.
+
+```
+editor/
+  index.jsx           <ArticleEditor> — the Edit | Preview | HTML strip + host
+  useArticleEditor.js  TipTap config (StarterKit + Image + Table + Figure + Callout + NodeRange)
+  Toolbar / BubbleToolbar / TableControls / FigureToolbar / BlockHandle / InsertMenu
+  BlockPicker.jsx      the "+" palette: Text·Heading·Image·Table·List·Quote·Callout·Separator
+  LinkDialog.jsx       URL + text + new-tab + rel + internal-page search
+  HtmlView / PreviewView
+  extensions/Figure.js   <figure><img alt loading><figcaption> — caption edited inline
+  extensions/Callout.js  <div class="callout" data-callout="note|warning|success">
+  editor.css           editor chrome only (article styles come from ../../styles/blog.css)
+```
+
+- **Edit** — block editor. Hover a block → drag handle (reorder) + `+` (insert
+  below) + menu (move / duplicate / delete). Empty line → `+` block palette.
+  Select text → bubble toolbar. Inside a table → row/column toolbar.
+- **Preview** — live `prose-blog` render, identical to the public page, no save.
+- **HTML** — read-only generated markup + Copy.
+- Images go through the existing upload → Cloudinary → `draft.images[]` DAM (the
+  **Images** tab stays authoritative for ALT/caption); inserting one adds a
+  `<figure>`.
+- The editor emits `<hr>`, `<figure>`, `<div class="callout">`; the backend
+  `sanitizeBlogContent` allows those and promotes a leading all-`<th>` row into a
+  proper `<thead>`.
+- Editor libs (`@tiptap/*`, `prosemirror`, `@floating-ui`) are isolated in the
+  `editor-vendor` build chunk — loaded only with the (lazy) admin console, never
+  on public pages.
 
 ## How to add a code article
 

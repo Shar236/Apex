@@ -11,6 +11,15 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (id.includes('lucide-react')) return 'icons';
+          // Rich-text editor stack — only the (lazy) admin console imports it,
+          // so keep it out of the eagerly-loaded vendor chunk.
+          if (
+            id.includes('@tiptap') ||
+            id.includes('prosemirror') ||
+            id.includes('@floating-ui')
+          ) {
+            return 'editor-vendor';
+          }
           if (id.includes('react') || id.includes('scheduler')) return 'react-vendor';
           return 'vendor';
         },

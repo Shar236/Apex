@@ -165,7 +165,7 @@
   font-size: 0.92em;
   min-width: 520px;
 }
-.prose-blog thead th {
+.prose-blog th {
   background: #FFF0F5;
   color: #9f1239;
   font-weight: 800;
@@ -174,19 +174,24 @@
   white-space: nowrap;
   border-bottom: 2px solid rgba(255, 0, 92, 0.2);
 }
-.dark .prose-blog thead th {
+.dark .prose-blog th {
   background: #2A0A17;
   color: #FF4D8F;
 }
-.prose-blog tbody td {
+.prose-blog td {
   padding: 0.75em 1em;
   border-bottom: 1px solid #f0f0f2;
   vertical-align: top;
 }
-.dark .prose-blog tbody td {
+.dark .prose-blog td {
   border-bottom-color: #26262a;
 }
-.prose-blog tbody tr:last-child td {
+/* The block editor wraps each cell's text in a <p>; kill its default margin. */
+.prose-blog th > p,
+.prose-blog td > p {
+  margin: 0;
+}
+.prose-blog tr:last-child td {
   border-bottom: none;
 }
 .prose-blog tbody tr:nth-child(even) {

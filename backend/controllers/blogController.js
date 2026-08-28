@@ -54,11 +54,20 @@ const recordAudit = async (req, action, resourceId, details) => {
 // Allowlist-based sanitizer — replaces the client's raw HTML entirely on save.
 const YOUTUBE_VIMEO_SRC = /^https:\/\/(www\.)?(youtube\.com\/embed\/|player\.vimeo\.com\/video\/)/i;
 
+// The block editor emits header cells as a leading `<tr><th>…</th></tr>` directly
+// inside `<tbody>` (ProseMirror tables have no `<thead>`). Promote that first
+// all-header row into a proper `<thead>` so the stored markup is fully semantic.
+const promoteTableHead = (html) =>
+  html.replace(
+    /(<table>)\s*<tbody>\s*(<tr>(?:\s*<th\b[\s\S]*?<\/th>\s*)+<\/tr>)/gi,
+    '$1<thead>$2</thead><tbody>',
+  );
+
 const sanitizeBlogContent = (html) => {
   if (!html) return '';
-  return sanitizeHtml(html, {
+  return promoteTableHead(sanitizeHtml(html, {
     allowedTags: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'strong', 'b', 'em', 'i', 'u', 's',
       'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
       'figure', 'figcaption', 'span', 'div', 'iframe',
     ],
@@ -69,6 +78,7 @@ const sanitizeBlogContent = (html) => {
       th: ['colspan', 'rowspan'],
       iframe: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title'],
       div: ['class', 'data-callout'],
+      figure: ['class'],
       span: ['class'],
       '*': [],
     },
@@ -76,7 +86,7 @@ const sanitizeBlogContent = (html) => {
     allowedIframeHostnames: ['www.youtube.com', 'youtube.com', 'player.vimeo.com'],
     exclusiveFilter: (frame) => frame.tag === 'iframe' && frame.attribs?.src && !YOUTUBE_VIMEO_SRC.test(frame.attribs.src),
     disallowedTagsMode: 'discard',
-  });
+  }));
 };
 
 const WRITABLE_FIELDS = [

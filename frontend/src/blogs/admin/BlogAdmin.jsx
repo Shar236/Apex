@@ -5,7 +5,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, ExternalLink, Upload, Code2, PenSquare,
 } from 'lucide-react';
 import { blogApi } from '../lib/blogApi.js';
-import BlogRichTextEditor from '../components/RichTextEditor.jsx';
+import ArticleEditor from '../components/editor';
 import { listCodeArticles } from '../registry.js';
 
 // ── Shared UI helpers (matching AdminConsole/AwardsAdmin conventions) ──────
@@ -484,7 +484,16 @@ function BlogEditor({ post, onClose, onSaved }) {
                       as a safe fallback and becomes live again if you switch Content Source back to CMS.
                     </p>
                   )}
-                  <BlogRichTextEditor value={draft.content} onChange={(html) => setField('content', html)} onEditorReady={setEditorInstance} onRequestImageUpload={handleImageUploadRequest} />
+                  <ArticleEditor
+                    value={draft.content}
+                    onChange={(html) => setField('content', html)}
+                    onEditorReady={setEditorInstance}
+                    images={draft.images}
+                    onImagesChange={(imgs) => setField('images', imgs)}
+                    onRequestImageUpload={handleImageUploadRequest}
+                    title={draft.title}
+                    excludeId={id}
+                  />
                 </div>
               </div>
             )}
