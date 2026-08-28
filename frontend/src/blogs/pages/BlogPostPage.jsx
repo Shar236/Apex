@@ -1,10 +1,16 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { publicBlogApi, applyPageMetadata, setStructuredData } from '../lib/api';
-import { BlogArticleView } from './BlogArticleView';
-import { getCodeArticle } from '../blogs/registry';
-import CodeArticleLayout from '../blogs/CodeArticleLayout';
+import { applyPageMetadata, setStructuredData } from '../../lib/api';
+import { publicBlogApi } from '../lib/blogApi.js';
+import ArticleRenderer from '../layout/ArticleRenderer.jsx';
 
+/**
+ * Public article page for /blog/:slug.
+ *
+ * Owns data-fetching, SEO metadata and JSON-LD; hands the actual rendering to
+ * <ArticleRenderer>, which picks the code component or the CMS body and wraps
+ * either in the shared <ArticleLayout>.
+ */
 export function BlogPostPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -76,28 +82,7 @@ export function BlogPostPage() {
     return <div className="min-h-[50vh] flex items-center justify-center text-sm font-bold text-neutral-400">Article not found — redirecting to Blog…</div>;
   }
 
-  // Hybrid render: a "code" post with a registered component renders that
-  // component; everything else (including a "code" post with no registered
-  // component) falls through to the existing CMS renderer. Same URL, same SEO,
-  // same schema, same view tracking either way.
-  const CodeArticle = post.contentSource === 'code' ? getCodeArticle(post.slug) : null;
-  if (CodeArticle) {
-    return (
-      <CodeArticleLayout post={post}>
-        <Suspense
-          fallback={
-            <div className="min-h-[40vh] flex items-center justify-center text-sm font-bold text-neutral-400 animate-pulse">
-              Loading article…
-            </div>
-          }
-        >
-          <CodeArticle post={post} relatedPosts={relatedPosts} />
-        </Suspense>
-      </CodeArticleLayout>
-    );
-  }
-
-  return <BlogArticleView post={post} relatedPosts={relatedPosts} />;
+  return <ArticleRenderer post={post} relatedPosts={relatedPosts} />;
 }
 
 export default BlogPostPage;

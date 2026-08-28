@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, ArrowRight, Calendar, Loader2, BookOpen } from 'lucide-react';
-import { publicBlogApi, awardApi } from '../lib/api';
+import { awardApi } from '../lib/api';
+import { publicBlogApi } from '../blogs/lib/blogApi.js';
 import {
   normalizeAward,
   AwardCard,

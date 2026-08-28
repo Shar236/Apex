@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { ApexLogo } from './ApexLogo';
 import { DynamicPTELogo, PearsonOfficialLogo } from './OfficialBrandLogos';
 import AwardsAdmin from './AwardsAdmin';
-import BlogAdmin from './BlogAdmin';
+import BlogAdmin from '../blogs/admin/BlogAdmin';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },

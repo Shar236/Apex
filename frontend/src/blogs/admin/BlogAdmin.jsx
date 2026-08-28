@@ -4,9 +4,9 @@ import {
   RotateCcw, Trash, ImageIcon, Tag, Link2, HelpCircle, History, Sparkles, ChevronRight,
   CheckCircle2, AlertTriangle, XCircle, ExternalLink, Upload, Code2, PenSquare,
 } from 'lucide-react';
-import { blogApi } from '../lib/api';
-import BlogRichTextEditor from './BlogRichTextEditor';
-import { listCodeArticles } from '../blogs/registry';
+import { blogApi } from '../lib/blogApi.js';
+import BlogRichTextEditor from '../components/RichTextEditor.jsx';
+import { listCodeArticles } from '../registry.js';
 
 // ── Shared UI helpers (matching AdminConsole/AwardsAdmin conventions) ──────
 

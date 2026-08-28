@@ -1,41 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Clock, ArrowRight, Search, Calendar, User, Sparkles, Loader2, ChevronRight, TriangleAlert } from 'lucide-react';
-import { publicBlogApi, applyPageMetadata, setStructuredData } from '../lib/api';
-import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
-
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+import { useSearchParams } from 'react-router-dom';
+import { Sparkles, Loader2, ChevronRight, TriangleAlert, User } from 'lucide-react';
+import { applyPageMetadata, setStructuredData } from '../../lib/api';
+import { publicBlogApi } from '../lib/blogApi.js';
+import BlogCard from '../components/BlogCard.jsx';
+import BlogFeaturedCard from '../components/BlogFeaturedCard.jsx';
+import BlogCategoryFilter from '../components/BlogCategoryFilter.jsx';
+import BlogSearch from '../components/BlogSearch.jsx';
+import '../styles/blog.css';
 
 const CATEGORIES = [
   'All', 'PTE', 'IELTS', 'TOEFL', 'GRE', 'Duolingo', 'Study Abroad',
   'Admissions', 'Education Loans', 'Visa', 'Universities', 'Exam Preparation',
 ];
-
-function ArticleCard({ post, index = 0 }) {
-  return (
-    <Link to={`/blog/${post.slug}`} className="group relative flex flex-col rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-up" style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}>
-      <div className="aspect-[16/9] bg-neutral-100 dark:bg-[#0E0E0E] overflow-hidden">
-        {post.coverImage ? (
-          <img src={imageUrl(post.coverImage, { width: 600 })} srcSet={cldSrcSet(post.coverImage, [300, 480, 600]) || undefined} sizes="(max-width: 768px) 100vw, 380px" alt={post.coverImageAlt || post.title} width={480} height={270} loading={index < 2 ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600 text-xs font-bold">No image</div>
-        )}
-        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-brand-pink text-white text-[10px] font-black uppercase tracking-wider shadow-md">{post.category}</span>
-      </div>
-      <div className="flex flex-col flex-1 p-5 space-y-2.5">
-        <h3 className="font-heading font-black text-base leading-snug text-neutral-900 dark:text-white line-clamp-2 group-hover:text-brand-pink transition-colors">{post.title}</h3>
-        <p className="text-xs font-medium text-neutral-500 dark:text-[#B5B5B5] line-clamp-2 flex-1">{post.excerpt}</p>
-        <div className="flex items-center justify-between pt-2.5 border-t border-[#EAEAEA] dark:border-[#292929]">
-          <div className="flex items-center gap-3 text-[10px] font-bold text-neutral-400">
-            <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> {fmtDate(post.publishedAt)}</span>
-            {post.readingTime ? <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readingTime} min</span> : null}
-          </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-black text-brand-pink group-hover:gap-1.5 transition-all">Read <ArrowRight className="w-3 h-3" /></span>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 export function BlogIndexPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -142,37 +119,18 @@ export function BlogIndexPage() {
             <p className="text-sm sm:text-base font-medium text-neutral-400 max-w-2xl mx-auto leading-relaxed">
               Expert guides on PTE, IELTS, TOEFL, GRE, admissions, study abroad, and education loans for Indian students.
             </p>
-            {/* Search */}
-            <form onSubmit={handleSearch} className="mt-6 max-w-md mx-auto relative">
-              <input
-                type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search articles by topic, keyword…"
-                aria-label="Search articles"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/10 dark:bg-[#161616] border border-[#292929] text-white text-sm font-bold placeholder:text-neutral-500 focus:outline-none focus:border-brand-pink transition"
-              />
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-            </form>
+            <BlogSearch value={searchInput} onChange={setSearchInput} onSubmit={handleSearch} />
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20">
-        {/* ── Category Nav ────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-6 sm:pt-8 mb-8 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap cursor-pointer ${
-                activeCategory === cat
-                  ? 'bg-brand-pink text-white shadow-sm'
-                  : 'bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-[#333]'
-              }`}
-            >
-              {cat} {cat !== 'All' && categories.find((c) => c.name?.toLowerCase() === cat.toLowerCase()) ? `(${categories.find((c) => c.name?.toLowerCase() === cat.toLowerCase()).count})` : ''}
-            </button>
-          ))}
-        </div>
+        <BlogCategoryFilter
+          options={CATEGORIES}
+          categories={categories}
+          active={activeCategory}
+          onSelect={handleCategory}
+        />
 
         {/* ── Loading State ───────────────────────────────────────────────── */}
         {loading && (
@@ -207,45 +165,14 @@ export function BlogIndexPage() {
         )}
 
         {/* ── Featured Spotlight ──────────────────────────────────────────── */}
-        {!loading && featured && (
-          <div className="mb-10 sm:mb-12 animate-fade-up">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-pink text-white text-[10px] font-black uppercase tracking-wider">
-                ✦ Featured Article
-              </span>
-            </div>
-            <Link to={`/blog/${featured.slug}`} className="group relative grid md:grid-cols-2 rounded-3xl overflow-hidden border border-brand-pink/25 bg-white dark:bg-[#161616] card-shadow hover:shadow-2xl transition-all duration-300">
-              <div className="relative aspect-video md:aspect-auto md:min-h-80 overflow-hidden bg-neutral-100 dark:bg-[#0E0E0E]">
-                {featured.coverImage ? (
-                  <img src={imageUrl(featured.coverImage, { width: 900 })} srcSet={cldSrcSet(featured.coverImage, [480, 800, 1000]) || undefined} sizes="(max-width: 768px) 100vw, 600px" alt={featured.coverImageAlt || featured.title} width={800} height={450} loading="eager" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600">No image</div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/60 via-black/10 to-transparent" />
-                <span className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-brand-pink text-white text-[11px] font-black uppercase tracking-wider shadow-md">{featured.category}</span>
-              </div>
-              <div className="flex flex-col justify-center p-6 sm:p-10 space-y-4">
-                <div className="flex items-center gap-3 flex-wrap text-[11px] font-bold text-neutral-500 dark:text-[#B5B5B5]">
-                  <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-brand-pink" /> {fmtDate(featured.publishedAt)}</span>
-                  {featured.readingTime ? <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-pink" /> {featured.readingTime} min read</span> : null}
-                  {featured.author ? <span className="inline-flex items-center gap-1"><User className="w-3.5 h-3.5 text-brand-pink" /> {featured.author}</span> : null}
-                </div>
-                <h2 className="font-heading font-black text-2xl sm:text-3xl leading-tight text-neutral-900 dark:text-white">{featured.title}</h2>
-                <p className="text-sm font-medium text-neutral-500 dark:text-[#B5B5B5] leading-relaxed line-clamp-3">{featured.excerpt}</p>
-                <span className="inline-flex items-center gap-2 text-brand-pink text-sm font-black group-hover:gap-3 transition-all">
-                  Read Article <ArrowRight className="w-4 h-4" strokeWidth={3} />
-                </span>
-              </div>
-            </Link>
-          </div>
-        )}
+        {!loading && featured && <BlogFeaturedCard post={featured} />}
 
         {/* ── Article Grid ────────────────────────────────────────────────── */}
         {!loading && !error && posts.length > 0 && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
               {(featured ? gridPosts : posts).map((post, idx) => (
-                <ArticleCard key={post._id || post.slug} post={post} index={idx} />
+                <BlogCard key={post._id || post.slug} post={post} index={idx} />
               ))}
             </div>
 

@@ -54,9 +54,9 @@ const ResetPasswordPage = lazyNamed(() => import('./components/AuthPages'), 'Res
 const PaymentReturnPage = lazyNamed(() => import('./components/PaymentReturnPage'), 'PaymentReturnPage');
 const AccountHome = lazy(() => import('./components/AccountPages'));
 const AdminConsole = lazy(() => import('./components/AdminConsole'));
-const BlogIndexPage = lazyNamed(() => import('./components/BlogIndexPage'), 'BlogIndexPage');
-const BlogPostPage = lazyNamed(() => import('./components/BlogPostPage'), 'BlogPostPage');
-const BlogPreviewPage = lazyNamed(() => import('./components/BlogPreviewPage'), 'BlogPreviewPage');
+const BlogIndexPage = lazyNamed(() => import('./blogs/pages/BlogIndexPage'), 'BlogIndexPage');
+const BlogPostPage = lazyNamed(() => import('./blogs/pages/BlogPostPage'), 'BlogPostPage');
+const BlogPreviewPage = lazyNamed(() => import('./blogs/pages/BlogPreviewPage'), 'BlogPreviewPage');
 
 const PageFallback = ({ minHeight = 'min-h-80' }) => (
   <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500 dark:text-neutral-400`}>
