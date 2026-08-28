@@ -17,6 +17,8 @@ export default function LinkDialog({ editor, excludeId, onClose }) {
   const [text, setText] = useState(selectionText || '');
   const [newTab, setNewTab] = useState(existing.target === '_blank');
   const [nofollow, setNofollow] = useState(/nofollow/.test(existing.rel || ''));
+  const [sponsored, setSponsored] = useState(/sponsored/.test(existing.rel || ''));
+  const [ugc, setUgc] = useState(/ugc/.test(existing.rel || ''));
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
 
@@ -31,7 +33,8 @@ export default function LinkDialog({ editor, excludeId, onClose }) {
 
   const apply = () => {
     if (!url.trim()) return;
-    const rel = ['noopener', 'noreferrer', nofollow ? 'nofollow' : null].filter(Boolean).join(' ');
+    const rel = ['noopener', 'noreferrer', nofollow && 'nofollow', sponsored && 'sponsored', ugc && 'ugc']
+      .filter(Boolean).join(' ');
     const attrs = { href: url.trim(), target: newTab ? '_blank' : null, rel };
     const chain = editor.chain().focus();
     const { from, to } = editor.state.selection;
@@ -68,9 +71,11 @@ export default function LinkDialog({ editor, excludeId, onClose }) {
           <span className="ae-label">Link text</span>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Shown text (defaults to the URL / selection)" className="ae-input" />
         </label>
-        <div className="flex items-center gap-4 mb-3 text-xs font-bold">
+        <div className="flex items-center gap-x-4 gap-y-1.5 mb-3 text-xs font-bold flex-wrap">
           <label className="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={newTab} onChange={(e) => setNewTab(e.target.checked)} /> Open in new tab</label>
-          <label className="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={nofollow} onChange={(e) => setNofollow(e.target.checked)} /> rel="nofollow"</label>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={nofollow} onChange={(e) => setNofollow(e.target.checked)} /> nofollow</label>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={sponsored} onChange={(e) => setSponsored(e.target.checked)} /> sponsored</label>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={ugc} onChange={(e) => setUgc(e.target.checked)} /> ugc</label>
         </div>
 
         <div className="ae-label mb-1.5">Or link to a page on this site</div>

@@ -1,111 +1,25 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus, Search, FileText, Edit2, Trash2, X, Eye, Save, Copy, Send, EyeOff, Clock,
-  RotateCcw, Trash, ImageIcon, Tag, Link2, HelpCircle, History, Sparkles, ChevronRight,
-  CheckCircle2, AlertTriangle, XCircle, ExternalLink, Upload, Code2, PenSquare,
+  Plus, Search, FileText, Edit2, Trash2, X, Eye, Save, Send, EyeOff, Clock,
+  RotateCcw, Trash, ImageIcon, Tag, Link2, HelpCircle, History, Copy, ChevronDown,
+  CloudUpload, AlertTriangle, Keyboard,
 } from 'lucide-react';
 import { blogApi } from '../lib/blogApi.js';
-import ArticleEditor from '../components/editor';
-import { listCodeArticles } from '../registry.js';
-
-// ── Shared UI helpers (matching AdminConsole/AwardsAdmin conventions) ──────
-
-const Label = ({ children }) => <span className="block text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2">{children}</span>;
-
-function Field({ label, type = 'text', value, onChange, placeholder, hint }) {
-  return (
-    <label className="block">
-      <Label>{label}</Label>
-      <input type={type} value={value ?? ''} placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink transition"
-      />
-      {hint && <span className="block text-[10px] font-bold text-neutral-400 mt-1">{hint}</span>}
-    </label>
-  );
-}
-function TextArea({ label, value, onChange, rows = 3, hint }) {
-  return (
-    <label className="block">
-      <Label>{label}</Label>
-      <textarea rows={rows} value={value ?? ''} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink transition whitespace-pre-wrap"
-      />
-      {hint && <span className="block text-[10px] font-bold text-neutral-400 mt-1">{hint}</span>}
-    </label>
-  );
-}
-function Select({ label, value, onChange, options }) {
-  return (
-    <label className="block">
-      <Label>{label}</Label>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink transition">
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </label>
-  );
-}
-function Check({ label, checked, onChange }) {
-  return (
-    <label className="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 accent-brand-pink" />
-      <span className="text-xs font-black text-neutral-700 dark:text-neutral-200">{label}</span>
-    </label>
-  );
-}
-function Th({ children }) { return <th className="text-[10px] font-black uppercase tracking-wider px-4 py-3 text-left text-neutral-500 dark:text-neutral-400">{children}</th>; }
-function Td({ children, className = '' }) { return <td className={`px-4 py-3 align-top text-neutral-700 dark:text-neutral-200 ${className}`}>{children}</td>; }
-function Empty({ title, desc }) {
-  return (
-    <div className="text-center py-10 rounded-2xl border border-dashed border-[#EAEAEA] dark:border-[#292929]">
-      <div className="font-black text-neutral-900 dark:text-white">{title}</div>
-      <div className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] mt-1">{desc}</div>
-    </div>
-  );
-}
-
-const STATUS_STYLES = {
-  draft: 'bg-neutral-100 text-neutral-600 dark:bg-[#262626] dark:text-neutral-300',
-  scheduled: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400',
-  published: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400',
-  unpublished: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400',
-  trash: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400',
-};
-const StatusBadge = ({ status }) => (
-  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border capitalize ${STATUS_STYLES[status] || STATUS_STYLES.draft}`}>{status}</span>
-);
-
-const ScoreBadge = ({ score, grade }) => {
-  const color = score >= 75 ? 'text-emerald-600 dark:text-emerald-400' : score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
-  return (
-    <div className="flex flex-col">
-      <span className={`font-black text-sm tabular-nums ${color}`}>{score || 0}/100</span>
-      <span className="text-[10px] font-bold text-neutral-400">{grade || '—'}</span>
-    </div>
-  );
-};
-
-const emptyDraft = () => ({
-  title: '', slug: '', excerpt: '', content: '',
-  coverImage: '', coverImagePublicId: '', coverImageAlt: '', coverImageTitle: '', coverImageCaption: '', coverImageDescription: '',
-  images: [], author: 'Apex Vouchers', authorBio: '', authorImage: '', reviewer: '', reviewedAt: '',
-  category: 'Exam Guide', tags: [], featured: false,
-  contentSource: 'cms',
-  faqs: [], relatedPosts: [],
-  seo: { title: '', description: '', focusKeyword: '', secondaryKeywords: [], canonicalUrl: '', ogTitle: '', ogDescription: '', ogImage: '', twitterTitle: '', twitterDescription: '', twitterImage: '', twitterCardType: 'summary_large_image', noindex: false, nofollow: false },
-});
-
-const toDraft = (post) => ({
-  ...emptyDraft(),
-  ...post,
-  tags: post?.tags || [],
-  images: post?.images || [],
-  contentSource: post?.contentSource === 'code' ? 'code' : 'cms',
-  faqs: post?.faqs || [],
-  relatedPosts: (post?.relatedPosts || []).map((r) => (typeof r === 'string' ? r : r._id)),
-  seo: { ...emptyDraft().seo, ...(post?.seo || {}) },
-});
+import { analyzeBlogSEO, checkBlogSafetyWarningsLocal } from '../lib/seoAnalysis.js';
+import { Label, Th, Td, Empty, StatusBadge, ScoreBadge } from './ui.jsx';
+import { toDraft, serializeDraft } from './draftModel.js';
+import { useBlogDraft } from './useBlogDraft.js';
+import { ToastProvider, useToast } from './Toast.jsx';
+import ContentTab from './tabs/ContentTab.jsx';
+import ImagesTab from './tabs/ImagesTab.jsx';
+import SeoTab from './tabs/SeoTab.jsx';
+import FaqTab from './tabs/FaqTab.jsx';
+import LinksTab from './tabs/LinksTab.jsx';
+import RelatedTab from './tabs/RelatedTab.jsx';
+import HistoryTab from './tabs/HistoryTab.jsx';
+import SeoHealthPanel from './panels/SeoHealthPanel.jsx';
+import AnalyticsPanels from './panels/AnalyticsPanels.jsx';
+import ImproveSeoPanel from './panels/ImproveSeoPanel.jsx';
 
 // ── List view ─────────────────────────────────────────────────────────────
 
@@ -136,24 +50,21 @@ export default function BlogAdmin() {
 
   const counts = rows.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
 
-  const doPublish = async (r) => { const res = await blogApi.publish(r._id); if (res.success) refresh(); else alert(res.message); };
-  const doUnpublish = async (r) => { const res = await blogApi.unpublish(r._id); if (res.success) refresh(); else alert(res.message); };
-  const doDuplicate = async (r) => { const res = await blogApi.duplicate(r._id); if (res.success) refresh(); else alert(res.message); };
-  const doTrash = async (r) => { if (!confirm(`Move "${r.title}" to Trash?`)) return; const res = await blogApi.trash(r._id); if (res.success) refresh(); else alert(res.message); };
-  const doRestore = async (r) => { const res = await blogApi.restore(r._id); if (res.success) refresh(); else alert(res.message); };
-  const doPermanentDelete = async (r) => {
-    if (!confirm(`Permanently delete "${r.title}"? This cannot be undone.`)) return;
-    const res = await blogApi.permanentDelete(r._id);
+  const rowAction = async (fn, r, confirmMsg) => {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    const res = await fn(r._id);
     if (res.success) refresh(); else alert(res.message);
   };
 
   if (editingPost !== undefined) {
     return (
-      <BlogEditor
-        post={editingPost}
-        onClose={() => setEditingPost(undefined)}
-        onSaved={() => { setEditingPost(undefined); refresh(); }}
-      />
+      <ToastProvider>
+        <BlogEditor
+          post={editingPost}
+          onClose={() => setEditingPost(undefined)}
+          onSaved={() => refresh()}
+        />
+      </ToastProvider>
     );
   }
 
@@ -212,12 +123,7 @@ export default function BlogAdmin() {
           <table className="w-full text-left">
             <thead className="bg-neutral-50 dark:bg-[#0E0E0E]">
               <tr>
-                <Th>Article</Th>
-                <Th>Category</Th>
-                <Th>Status</Th>
-                <Th>SEO Score</Th>
-                <Th>Last Updated</Th>
-                <Th className="text-right">Actions</Th>
+                <Th>Article</Th><Th>Category</Th><Th>Status</Th><Th>SEO Score</Th><Th>Last Updated</Th><Th className="text-right">Actions</Th>
               </tr>
             </thead>
             <tbody>
@@ -243,18 +149,16 @@ export default function BlogAdmin() {
                       {r.status !== 'trash' ? (
                         <>
                           <button onClick={() => setEditingPost(r)} title="Edit" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-amber-100 hover:text-amber-700 transition cursor-pointer"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => doDuplicate(r)} title="Duplicate" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-sky-100 hover:text-sky-700 transition cursor-pointer"><Copy className="w-3.5 h-3.5" /></button>
-                          {r.status !== 'published' ? (
-                            <button onClick={() => doPublish(r)} title="Publish" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-emerald-100 hover:text-emerald-700 transition cursor-pointer"><Send className="w-3.5 h-3.5" /></button>
-                          ) : (
-                            <button onClick={() => doUnpublish(r)} title="Unpublish" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-amber-100 hover:text-amber-700 transition cursor-pointer"><EyeOff className="w-3.5 h-3.5" /></button>
-                          )}
-                          <button onClick={() => doTrash(r)} title="Move to Trash" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-rose-100 hover:text-rose-600 transition cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => rowAction(blogApi.duplicate, r)} title="Duplicate" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-sky-100 hover:text-sky-700 transition cursor-pointer"><Copy className="w-3.5 h-3.5" /></button>
+                          {r.status !== 'published'
+                            ? <button onClick={() => rowAction(blogApi.publish, r)} title="Publish" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-emerald-100 hover:text-emerald-700 transition cursor-pointer"><Send className="w-3.5 h-3.5" /></button>
+                            : <button onClick={() => rowAction(blogApi.unpublish, r, `Unpublish "${r.title}"? It will no longer be publicly accessible.`)} title="Unpublish" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-amber-100 hover:text-amber-700 transition cursor-pointer"><EyeOff className="w-3.5 h-3.5" /></button>}
+                          <button onClick={() => rowAction(blogApi.trash, r, `Move "${r.title}" to Trash?`)} title="Move to Trash" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-rose-100 hover:text-rose-600 transition cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => doRestore(r)} title="Restore" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-emerald-100 hover:text-emerald-700 transition cursor-pointer"><RotateCcw className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => doPermanentDelete(r)} title="Permanently Delete" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-rose-100 hover:text-rose-600 transition cursor-pointer"><Trash className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => rowAction(blogApi.restore, r)} title="Restore" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-emerald-100 hover:text-emerald-700 transition cursor-pointer"><RotateCcw className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => rowAction(blogApi.permanentDelete, r, `Permanently delete "${r.title}"? This cannot be undone.`)} title="Permanently Delete" className="p-2 rounded-lg bg-neutral-100 dark:bg-[#222] hover:bg-rose-100 hover:text-rose-600 transition cursor-pointer"><Trash className="w-3.5 h-3.5" /></button>
                         </>
                       )}
                     </div>
@@ -278,101 +182,92 @@ const TABS = [
   { id: 'images', label: 'Images', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'seo', label: 'SEO', icon: <Tag className="w-4 h-4" /> },
   { id: 'faq', label: 'FAQ', icon: <HelpCircle className="w-4 h-4" /> },
-  { id: 'links', label: 'Internal Links', icon: <Link2 className="w-4 h-4" /> },
-  { id: 'related', label: 'Related Posts', icon: <ExternalLink className="w-4 h-4" /> },
+  { id: 'links', label: 'Links', icon: <Link2 className="w-4 h-4" /> },
+  { id: 'related', label: 'Related Posts', icon: <Copy className="w-4 h-4" /> },
   { id: 'history', label: 'Revision History', icon: <History className="w-4 h-4" /> },
 ];
 
+const SHORTCUTS = [
+  ['⌘/Ctrl + B', 'Bold'], ['⌘/Ctrl + I', 'Italic'], ['⌘/Ctrl + U', 'Underline'],
+  ['⌘/Ctrl + K', 'Link'], ['⌘/Ctrl + Z', 'Undo'], ['⌘/Ctrl + ⇧ + Z', 'Redo'],
+];
+
+const relTime = (d) => {
+  if (!d) return '';
+  const s = Math.round((Date.now() - d.getTime()) / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  return d.toLocaleString();
+};
+
 function BlogEditor({ post, onClose, onSaved }) {
-  const [id, setId] = useState(post?._id || null);
+  const toast = useToast();
   const [status, setStatus] = useState(post?.status || 'draft');
-  const [draft, setDraft] = useState(toDraft(post));
   const [activeTab, setActiveTab] = useState('content');
-  const [saving, setSaving] = useState(false);
   const [editorInstance, setEditorInstance] = useState(null);
+  const [editorApi, setEditorApi] = useState(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleValue, setScheduleValue] = useState('');
-  const [seoAnalysis, setSeoAnalysis] = useState(null);
-  const [safetyWarnings, setSafetyWarnings] = useState([]);
+  const [scheduledAt, setScheduledAt] = useState(post?.scheduledAt ? new Date(post.scheduledAt) : null);
+  const [serverWarnings, setServerWarnings] = useState([]);
   const [improveSuggestions, setImproveSuggestions] = useState(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const setField = (field, value) => setDraft((d) => ({ ...d, [field]: value }));
-  const setSeoField = (field, value) => setDraft((d) => ({ ...d, seo: { ...d.seo, [field]: value } }));
+  const modalOpen = scheduleOpen || busy;
+  const {
+    id, draft, dirty, saveState, lastSavedAt, recoverable,
+    setField, setSeoField, setDraft, save, applyServerData,
+    restoreRecoverable, discardRecoverable,
+  } = useBlogDraft(post, {
+    blockAutosave: modalOpen,
+    onServerUpdate: (data) => { setStatus(data.status); setScheduledAt(data.scheduledAt ? new Date(data.scheduledAt) : null); onSaved?.(data); },
+  });
 
-  const buildPayload = () => ({ ...draft });
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const persist = async () => {
-    setSaving(true);
-    try {
-      const payload = buildPayload();
-      let res;
-      if (id) res = await blogApi.update(id, payload);
-      else res = await blogApi.create(payload);
-      if (!res.success) { alert(res.message || 'Failed to save'); return null; }
-      setId(res.data._id);
-      setStatus(res.data.status);
-      setDraft(toDraft(res.data));
-      return res.data;
-    } finally {
-      setSaving(false);
-    }
+  // ── field refs for "Fix it" ───────────────────────────────────────────────
+  const refs = {
+    title: useRef(null), slug: useRef(null),
+    seoTitle: useRef(null), metaDesc: useRef(null), keyword: useRef(null),
+    canonical: useRef(null), robots: useRef(null),
   };
-
-  const saveDraft = async () => { const r = await persist(); if (r) alert('✅ Draft saved'); };
-  const doPublish = async () => {
-    const r = await persist();
-    if (!r) return;
-    const res = await blogApi.publish(r._id);
-    if (res.success) { setStatus('published'); setDraft(toDraft(res.data)); alert('✅ Published'); } else alert(res.message);
+  const KEY_TO_TARGET = {
+    seoTitle: ['seo', 'seoTitle'], seoTitleLen: ['seo', 'seoTitle'],
+    metaDesc: ['seo', 'metaDesc'], metaDescLen: ['seo', 'metaDesc'],
+    keyword: ['seo', 'keyword'], canonical: ['seo', 'canonical'], indexable: ['seo', 'robots'],
+    slug: ['content', 'slug'],
+    h1: ['content', null], depth: ['content', null], headings: ['content', null],
+    faqs: ['faq', null], internalLinks: ['links', null],
+    coverImage: ['images', null], coverAlt: ['images', null], imageAltCoverage: ['images', null],
   };
-  const doUnpublish = async () => {
-    if (!id) return;
-    const res = await blogApi.unpublish(id);
-    if (res.success) { setStatus('unpublished'); setDraft(toDraft(res.data)); } else alert(res.message);
-  };
-  const doSchedule = async () => {
-    if (!scheduleValue) return;
-    const r = await persist();
-    if (!r) return;
-    const res = await blogApi.schedule(r._id, new Date(scheduleValue).toISOString());
-    if (res.success) { setStatus('scheduled'); setDraft(toDraft(res.data)); setScheduleOpen(false); alert('✅ Scheduled'); } else alert(res.message);
-  };
-  const doPreview = async () => {
-    const r = await persist();
-    if (!r) return;
-    window.open(`/admin/blog-preview/${r._id}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const runAnalysis = useCallback(async () => {
-    if (!id) return;
-    setLoadingAnalysis(true);
-    try {
-      const res = await blogApi.analyzeSeo(id);
-      if (res.success) { setSeoAnalysis(res.data); setSafetyWarnings(res.data.safetyWarnings || []); }
-    } finally {
-      setLoadingAnalysis(false);
-    }
-  }, [id]);
-
-  useEffect(() => { if (id) runAnalysis(); }, [id]);
-
-  const runImproveSeo = async () => {
-    if (!id) { alert('Save the draft first so it can be analyzed.'); return; }
-    const res = await blogApi.improveSeo(id);
-    if (res.success) setImproveSuggestions(res.data);
-  };
-
   const quickFix = (rec) => {
-    if (rec.issue.toLowerCase().includes('seo title')) setSeoField('title', draft.title);
-    else if (rec.issue.toLowerCase().includes('meta description')) setSeoField('description', (draft.excerpt || '').slice(0, 155));
-    else if (rec.field === 'faqs') setActiveTab('faq');
-    else if (rec.field === 'images') setActiveTab('images');
-    else if (rec.issue.toLowerCase().includes('internal link')) setActiveTab('links');
-    else setActiveTab('content');
+    const [tab, refKey] = KEY_TO_TARGET[rec?.key] || ['content', null];
+    setActiveTab(tab);
+    setTimeout(() => {
+      if (refKey && refs[refKey]?.current) refs[refKey].current.focus();
+      else if (tab === 'content') editorInstance?.commands?.focus?.();
+    }, 60);
   };
 
-  const pickAndUploadImage = () => new Promise((resolve) => {
+  // ── live SEO analysis (debounced) ─────────────────────────────────────────
+  const [analysis, setAnalysis] = useState(() => {
+    const a = analyzeBlogSEO(draft);
+    a.localWarnings = checkBlogSafetyWarningsLocal(draft);
+    return a;
+  });
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const a = analyzeBlogSEO(draft);
+      a.localWarnings = checkBlogSafetyWarningsLocal(draft);
+      setAnalysis(a);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draft]);
+
+  // ── image upload helpers ─────────────────────────────────────────────────
+  const pickAndUpload = () => new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/jpeg,image/png,image/webp';
@@ -380,73 +275,207 @@ function BlogEditor({ post, onClose, onSaved }) {
       const file = input.files?.[0];
       if (!file) return resolve(null);
       const res = await blogApi.uploadImage(file);
-      if (res.success) {
-        if (res.warning) alert(`⚠ ${res.warning}`);
-        resolve(res);
-      } else {
-        alert(res.message || 'Upload failed');
-        resolve(null);
-      }
+      if (res.success) { if (res.warning) toast(res.warning, 'warn'); resolve(res); }
+      else { toast(res.message || 'Upload failed', 'error'); resolve(null); }
     };
     input.click();
   });
-
-  // Used by the Content-tab rich text editor and the Images tab's "Add Image" —
-  // registers the image in draft.images for ALT/caption/description editing.
   const handleImageUploadRequest = async () => {
-    const res = await pickAndUploadImage();
+    const res = await pickAndUpload();
     if (!res?.url) return null;
     const alt = window.prompt('ALT text for this image (describe it naturally):', '') || '';
-    setDraft((d) => ({ ...d, images: [...d.images, { url: res.url, publicId: res.publicId, filename: res.filename, alt }] }));
+    setDraft((d) => ({ ...d, images: [...d.images, { url: res.url, publicId: res.publicId, filename: res.filename, width: res.width, height: res.height, bytes: res.bytes, alt }] }));
     return { url: res.url, alt };
   };
-
-  // Featured image is its own field — never added to the in-article images registry.
-  const handleFeaturedImageUpload = async () => {
-    const res = await pickAndUploadImage();
+  const handleFeaturedUpload = async () => {
+    const res = await pickAndUpload();
     if (!res?.url) return null;
     setDraft((d) => ({ ...d, coverImage: res.url, coverImagePublicId: res.publicId || '' }));
     return res;
   };
 
+  // ── link edit from the Links tab ─────────────────────────────────────────
+  const editLink = (link) => {
+    setActiveTab('content');
+    setTimeout(() => {
+      if (!editorInstance) return;
+      const { doc } = editorInstance.state;
+      let range = null;
+      doc.descendants((node, pos) => {
+        if (range) return false;
+        const mark = node.marks?.find((mk) => mk.type.name === 'link' && mk.attrs.href === link.href);
+        if (mark) range = { from: pos, to: pos + node.nodeSize };
+        return true;
+      });
+      if (range) editorInstance.chain().focus().setTextSelection(range).run();
+      editorApi?.openLinkDialog?.();
+    }, 80);
+  };
+
+  // ── keyboard: Ctrl/Cmd+K → link ─────────────────────────────────────────
+  useEffect(() => {
+    const h = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setActiveTab('content');
+        editorApi?.openLinkDialog?.();
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [editorApi]);
+
+  // ── validation ──────────────────────────────────────────────────────────
+  const validate = () => {
+    if (!draft.title?.trim()) { setActiveTab('content'); refs.title.current?.focus(); return 'A title is required.'; }
+    const slugOk = draft.slug?.trim() || draft.title?.trim();
+    if (!slugOk) { setActiveTab('content'); refs.slug.current?.focus(); return 'A URL slug is required.'; }
+    if (draft.contentSource === 'cms') {
+      const plain = (draft.content || '').replace(/<[^>]*>/g, '').trim();
+      if (!plain) { setActiveTab('content'); return 'Add some article content before publishing (or switch Content Source to Code).'; }
+    }
+    return null;
+  };
+
+  // ── actions ─────────────────────────────────────────────────────────────
+  const persist = async () => {
+    const r = await save();
+    if (r?.error) { toast(r.error, 'error'); return null; }
+    // refresh the persisted SEO score for the list view
+    if (r?.data?._id) {
+      blogApi.analyzeSeo(r.data._id).then((a) => { if (a.success) setServerWarnings(a.data.safetyWarnings || []); });
+    }
+    return r?.data || null;
+  };
+
+  const doSaveDraft = async () => { setBusy(true); const d = await persist(); setBusy(false); if (d) toast('Draft saved', 'success'); };
+
+  const doPublish = async () => {
+    const err = validate();
+    if (err) { toast(err, 'error'); return; }
+    if (!confirm(`Publish "${draft.title}"?\n\nIt becomes publicly visible at /blog/${draft.slug || '…'}.`)) return;
+    setBusy(true);
+    const d = await persist();
+    if (d) {
+      const res = await blogApi.publish(d._id);
+      if (res.success) { applyServerData(res.data); setStatus('published'); toast('Published', 'success'); }
+      else toast(res.message, 'error');
+    }
+    setBusy(false);
+  };
+
+  const doUnpublish = async () => {
+    if (!id) return;
+    if (!confirm('Unpublish this article?\n\nIt will no longer be publicly accessible. The content is kept.')) return;
+    setBusy(true);
+    const res = await blogApi.unpublish(id);
+    if (res.success) { applyServerData(res.data); setStatus('unpublished'); toast('Unpublished', 'success'); }
+    else toast(res.message, 'error');
+    setBusy(false);
+  };
+
+  const doSchedule = async () => {
+    if (!scheduleValue) return;
+    setBusy(true);
+    const d = await persist();
+    if (d) {
+      const res = await blogApi.schedule(d._id, new Date(scheduleValue).toISOString());
+      if (res.success) { applyServerData(res.data); setStatus('scheduled'); setScheduledAt(new Date(res.data.scheduledAt)); setScheduleOpen(false); toast('Scheduled', 'success'); }
+      else toast(res.message, 'error');
+    }
+    setBusy(false);
+  };
+
+  const cancelSchedule = async () => {
+    if (!id) return;
+    setBusy(true);
+    const res = await blogApi.unpublish(id); // scheduled → unpublished/draft
+    if (res.success) { applyServerData(res.data); setStatus(res.data.status); setScheduledAt(null); toast('Schedule cancelled', 'info'); }
+    setBusy(false);
+  };
+
+  const doPreview = async () => {
+    setBusy(true);
+    const d = await persist();
+    setBusy(false);
+    if (d) window.open(`/admin/blog-preview/${d._id}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const runImproveSeo = async () => {
+    if (!id) { toast('Save the draft first so it can be analyzed.', 'warn'); return; }
+    const res = await blogApi.improveSeo(id);
+    if (res.success) setImproveSuggestions(res.data);
+  };
+
+  const SaveStatus = () => {
+    if (saveState === 'saving') return <span className="text-[11px] font-black text-neutral-400 inline-flex items-center gap-1"><CloudUpload className="w-3.5 h-3.5 animate-pulse" /> Saving…</span>;
+    if (saveState === 'error') return <span className="text-[11px] font-black text-rose-500 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Save failed</span>;
+    if (dirty) return <span className="text-[11px] font-black text-amber-500">Unsaved changes</span>;
+    if (lastSavedAt) return <span className="text-[11px] font-black text-emerald-500">Saved {relTime(lastSavedAt)}</span>;
+    return null;
+  };
+
   return (
     <div className="space-y-5">
+      {recoverable && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs font-black">
+          <span>Unsaved changes from {relTime(recoverable.at)} were found on this device.</span>
+          <span className="flex gap-2">
+            <button onClick={restoreRecoverable} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white cursor-pointer">Restore</button>
+            <button onClick={discardRecoverable} className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#161616] cursor-pointer">Discard</button>
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 rounded-xl bg-neutral-100 dark:bg-[#262626] hover:bg-neutral-200 transition cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onClose} className="p-2 rounded-xl bg-neutral-100 dark:bg-[#262626] hover:bg-neutral-200 transition cursor-pointer"><X className="w-4 h-4" /></button>
           <div>
             <h2 className="font-heading font-black text-xl">{id ? 'Edit Blog Post' : 'New Blog Post'}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <StatusBadge status={status} />
-              {draft.updatedAt && <span className="text-[10px] font-bold text-neutral-400">Last updated {new Date(draft.updatedAt).toLocaleString()}</span>}
+              <SaveStatus />
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={doPreview} disabled={saving} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black cursor-pointer"><Eye className="w-3.5 h-3.5" /> Preview</button>
+          <button onClick={() => setShowShortcuts((s) => !s)} title="Keyboard shortcuts" className="p-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] cursor-pointer"><Keyboard className="w-3.5 h-3.5" /></button>
+          <button onClick={doPreview} disabled={busy} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black cursor-pointer disabled:opacity-50"><Eye className="w-3.5 h-3.5" /> Preview</button>
           <div className="relative">
             <button onClick={() => setScheduleOpen((s) => !s)} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black cursor-pointer"><Clock className="w-3.5 h-3.5" /> Schedule</button>
             {scheduleOpen && (
-              <div className="absolute right-0 top-full mt-2 z-20 p-3 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-xl w-64 space-y-2">
+              <div className="absolute right-0 top-full mt-2 z-20 p-3 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-xl w-72 space-y-2">
                 <Label>Publish at</Label>
                 <input type="datetime-local" value={scheduleValue} onChange={(e) => setScheduleValue(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold" />
-                <button onClick={doSchedule} className="w-full px-3 py-2 rounded-lg btn-pink text-white text-xs font-black cursor-pointer">Confirm Schedule</button>
+                <p className="text-[10px] font-bold text-neutral-400">Timezone: {tz}</p>
+                <button onClick={doSchedule} disabled={busy || !scheduleValue} className="w-full px-3 py-2 rounded-lg btn-pink text-white text-xs font-black cursor-pointer disabled:opacity-40">Confirm Schedule</button>
               </div>
             )}
           </div>
-          {status === 'published' ? (
-            <button onClick={doUnpublish} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-black cursor-pointer"><EyeOff className="w-3.5 h-3.5" /> Unpublish</button>
-          ) : null}
-          <button onClick={saveDraft} disabled={saving} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-black cursor-pointer"><Save className="w-3.5 h-3.5" /> Save Draft</button>
-          <button onClick={doPublish} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-pink text-white text-xs font-black shadow-lg cursor-pointer"><Send className="w-3.5 h-3.5" /> Publish</button>
+          {status === 'published' && <button onClick={doUnpublish} disabled={busy} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-black cursor-pointer disabled:opacity-50"><EyeOff className="w-3.5 h-3.5" /> Unpublish</button>}
+          <button onClick={doSaveDraft} disabled={busy || saveState === 'saving'} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-black cursor-pointer disabled:opacity-50"><Save className="w-3.5 h-3.5" /> Save Draft</button>
+          <button onClick={doPublish} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-pink text-white text-xs font-black shadow-lg cursor-pointer disabled:opacity-50"><Send className="w-3.5 h-3.5" /> {status === 'published' ? 'Update' : 'Publish'}</button>
         </div>
       </div>
 
+      {showShortcuts && (
+        <div className="rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {SHORTCUTS.map(([k, v]) => (
+            <div key={k} className="flex items-center gap-2 text-[11px] font-bold"><kbd className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-[#262626] font-black">{k}</kbd> {v}</div>
+          ))}
+        </div>
+      )}
+
+      {status === 'scheduled' && scheduledAt && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 text-sky-800 dark:text-sky-300 text-xs font-black">
+          <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Scheduled for {scheduledAt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {tz}</span>
+          <button onClick={cancelSchedule} className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#161616] cursor-pointer">Cancel schedule</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <div className="xl:col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4 min-w-0">
           <div className="rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-2 flex items-center gap-1 overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -458,557 +487,31 @@ function BlogEditor({ post, onClose, onSaved }) {
             ))}
           </div>
 
-          <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-5">
+          <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-5 min-w-0">
             {activeTab === 'content' && (
-              <div className="space-y-4">
-                <Field label="Title *" value={draft.title} onChange={(v) => setField('title', v)} placeholder="e.g. Authentic PTE Exam Vouchers Online" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="URL Slug" value={draft.slug} onChange={(v) => setField('slug', v)} placeholder="auto-generated from title if left blank"
-                    hint={status === 'published' ? 'Changing this on a published post auto-creates a 301 redirect.' : undefined} />
-                  <Field label="Category" value={draft.category} onChange={(v) => setField('category', v)} placeholder="e.g. Exam Guide" />
-                </div>
-                <TextArea label="Short Excerpt" value={draft.excerpt} onChange={(v) => setField('excerpt', v)} rows={2} placeholder="One or two sentences shown on blog cards and used as a meta description fallback." />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Field label="Author" value={draft.author} onChange={(v) => setField('author', v)} />
-                  <Field label="Reviewer (optional)" value={draft.reviewer} onChange={(v) => setField('reviewer', v)} hint="For policy-sensitive articles" />
-                  <Field label="Tags (comma separated)" value={(draft.tags || []).join(', ')} onChange={(v) => setField('tags', v.split(',').map((s) => s.trim()).filter(Boolean))} />
-                </div>
-
-                <ContentSourceControl draft={draft} setField={setField} />
-
-                <div>
-                  <Label>{draft.contentSource === 'code' ? 'Article Content (CMS fallback)' : 'Article Content'}</Label>
-                  {draft.contentSource === 'code' && (
-                    <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2">
-                      This post renders from its registered React component. The content below is kept
-                      as a safe fallback and becomes live again if you switch Content Source back to CMS.
-                    </p>
-                  )}
-                  <ArticleEditor
-                    value={draft.content}
-                    onChange={(html) => setField('content', html)}
-                    onEditorReady={setEditorInstance}
-                    images={draft.images}
-                    onImagesChange={(imgs) => setField('images', imgs)}
-                    onRequestImageUpload={handleImageUploadRequest}
-                    title={draft.title}
-                    excludeId={id}
-                  />
-                </div>
-              </div>
+              <ContentTab
+                draft={draft} id={id} status={status} setField={setField} fieldRefs={refs}
+                onEditorReady={(editor, api) => { setEditorInstance(editor); if (api) setEditorApi(api); }}
+                onRequestImageUpload={handleImageUploadRequest}
+              />
             )}
-
             {activeTab === 'images' && (
-              <BlogImagesTab draft={draft} setField={setField} onUploadRequest={handleImageUploadRequest} onFeaturedUploadRequest={handleFeaturedImageUpload} />
+              <ImagesTab draft={draft} setField={setField} onFeaturedUploadRequest={handleFeaturedUpload} onUploadRequest={handleImageUploadRequest} onReplaceRequest={pickAndUpload} />
             )}
-
-            {activeTab === 'seo' && (
-              <BlogSeoTab draft={draft} setField={setField} setSeoField={setSeoField} slug={draft.slug} />
-            )}
-
-            {activeTab === 'faq' && (
-              <BlogFaqTab faqs={draft.faqs} onChange={(faqs) => setField('faqs', faqs)} />
-            )}
-
-            {activeTab === 'links' && (
-              <BlogLinksTab excludeId={id} editorInstance={editorInstance} />
-            )}
-
-            {activeTab === 'related' && (
-              <BlogRelatedTab draft={draft} setField={setField} excludeId={id} />
-            )}
-
-            {activeTab === 'history' && (
-              <BlogHistoryTab id={id} onRestored={(data) => setDraft(toDraft(data))} />
-            )}
+            {activeTab === 'seo' && <SeoTab draft={draft} setSeoField={setSeoField} slug={draft.slug} fieldRefs={refs} />}
+            {activeTab === 'faq' && <FaqTab faqs={draft.faqs} onChange={(faqs) => setField('faqs', faqs)} />}
+            {activeTab === 'links' && <LinksTab draft={draft} id={id} editorInstance={editorInstance} onEditLink={editLink} />}
+            {activeTab === 'related' && <RelatedTab draft={draft} setField={setField} excludeId={id} />}
+            {activeTab === 'history' && <HistoryTab id={id} onRestored={(data) => { setDraft(toDraft(data)); toast('Revision loaded — review and Save.', 'info'); }} />}
           </div>
         </div>
 
         <div className="space-y-4">
-          <SeoHealthPanel
-            analysis={seoAnalysis}
-            safetyWarnings={safetyWarnings}
-            loading={loadingAnalysis}
-            onRefresh={id ? runAnalysis : null}
-            onQuickFix={quickFix}
-          />
+          <SeoHealthPanel analysis={analysis} serverWarnings={serverWarnings} onQuickFix={quickFix} />
+          <AnalyticsPanels analysis={analysis} onQuickFix={quickFix} />
           <ImproveSeoPanel suggestions={improveSuggestions} onRun={runImproveSeo} onQuickFix={quickFix} hasId={!!id} />
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Content Source (CMS vs Code) ──────────────────────────────────────────
-
-function ContentSourceControl({ draft, setField }) {
-  const codeArticles = listCodeArticles();
-  const source = draft.contentSource === 'code' ? 'code' : 'cms';
-  const registered = codeArticles.find((a) => a.slug === draft.slug) || null;
-
-  return (
-    <div className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0E0E0E] p-4 space-y-3">
-      <div>
-        <Label>Content Source</Label>
-        <div className="inline-flex rounded-xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setField('contentSource', 'cms')}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-black cursor-pointer transition ${source === 'cms' ? 'bg-brand-pink text-white' : 'bg-white dark:bg-[#161616] text-neutral-600 dark:text-neutral-300'}`}
-          >
-            <PenSquare className="w-3.5 h-3.5" /> CMS
-          </button>
-          <button
-            type="button"
-            onClick={() => setField('contentSource', 'code')}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-black cursor-pointer transition ${source === 'code' ? 'bg-brand-pink text-white' : 'bg-white dark:bg-[#161616] text-neutral-600 dark:text-neutral-300'}`}
-          >
-            <Code2 className="w-3.5 h-3.5" /> Code
-          </button>
-        </div>
-        <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mt-2">
-          {source === 'code'
-            ? 'The article body is rendered by a registered React component. All metadata, SEO, schema, FAQ, related posts, sitemap and publishing stay CMS-managed. The URL never changes when you switch.'
-            : 'The article body is rendered from the CMS content editor below (current behaviour).'}
-        </p>
-      </div>
-
-      {source === 'code' && (
-        codeArticles.length === 0 ? (
-          <p className="text-[11px] font-black text-amber-600 dark:text-amber-400">
-            No code articles are registered yet. Add the slug + component to
-            frontend/src/blogs/registry.js, then reload.
-          </p>
-        ) : (
-          <>
-            <Select
-              label="Code Article"
-              value={registered ? registered.slug : ''}
-              onChange={(slug) => { if (slug) setField('slug', slug); }}
-              options={[
-                { value: '', label: '— Select a registered component —' },
-                ...codeArticles.map((a) => ({ value: a.slug, label: `${a.label}  (${a.slug})` })),
-              ]}
-            />
-            {registered ? (
-              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                ✓ Slug matches registered component “{registered.label}”. It will render at /blog/{draft.slug}.
-              </p>
-            ) : (
-              <p className="text-[11px] font-black text-amber-600 dark:text-amber-400">
-                ⚠ This slug has no registered component. Until one is added, /blog/{draft.slug || '…'} falls
-                back to the CMS content below.
-              </p>
-            )}
-          </>
-        )
-      )}
-    </div>
-  );
-}
-
-// ── Images tab ────────────────────────────────────────────────────────────
-
-function BlogImagesTab({ draft, setField, onUploadRequest, onFeaturedUploadRequest }) {
-  const uploadFeatured = async () => {
-    await onFeaturedUploadRequest();
-  };
-  const removeFeatured = () => {
-    setField('coverImage', '');
-    setField('coverImagePublicId', '');
-  };
-  const updateImage = (idx, patch) => {
-    const next = [...draft.images];
-    next[idx] = { ...next[idx], ...patch };
-    setField('images', next);
-  };
-  const removeImage = (idx) => setField('images', draft.images.filter((_, i) => i !== idx));
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Label>Featured Image</Label>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="w-full sm:w-48 aspect-video rounded-2xl overflow-hidden bg-neutral-100 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] shrink-0">
-            {draft.coverImage ? <img src={draft.coverImage} alt={draft.coverImageAlt} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-neutral-300"><ImageIcon className="w-8 h-8" /></div>}
-          </div>
-          <div className="flex-1 space-y-3">
-            <div className="flex items-center gap-2">
-              <button onClick={uploadFeatured} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-[#222] text-xs font-black cursor-pointer"><Upload className="w-3.5 h-3.5" /> {draft.coverImage ? 'Replace' : 'Upload'}</button>
-              {draft.coverImage && <button onClick={removeFeatured} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-black cursor-pointer"><Trash2 className="w-3.5 h-3.5" /> Remove</button>}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="ALT Text" value={draft.coverImageAlt} onChange={(v) => setField('coverImageAlt', v)} placeholder="Describe the image naturally" />
-              <Field label="Image Title" value={draft.coverImageTitle} onChange={(v) => setField('coverImageTitle', v)} />
-              <Field label="Caption" value={draft.coverImageCaption} onChange={(v) => setField('coverImageCaption', v)} />
-              <Field label="Description" value={draft.coverImageDescription} onChange={(v) => setField('coverImageDescription', v)} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <Label>In-Article Images ({draft.images.length})</Label>
-          <button onClick={() => onUploadRequest()} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-[#222] text-[11px] font-black cursor-pointer"><Plus className="w-3.5 h-3.5" /> Add Image</button>
-        </div>
-        {draft.images.length === 0 && <Empty title="No in-article images yet" desc="Insert images from the Content tab's toolbar — they'll appear here for ALT/caption editing." />}
-        <div className="space-y-3">
-          {draft.images.map((img, idx) => (
-            <div key={idx} className="flex gap-3 p-3 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-              <img src={img.url} alt={img.alt} className="w-20 h-20 rounded-xl object-cover shrink-0" />
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                <Field label="ALT Text" value={img.alt} onChange={(v) => updateImage(idx, { alt: v })} />
-                <Field label="Title" value={img.title} onChange={(v) => updateImage(idx, { title: v })} />
-                <Field label="Caption" value={img.caption} onChange={(v) => updateImage(idx, { caption: v })} />
-                <Field label="Description" value={img.description} onChange={(v) => updateImage(idx, { description: v })} />
-              </div>
-              <button onClick={() => removeImage(idx)} className="p-2 h-fit rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── SEO tab ───────────────────────────────────────────────────────────────
-
-function CharGuide({ value, min, max }) {
-  const len = (value || '').length;
-  const ok = len >= min && len <= max;
-  return <span className={`text-[10px] font-bold ${len === 0 ? 'text-neutral-400' : ok ? 'text-emerald-600' : 'text-amber-600'}`}>{len} chars (guidance: {min}–{max})</span>;
-}
-
-function BlogSeoTab({ draft, setField, setSeoField, slug }) {
-  const siteUrl = (typeof window !== 'undefined' ? window.location.origin : 'https://apexvouchers.com');
-  const canonical = draft.seo.canonicalUrl || `${siteUrl}/blog/${slug || 'your-post-slug'}`;
-  const robotsValue = draft.seo.noindex && draft.seo.nofollow ? 'noindex_nofollow'
-    : draft.seo.noindex ? 'noindex_follow'
-    : draft.seo.nofollow ? 'index_nofollow'
-    : 'index_follow';
-  const setRobots = (v) => {
-    setSeoField('noindex', v.startsWith('noindex'));
-    setSeoField('nofollow', v.endsWith('nofollow'));
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Label>Google Search Preview</Label>
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-          <div className="text-[13px] text-[#1a0dab] dark:text-sky-400 font-medium truncate">{draft.seo.title || draft.title || 'SEO Title Preview'}</div>
-          <div className="text-[12px] text-emerald-700 dark:text-emerald-500 truncate">{canonical}</div>
-          <div className="text-[12px] text-neutral-600 dark:text-neutral-400 mt-1 line-clamp-2">{draft.seo.description || draft.excerpt || 'Meta description preview…'}</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="Primary Keyword" value={draft.seo.focusKeyword} onChange={(v) => setSeoField('focusKeyword', v)} placeholder="e.g. authentic PTE exam vouchers" />
-        <Field label="Secondary Keywords (comma separated)" value={(draft.seo.secondaryKeywords || []).join(', ')} onChange={(v) => setSeoField('secondaryKeywords', v.split(',').map((s) => s.trim()).filter(Boolean))} />
-      </div>
-
-      <div>
-        <Field label="SEO Title" value={draft.seo.title} onChange={(v) => setSeoField('title', v)} placeholder="Shown in search results" />
-        <CharGuide value={draft.seo.title} min={30} max={70} />
-      </div>
-      <div>
-        <TextArea label="Meta Description" value={draft.seo.description} onChange={(v) => setSeoField('description', v)} rows={2} />
-        <CharGuide value={draft.seo.description} min={80} max={160} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="Canonical URL" value={draft.seo.canonicalUrl} onChange={(v) => setSeoField('canonicalUrl', v)} placeholder={canonical} hint="Leave blank to auto-use the article URL." />
-        <Select label="Robots" value={robotsValue} onChange={setRobots} options={[
-          { value: 'index_follow', label: 'Index, Follow (default)' },
-          { value: 'noindex_follow', label: 'Noindex, Follow' },
-          { value: 'index_nofollow', label: 'Index, Nofollow' },
-          { value: 'noindex_nofollow', label: 'Noindex, Nofollow' },
-        ]} />
-      </div>
-
-      <div className="pt-2 border-t border-[#EAEAEA] dark:border-[#292929]">
-        <Label>Open Graph</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="OG Title" value={draft.seo.ogTitle} onChange={(v) => setSeoField('ogTitle', v)} placeholder={draft.seo.title || draft.title} />
-          <Field label="OG Image URL" value={draft.seo.ogImage} onChange={(v) => setSeoField('ogImage', v)} placeholder={draft.coverImage || 'Uses featured image if blank'} />
-        </div>
-        <TextArea label="OG Description" value={draft.seo.ogDescription} onChange={(v) => setSeoField('ogDescription', v)} rows={2} />
-      </div>
-
-      <div className="pt-2 border-t border-[#EAEAEA] dark:border-[#292929]">
-        <Label>Twitter / X</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Twitter Title" value={draft.seo.twitterTitle} onChange={(v) => setSeoField('twitterTitle', v)} />
-          <Select label="Card Type" value={draft.seo.twitterCardType} onChange={(v) => setSeoField('twitterCardType', v)} options={[
-            { value: 'summary_large_image', label: 'Summary Large Image' },
-            { value: 'summary', label: 'Summary' },
-          ]} />
-        </div>
-        <TextArea label="Twitter Description" value={draft.seo.twitterDescription} onChange={(v) => setSeoField('twitterDescription', v)} rows={2} />
-        <Field label="Twitter Image URL" value={draft.seo.twitterImage} onChange={(v) => setSeoField('twitterImage', v)} placeholder={draft.coverImage || 'Uses featured image if blank'} />
-      </div>
-    </div>
-  );
-}
-
-// ── FAQ tab ───────────────────────────────────────────────────────────────
-
-function BlogFaqTab({ faqs, onChange }) {
-  const add = () => onChange([...(faqs || []), { question: '', answer: '' }]);
-  const update = (idx, patch) => { const next = [...faqs]; next[idx] = { ...next[idx], ...patch }; onChange(next); };
-  const remove = (idx) => onChange(faqs.filter((_, i) => i !== idx));
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label>Frequently Asked Questions ({faqs.length})</Label>
-        <button onClick={add} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-[#222] text-[11px] font-black cursor-pointer"><Plus className="w-3.5 h-3.5" /> Add FAQ</button>
-      </div>
-      {faqs.length === 0 && <Empty title="No FAQs yet" desc="FAQPage structured data is only generated once you add FAQs that will be rendered on the article." />}
-      {faqs.map((f, idx) => (
-        <div key={idx} className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-neutral-400 uppercase">FAQ {idx + 1}</span>
-            <button onClick={() => remove(idx)} className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-          </div>
-          <Field label="Question" value={f.question} onChange={(v) => update(idx, { question: v })} />
-          <TextArea label="Answer" value={f.answer} onChange={(v) => update(idx, { answer: v })} rows={2} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Internal Links tab ────────────────────────────────────────────────────
-
-function BlogLinksTab({ excludeId, editorInstance }) {
-  const [q, setQ] = useState('');
-  const [results, setResults] = useState([]);
-
-  useEffect(() => {
-    const t = setTimeout(async () => {
-      const res = await blogApi.internalLinkSuggestions(q, excludeId);
-      if (res.success) setResults(res.data || []);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q, excludeId]);
-
-  const insertLink = (item) => {
-    if (!editorInstance) { alert('Open the Content tab first so the editor is ready.'); return; }
-    const { from, to } = editorInstance.state.selection;
-    if (from === to) {
-      editorInstance.chain().focus().insertContent(`<a href="${item.url}">${item.title}</a>`).run();
-    } else {
-      editorInstance.chain().focus().extendMarkRange('link').setLink({ href: item.url }).run();
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
-        Search real pages on the site and insert a link at your cursor in the Content tab. Only URLs that actually exist are suggested.
-      </p>
-      <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-        <Search className="w-4 h-4 text-neutral-400" />
-        <input placeholder="Search products, pages, blog posts…" value={q} onChange={(e) => setQ(e.target.value)} className="bg-transparent outline-none text-xs font-bold w-full" />
-      </div>
-      <div className="space-y-2">
-        {results.map((r, idx) => (
-          <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-            <div className="min-w-0">
-              <div className="font-black text-xs text-neutral-900 dark:text-white line-clamp-1">{r.title}</div>
-              <div className="text-[10px] font-bold text-neutral-400 line-clamp-1">{r.url} · {r.type}</div>
-            </div>
-            <button onClick={() => insertLink(r)} className="shrink-0 px-3 py-1.5 rounded-lg btn-pink text-white text-[10px] font-black cursor-pointer">Insert Link</button>
-          </div>
-        ))}
-        {results.length === 0 && <Empty title="No matches" desc="Try a different search term." />}
-      </div>
-    </div>
-  );
-}
-
-// ── Related Posts tab ─────────────────────────────────────────────────────
-
-function BlogRelatedTab({ draft, setField, excludeId }) {
-  const [allPublished, setAllPublished] = useState([]);
-
-  useEffect(() => {
-    blogApi.list({ status: 'published' }).then((res) => { if (res.success) setAllPublished(res.data || []); });
-  }, []);
-
-  const selectable = allPublished.filter((p) => p._id !== excludeId);
-  const suggested = selectable.filter((p) => p.category === draft.category || (p.tags || []).some((t) => (draft.tags || []).includes(t)));
-
-  const toggle = (postId) => {
-    const set = new Set(draft.relatedPosts || []);
-    if (set.has(postId)) set.delete(postId); else set.add(postId);
-    setField('relatedPosts', Array.from(set));
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Label>Manually Selected ({(draft.relatedPosts || []).length})</Label>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {selectable.map((p) => (
-            <label key={p._id} className="flex items-center gap-3 p-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] cursor-pointer">
-              <input type="checkbox" checked={(draft.relatedPosts || []).includes(p._id)} onChange={() => toggle(p._id)} className="w-4 h-4 accent-brand-pink" />
-              <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 line-clamp-1">{p.title}</span>
-            </label>
-          ))}
-          {selectable.length === 0 && <Empty title="No other published posts yet" desc="Publish more articles to link them here." />}
-        </div>
-      </div>
-      {suggested.length > 0 && (
-        <div>
-          <Label>Auto-Suggested (same category/tags)</Label>
-          <div className="flex flex-wrap gap-2">
-            {suggested.map((p) => (
-              <button key={p._id} onClick={() => toggle(p._id)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-black border cursor-pointer ${(draft.relatedPosts || []).includes(p._id) ? 'bg-brand-pink text-white border-brand-pink' : 'bg-neutral-50 dark:bg-[#0E0E0E] border-[#EAEAEA] dark:border-[#292929]'}`}>
-                {p.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Revision History tab ──────────────────────────────────────────────────
-
-function BlogHistoryTab({ id, onRestored }) {
-  const [revisions, setRevisions] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    blogApi.revisions(id).then((res) => { if (res.success) setRevisions(res.data || []); setLoading(false); });
-  }, [id]);
-
-  const restore = async (rev) => {
-    if (!confirm(`Restore the version from ${new Date(rev.createdAt).toLocaleString()}? Your current unsaved changes in other tabs will be replaced once you Save.`)) return;
-    const res = await blogApi.restoreRevision(id, rev._id);
-    if (res.success) { onRestored(res.data); alert('✅ Revision restored into the editor — review and Save/Publish to confirm.'); } else alert(res.message);
-  };
-
-  if (!id) return <Empty title="Save this post first" desc="Revision history is available after the first save." />;
-  if (loading) return <div className="text-xs font-bold text-neutral-400 animate-pulse py-6 text-center">Loading revisions…</div>;
-  if (revisions.length === 0) return <Empty title="No revisions yet" desc="A revision is recorded every time you save changes to this post." />;
-
-  return (
-    <div className="space-y-2">
-      {revisions.map((rev) => (
-        <div key={rev._id} className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-          <div className="min-w-0">
-            <div className="text-xs font-black text-neutral-900 dark:text-white">{new Date(rev.createdAt).toLocaleString()}</div>
-            <div className="text-[10px] font-bold text-neutral-400 line-clamp-1">{rev.editedByEmail || 'system'} — {rev.changeSummary}</div>
-          </div>
-          <button onClick={() => restore(rev)} className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-[#222] text-[10px] font-black cursor-pointer"><RotateCcw className="w-3 h-3" /> Restore</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── SEO Health sidebar panel ──────────────────────────────────────────────
-
-function ScoreRing({ score = 0 }) {
-  const color = score >= 90 ? '#10B981' : score >= 75 ? '#22C55E' : score >= 60 ? '#F59E0B' : score >= 40 ? '#F97316' : '#EF4444';
-  const circumference = 2 * Math.PI * 40;
-  const offset = circumference - (score / 100) * circumference;
-  return (
-    <div className="relative w-24 h-24 mx-auto">
-      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-neutral-100 dark:text-[#262626]" />
-        <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="10" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-heading font-black text-xl">{score}</span>
-        <span className="text-[9px] font-bold text-neutral-400">/100</span>
-      </div>
-    </div>
-  );
-}
-
-const PRIORITY_ICON = { high: '🔴', medium: '🟠', low: '🟢' };
-
-function SeoHealthPanel({ analysis, safetyWarnings, loading, onRefresh, onQuickFix }) {
-  return (
-    <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-black text-sm flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-brand-pink" /> SEO Health</h3>
-        {onRefresh && <button onClick={onRefresh} className="text-[10px] font-black text-brand-pink cursor-pointer">{loading ? 'Analyzing…' : 'Refresh'}</button>}
-      </div>
-
-      {!analysis ? (
-        <p className="text-xs font-bold text-neutral-400">Save this post to see its SEO Health score and recommendations.</p>
-      ) : (
-        <>
-          <ScoreRing score={analysis.score} />
-          <div className="text-center text-xs font-black text-neutral-500">{analysis.grade}</div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E]"><div className="font-black text-sm">{analysis.breakdown.technical}/40</div><div className="text-[9px] font-bold text-neutral-400">Technical</div></div>
-            <div className="p-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E]"><div className="font-black text-sm">{analysis.breakdown.content}/40</div><div className="text-[9px] font-bold text-neutral-400">Content</div></div>
-            <div className="p-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E]"><div className="font-black text-sm">{analysis.breakdown.media}/20</div><div className="text-[9px] font-bold text-neutral-400">Media</div></div>
-          </div>
-
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {analysis.recommendations.map((r, idx) => (
-              <div key={idx} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
-                <div className="text-xs font-black flex items-start gap-1.5">
-                  <span>{PRIORITY_ICON[r.priority]}</span>
-                  <span className="flex-1">{r.text}</span>
-                </div>
-                <p className="text-[10px] font-bold text-neutral-400 mt-1 ml-5">{r.fix}</p>
-                <button onClick={() => onQuickFix(r)} className="ml-5 mt-1 text-[10px] font-black text-brand-pink cursor-pointer flex items-center gap-1">Go fix it <ChevronRight className="w-3 h-3" /></button>
-              </div>
-            ))}
-            {analysis.recommendations.length === 0 && (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600"><CheckCircle2 className="w-4 h-4" /> No issues found</div>
-            )}
-          </div>
-
-          {safetyWarnings.length > 0 && (
-            <div className="space-y-1.5 pt-2 border-t border-[#EAEAEA] dark:border-[#292929]">
-              {safetyWarnings.map((w, idx) => (
-                <div key={idx} className="flex items-start gap-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400"><XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {w.text}</div>
-              ))}
-            </div>
-          )}
-
-          <p className="text-[9px] font-bold text-neutral-400 pt-2 border-t border-[#EAEAEA] dark:border-[#292929]">{analysis.disclaimer}</p>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ImproveSeoPanel({ suggestions, onRun, onQuickFix, hasId }) {
-  return (
-    <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-5 space-y-3">
-      <button onClick={onRun} disabled={!hasId} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-black cursor-pointer disabled:opacity-40">
-        <Sparkles className="w-3.5 h-3.5" /> Improve Article SEO
-      </button>
-      {!hasId && <p className="text-[10px] font-bold text-neutral-400 text-center">Save the post first.</p>}
-      {suggestions && (
-        <div className="space-y-2">
-          {suggestions.suggestions.length === 0 ? (
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600"><CheckCircle2 className="w-4 h-4" /> No further suggestions right now</div>
-          ) : suggestions.suggestions.map((s, idx) => (
-            <div key={idx} className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
-              <div className="text-[11px] font-black text-amber-900 dark:text-amber-300">{s.issue}</div>
-              <div className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 mt-0.5">{s.suggestion}</div>
-              <button onClick={() => onQuickFix({ issue: s.issue, field: s.field, fix: s.suggestion })} className="mt-1.5 text-[10px] font-black text-brand-pink cursor-pointer">Apply / Go to field →</button>
-            </div>
-          ))}
-          <p className="text-[9px] font-bold text-neutral-400 pt-1">{suggestions.disclaimer}</p>
-        </div>
-      )}
     </div>
   );
 }

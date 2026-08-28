@@ -188,8 +188,11 @@ export const updateBlog = async (req, res, next) => {
     const patch = pickWritable(req.body);
     const oldSlug = post.slug;
     const oldDoc = post.toObject();
+    // Autosaves must not spam revision history or touch slug redirects — they
+    // are frequent, silent background writes (see useBlogDraft.js).
+    const isAutosave = req.body.__autosave === true || req.body.__autosave === 'true';
 
-    if (Object.keys(patch).length > 0) {
+    if (!isAutosave && Object.keys(patch).length > 0) {
       await BlogPostRevision.create({
         blogId: post._id,
         snapshot: oldDoc,
@@ -202,7 +205,7 @@ export const updateBlog = async (req, res, next) => {
     Object.assign(post, patch);
 
     // Slug change on an already-published post: create a 301 redirect, never a chain.
-    if (patch.slug && patch.slug !== oldSlug && oldDoc.status === 'published') {
+    if (!isAutosave && patch.slug && patch.slug !== oldSlug && oldDoc.status === 'published') {
       const oldPath = `/blog/${oldSlug}`;
       const newPath = `/blog/${post.slug}`;
       const alreadyRedirectedElsewhere = await Redirect.exists({ sourcePath: newPath });
@@ -455,6 +458,7 @@ export const improveArticleSeo = async (req, res, next) => {
 
     // Rule-based suggestions only — never mutates the post, never calls an LLM.
     const suggestions = analysis.recommendations.map((r) => ({
+      key: r.key || null,
       field: r.text.toLowerCase().includes('title') ? 'seo.title'
         : r.text.toLowerCase().includes('meta description') ? 'seo.description'
         : r.text.toLowerCase().includes('h1') ? 'content'

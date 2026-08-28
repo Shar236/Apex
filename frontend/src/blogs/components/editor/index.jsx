@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent } from '@tiptap/react';
-import { AlertTriangle, PenSquare, Eye, Code2 } from 'lucide-react';
+import { AlertTriangle, PenSquare, Eye, Code2, FileText, Clock } from 'lucide-react';
 import { useArticleEditor } from './useArticleEditor.js';
 import Toolbar from './Toolbar.jsx';
 import BubbleToolbar from './BubbleToolbar.jsx';
@@ -20,54 +20,58 @@ const MODES = [
   { id: 'html', label: 'HTML', icon: <Code2 className="w-3.5 h-3.5" /> },
 ];
 
+const countWords = (html) => {
+  const t = (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return t ? t.split(' ').length : 0;
+};
+
 /**
  * Visual article builder — the CMS content editor.
  *
  * Produces clean semantic HTML (`value`). Edit = TipTap block editor,
- * Preview = live render with real article styles, HTML = read-only generated
- * markup + copy. The CMS/Code architecture is unchanged: this only writes
- * `draft.content`.
+ * Preview = live prose-blog render, HTML = editable CodeMirror source (kept in
+ * two-way sync with the visual editor). Only writes `draft.content`.
  *
  * Props:
- *   value                the current HTML (draft.content)
- *   onChange(html)        called on every edit
- *   onEditorReady(editor) exposes the TipTap instance (used by the Links tab)
- *   images / onImagesChange   the draft.images[] DAM registry (kept in sync)
- *   onRequestImageUpload()    existing upload flow → { url, alt }
- *   title / excludeId         for Preview heading + internal-link search
+ *   value / onChange(html)         the current HTML
+ *   onEditorReady(editor, api)     api = { openLinkDialog } — used by the Links tab
+ *   images / onImagesChange        the draft.images[] DAM registry
+ *   onRequestImageUpload()         existing upload flow → { url, alt }
+ *   title / excludeId              for Preview heading + internal-link search
  */
 export default function ArticleEditor({
-  value,
-  onChange,
-  onEditorReady,
-  images = [],
-  onImagesChange,
-  onRequestImageUpload,
-  title,
-  excludeId,
+  value, onChange, onEditorReady, images = [], onImagesChange, onRequestImageUpload, title, excludeId,
 }) {
   const [mode, setMode] = useState('edit');
   const [linkOpen, setLinkOpen] = useState(false);
+  const lastPushedRef = useRef(value);
 
-  const editor = useArticleEditor({ value, onChange, onEditorReady });
+  const editor = useArticleEditor({ value, onChange });
 
-  // Keep external value changes (revision restore, save round-trip) in sync
-  // without fighting the user's caret.
+  // Expose the editor + a small imperative API once, when it is ready.
+  useEffect(() => {
+    if (editor && onEditorReady) onEditorReady(editor, { openLinkDialog: () => setLinkOpen(true) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
+
+  // External value changes (revision restore, save round-trip, HTML-mode edits)
+  // → sync into the editor without fighting the caret.
   useEffect(() => {
     if (!editor) return;
-    if (value !== undefined && value !== editor.getHTML()) {
+    if (value !== undefined && value !== editor.getHTML() && value !== lastPushedRef.current) {
       const { from, to } = editor.state.selection;
       editor.commands.setContent(value || '', { emitUpdate: false });
       try { editor.commands.setTextSelection({ from, to }); } catch { /* out of range */ }
     }
   }, [value, editor]);
 
+  const html = editor ? editor.getHTML() : (value || '');
+  const words = useMemo(() => countWords(html), [html]);
+  const h1Count = (html.match(/<h1[^>]*>/gi) || []).length;
+
   if (!editor) {
     return <div className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] p-8 text-sm font-bold text-neutral-400">Loading editor…</div>;
   }
-
-  const html = editor.getHTML();
-  const h1Count = (html.match(/<h1[^>]*>/gi) || []).length;
 
   const insertImage = async () => {
     const res = await onRequestImageUpload?.();
@@ -80,24 +84,30 @@ export default function ArticleEditor({
     editor.chain().focus().insertContentAt(end, { type: 'paragraph' }).setTextSelection(end + 1).run();
   };
 
+  // HTML source → visual editor. Guarded so it doesn't ping-pong with onUpdate.
+  const applyHtml = (nextHtml) => {
+    if (nextHtml === editor.getHTML()) return;
+    lastPushedRef.current = nextHtml;
+    editor.commands.setContent(nextHtml || '', { emitUpdate: true });
+  };
+
   return (
     <div className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden bg-white dark:bg-[#0E0E0E]">
-      {/* Mode strip */}
-      <div className="flex items-center gap-1 p-2 border-b border-[#EAEAEA] dark:border-[#292929] bg-white dark:bg-[#0E0E0E]">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setMode(m.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition ${
-              mode === m.id
-                ? 'bg-brand-pink text-white'
-                : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#222]'
-            }`}
-          >
-            {m.icon} {m.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2 p-2 border-b border-[#EAEAEA] dark:border-[#292929] bg-white dark:bg-[#0E0E0E]">
+        <div className="flex items-center gap-1">
+          {MODES.map((m) => (
+            <button key={m.id} type="button" onClick={() => setMode(m.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition ${
+                mode === m.id ? 'bg-brand-pink text-white' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#222]'
+              }`}>
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 pr-1 text-[11px] font-black text-neutral-400">
+          <span className="inline-flex items-center gap-1"><FileText className="w-3 h-3" /> {words.toLocaleString()} words</span>
+          <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {Math.max(1, Math.ceil(words / 200))} min</span>
+        </div>
       </div>
 
       {h1Count > 1 && mode === 'edit' && (
@@ -107,7 +117,6 @@ export default function ArticleEditor({
         </div>
       )}
 
-      {/* EDIT */}
       <div className={mode === 'edit' ? 'block' : 'hidden'}>
         <Toolbar editor={editor} onOpenLink={() => setLinkOpen(true)} onInsertImage={insertImage} />
         <div className="ae-editor-host relative">
@@ -120,15 +129,10 @@ export default function ArticleEditor({
         </div>
       </div>
 
-      {/* PREVIEW */}
       {mode === 'preview' && <PreviewView html={html} title={title} />}
+      {mode === 'html' && <div className="p-3"><HtmlView html={html} onChange={applyHtml} /></div>}
 
-      {/* HTML */}
-      {mode === 'html' && <div className="p-4"><HtmlView html={html} /></div>}
-
-      {linkOpen && (
-        <LinkDialog editor={editor} excludeId={excludeId} onClose={() => setLinkOpen(false)} />
-      )}
+      {linkOpen && <LinkDialog editor={editor} excludeId={excludeId} onClose={() => setLinkOpen(false)} />}
     </div>
   );
 }

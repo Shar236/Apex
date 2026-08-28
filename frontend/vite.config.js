@@ -11,14 +11,20 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (id.includes('lucide-react')) return 'icons';
-          // Rich-text editor stack — only the (lazy) admin console imports it,
-          // so keep it out of the eagerly-loaded vendor chunk.
+          // Rich-text + code editor stack — only the (lazy) admin console imports
+          // it. Leave it UNCHUNKED so Rollup keeps it in the lazy admin graph
+          // instead of the eagerly-loaded vendor chunk.
           if (
             id.includes('@tiptap') ||
             id.includes('prosemirror') ||
-            id.includes('@floating-ui')
+            id.includes('@floating-ui') ||
+            id.includes('@codemirror') ||
+            id.includes('@lezer') ||
+            id.includes('@uiw') ||
+            id.includes('@marijn') ||
+            id.includes('style-mod') || id.includes('w3c-keyname') || id.includes('crelt')
           ) {
-            return 'editor-vendor';
+            return undefined;
           }
           if (id.includes('react') || id.includes('scheduler')) return 'react-vendor';
           return 'vendor';

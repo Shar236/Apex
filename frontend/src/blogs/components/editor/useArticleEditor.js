@@ -21,7 +21,7 @@ import Callout from './extensions/Callout.js';
  * The content area keeps the `prose-blog` class so Edit mode looks exactly like
  * the published article (blog.css is imported by <ArticleEditor>).
  */
-export function useArticleEditor({ value, onChange, onEditorReady }) {
+export function useArticleEditor({ value, onChange }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -57,7 +57,6 @@ export function useArticleEditor({ value, onChange, onEditorReady }) {
       },
     },
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
-    onCreate: ({ editor: ed }) => { if (onEditorReady) onEditorReady(ed); },
   });
 
   return editor;

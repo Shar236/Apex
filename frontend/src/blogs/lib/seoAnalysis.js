@@ -1,21 +1,54 @@
-import { countWords, stripHtml, detectDuplicates } from './seo.js';
+/**
+ * Blog SEO analysis — CLIENT copy.
+ *
+ * ⚠️  Keep in sync with backend/utils/blogSeo.js. Same 100-point contract
+ * (Technical 40 / Content 40 / Media 20), same recommendation text, same
+ * `checks[].key` / `recommendations[].key` values. The backend copy is the one
+ * that persists `seoScore`/`seoScoreGrade` on save (for the list view); this
+ * copy runs live in the editor so the score + advice update as you type — no
+ * save required.
+ *
+ * Pure: regex/string only, no imports, no DOM.
+ */
 
 export const SEO_DISCLAIMER =
   'This recommendation may improve on-page SEO and search visibility. Search rankings are determined by search engines and cannot be guaranteed.';
 
+export const countWords = (text) => {
+  if (!text) return 0;
+  return String(text).trim().split(/\s+/).filter(Boolean).length;
+};
+
+export const stripHtml = (html) => {
+  if (!html) return '';
+  return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+export const detectDuplicates = (items, key) => {
+  const map = new Map();
+  const dups = [];
+  for (const item of items) {
+    const value = (item[key] || '').toString().trim().toLowerCase();
+    if (!value) continue;
+    if (!map.has(value)) map.set(value, [item]);
+    else map.get(value).push(item);
+  }
+  for (const [, group] of map) {
+    if (group.length > 1) dups.push({ key, value: group[0][key], items: group });
+  }
+  return dups;
+};
+
 const countH1 = (html) => (String(html || '').match(/<h1[^>]*>/gi) || []).length;
-const countHeadings = (html, level) => (String(html || '').match(new RegExp(`<h${level}[^>]*>`, 'gi')) || []).length;
+const countHeadings = (html, level) =>
+  (String(html || '').match(new RegExp(`<h${level}[^>]*>`, 'gi')) || []).length;
 
 const extractLinks = (html) => {
   const matches = [...String(html || '').matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi)];
   return matches.map((m) => ({ href: m[1], text: stripHtml(m[2]) }));
 };
 
-const isInternalHref = (href) => {
-  if (!href) return false;
-  if (href.startsWith('/')) return true;
-  return false;
-};
+const isInternalHref = (href) => !!href && href.startsWith('/');
 
 const extractImages = (html) => {
   const matches = [...String(html || '').matchAll(/<img\s+[^>]*>/gi)];
@@ -26,8 +59,8 @@ const extractImages = (html) => {
 };
 
 /**
- * Blog-specific SEO Health Score: 100 pts split Technical(40) / Content(40) / Media(20).
- * This is an internal optimization diagnostic only — never a ranking guarantee.
+ * @param {object} post  { title, slug, content, coverImage, coverImageAlt, faqs, images, seo }
+ * @returns analysis with { score, grade, breakdown, recommendations, checks, metrics, disclaimer }
  */
 export const analyzeBlogSEO = (post) => {
   const issues = [];
@@ -41,9 +74,12 @@ export const analyzeBlogSEO = (post) => {
   const plainContent = stripHtml(content);
   const wordCount = countWords(plainContent);
   const h1Count = countH1(content);
-  const h2h3Count = countHeadings(content, 2) + countHeadings(content, 3);
+  const h2Count = countHeadings(content, 2);
+  const h3Count = countHeadings(content, 3);
+  const h2h3Count = h2Count + h3Count;
   const links = extractLinks(content);
   const internalLinks = links.filter((l) => isInternalHref(l.href));
+  const externalLinks = links.filter((l) => /^https?:\/\//i.test(l.href));
   const images = extractImages(content);
   const imagesWithAlt = images.filter((i) => i.alt && i.alt.trim().length > 0);
 
@@ -240,7 +276,6 @@ export const analyzeBlogSEO = (post) => {
   else if (score >= 60) grade = 'Okay';
   else if (score >= 40) grade = 'Needs Improvement';
 
-  // Sort recommendations high -> medium -> low
   const priorityOrder = { high: 0, medium: 1, low: 2 };
   recommendations.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
@@ -255,9 +290,17 @@ export const analyzeBlogSEO = (post) => {
     recommendations,
     metrics: {
       wordCount,
+      charCount: plainContent.length,
+      readingTime: Math.max(1, Math.ceil(wordCount / 200)),
       h1Count,
+      h2Count,
+      h3Count,
       h2h3Count,
+      internalLinks,
+      externalLinks,
       internalLinksCount: internalLinks.length,
+      externalLinksCount: externalLinks.length,
+      links,
       imagesCount: images.length,
       imagesWithAltCount: imagesWithAlt.length,
       faqCount: post.faqs ? post.faqs.length : 0,
@@ -266,28 +309,13 @@ export const analyzeBlogSEO = (post) => {
   };
 };
 
-/**
- * Section 26 safety warnings — surfaced, never silently auto-fixed.
- */
-export const checkBlogSafetyWarnings = (post, allPosts = []) => {
+/** Local safety warnings (the ones that don't need other posts). */
+export const checkBlogSafetyWarningsLocal = (post) => {
   const warnings = [];
   const seo = post.seo || {};
-  const others = allPosts.filter((p) => String(p._id) !== String(post._id));
-
-  const dupTitles = detectDuplicates(
-    [{ _id: post._id, title: seo.title || post.title }, ...others.map((p) => ({ _id: p._id, title: p.seo?.title || p.title }))],
-    'title'
-  );
-  if (dupTitles.length > 0) warnings.push({ type: 'duplicate_title', text: 'This SEO title is duplicated on another post.' });
-
-  const dupDesc = detectDuplicates(
-    [{ _id: post._id, desc: seo.description }, ...others.map((p) => ({ _id: p._id, desc: p.seo?.description }))],
-    'desc'
-  );
-  if (dupDesc.length > 0 && seo.description) warnings.push({ type: 'duplicate_meta', text: 'This meta description is duplicated on another post.' });
-
   const plainContent = stripHtml(post.content || '').toLowerCase();
   const focusKeyword = (seo.focusKeyword || '').toLowerCase().trim();
+
   if (focusKeyword && plainContent) {
     const words = plainContent.split(/\s+/).filter(Boolean);
     const kwWordCount = focusKeyword.split(/\s+/).length;
@@ -299,8 +327,7 @@ export const checkBlogSafetyWarnings = (post, allPosts = []) => {
   }
 
   const anchorCounts = {};
-  const links = extractLinks(post.content || '');
-  for (const l of links) {
+  for (const l of extractLinks(post.content || '')) {
     if (!isInternalHref(l.href)) continue;
     const text = l.text.toLowerCase().trim();
     if (!text) continue;
@@ -311,6 +338,5 @@ export const checkBlogSafetyWarnings = (post, allPosts = []) => {
       warnings.push({ type: 'exact_match_anchor', text: `Anchor text "${text}" is repeated ${count} times — vary internal link anchor text.` });
     }
   }
-
   return warnings;
 };

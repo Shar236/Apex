@@ -25,6 +25,9 @@ const blogImageSchema = new mongoose.Schema({
   title: { type: String, trim: true, default: '' },
   caption: { type: String, trim: true, default: '' },
   description: { type: String, trim: true, default: '' },
+  width: { type: Number, default: 0 },
+  height: { type: Number, default: 0 },
+  bytes: { type: Number, default: 0 },
 }, { _id: true, timestamps: false });
 
 const faqSchema = new mongoose.Schema({
