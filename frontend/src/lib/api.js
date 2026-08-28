@@ -430,7 +430,7 @@ export const adminApi = {
     return await resp.json();
   },
   seo: seoApi,
-  blog: blogApi,
+  // adminApi.blog removed — blog HTTP layer is src/blogs/lib/blogApi.js.
   pteBookings: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/pte-bookings${qs ? `?${qs}` : ''}`);
