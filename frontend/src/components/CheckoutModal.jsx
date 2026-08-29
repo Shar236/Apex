@@ -228,71 +228,71 @@ export const CheckoutModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-3xl p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] text-neutral-900 dark:text-white transition-colors duration-300">
+      <div className="relative w-full max-w-xl bg-[var(--color-surface)] border border-[var(--color-line)] rounded-3xl p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] text-[var(--color-ink)] transition-colors duration-300">
         <button
           onClick={handleClose}
-          className="absolute top-5 right-5 p-2 rounded-full bg-neutral-100 dark:bg-[#262626] text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-full bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {!isCompleted ? (
           <div>
-            <div className="mb-6 border-b border-[#EAEAEA] dark:border-[#292929] pb-4">
+            <div className="mb-6 border-b border-[var(--color-line)] pb-4">
               <div className="flex items-center gap-2 mb-2">
                 <ApexLogo className="h-6" />
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-[var(--color-success)] border border-emerald-200">
                   Secure Checkout
                 </span>
               </div>
-              <h2 className="font-heading font-black text-2xl">Complete Exam Voucher Order</h2>
-              <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium">
+              <h2 className="font-heading font-medium text-2xl">Complete Exam Voucher Order</h2>
+              <p className="text-xs text-[var(--color-ink-muted)] font-normal">
                 Vouchers appear in your Candidate Vault and email instantly after payment.
               </p>
             </div>
 
             {checkoutItems.length === 1 ? (
-              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 mb-5 flex items-center justify-between gap-4">
+              <div className="bg-[var(--color-accent)]/[0.08] p-4 rounded-2xl border border-[var(--color-accent)]/20 mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-brand-pink tracking-wider block">
+                  <span className="text-[10px] uppercase font-normal text-[var(--color-accent)] tracking-wider block">
                     {checkoutItems[0].quantity > 1 ? `Selected Voucher (${checkoutItems[0].quantity}×)` : 'Selected Voucher'}
                   </span>
-                  <h4 className="font-heading font-extrabold text-base leading-snug">{checkoutItems[0].name}</h4>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                  <h4 className="font-heading font-medium text-base leading-snug">{checkoutItems[0].name}</h4>
+                  <span className="text-xs font-normal text-[var(--color-success)] block mt-0.5">
                     Instant Delivery • Valid {checkoutItems[0].validityMonths || 6} months
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-neutral-400 line-through block">{formatPrice(totalOriginal)}</span>
-                  <span className="font-heading font-black text-2xl text-brand-pink block leading-none">{formatPrice(finalPrice)}</span>
+                  <span className="text-xs font-normal text-neutral-400 line-through block">{formatPrice(totalOriginal)}</span>
+                  <span className="font-heading font-medium text-2xl text-[var(--color-accent)] block leading-none">{formatPrice(finalPrice)}</span>
                 </div>
               </div>
             ) : (
-              <div className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 mb-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-brand-pink/20 pb-2">
-                  <span className="text-[10px] uppercase font-bold text-brand-pink tracking-wider block">
+              <div className="bg-[var(--color-accent)]/[0.08] p-4 rounded-2xl border border-[var(--color-accent)]/20 mb-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-[var(--color-accent)]/20 pb-2">
+                  <span className="text-[10px] uppercase font-normal text-[var(--color-accent)] tracking-wider block">
                     Order Summary ({checkoutItems.reduce((acc, it) => acc + (it.quantity || 1), 0)} Vouchers)
                   </span>
                   <div className="text-right">
-                    <span className="text-xs font-bold text-neutral-400 line-through mr-2">{formatPrice(totalOriginal)}</span>
-                    <span className="font-heading font-black text-xl text-brand-pink">{formatPrice(finalPrice)}</span>
+                    <span className="text-xs font-normal text-neutral-400 line-through mr-2">{formatPrice(totalOriginal)}</span>
+                    <span className="font-heading font-medium text-xl text-[var(--color-accent)]">{formatPrice(finalPrice)}</span>
                   </div>
                 </div>
                 <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                   {checkoutItems.map((item, idx) => (
                     <div key={item.id || item._id || idx} className="flex justify-between items-center text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-brand-pink">{item.quantity || 1}×</span>
-                        <span className="font-bold text-neutral-800 dark:text-neutral-200 line-clamp-1">{item.name}</span>
+                        <span className="font-medium text-[var(--color-accent)]">{item.quantity || 1}×</span>
+                        <span className="font-normal text-[var(--color-ink)] line-clamp-1">{item.name}</span>
                       </div>
-                      <span className="font-black text-neutral-900 dark:text-white shrink-0">
+                      <span className="font-medium text-neutral-900 dark:text-white shrink-0">
                         {formatPrice((item.discountedPrice != null ? item.discountedPrice : (item.sellingPrice || 0)) * (item.quantity || 1))}
                       </span>
                     </div>
                   ))}
                 </div>
                 {totalSavings > 0 && (
-                  <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 pt-1 border-t border-brand-pink/10">
+                  <div className="text-[11px] font-normal text-[var(--color-success)] flex items-center gap-1 pt-1 border-t border-[var(--color-accent)]/10">
                     <span>🎁 Total Savings: {formatPrice(totalSavings + promoDiscount)}</span>
                   </div>
                 )}
@@ -300,17 +300,17 @@ export const CheckoutModal = () => {
             )}
 
             {!isAuthenticated && (
-              <div className="mb-5 rounded-2xl border border-[#EAEAEA] dark:border-[#292929] p-4">
+              <div className="mb-5 rounded-2xl border border-[var(--color-line)] p-4">
                 <div className="flex gap-2 mb-4">
                   <button
                     onClick={() => setRegisterMode(false)}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${!registerMode ? 'bg-brand-pink text-white border-brand-pink' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-medium border ${!registerMode ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] border-[var(--color-line)]'}`}
                   >
                     Log In
                   </button>
                   <button
                     onClick={() => setRegisterMode(true)}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black border ${registerMode ? 'bg-brand-pink text-white border-brand-pink' : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'}`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-medium border ${registerMode ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] border-[var(--color-line)]'}`}
                   >
                     Create Account
                   </button>
@@ -330,9 +330,9 @@ export const CheckoutModal = () => {
                     </>
                   )}
                   {authError && (
-                    <div className="text-xs font-bold text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-3 py-2">{authError}</div>
+                    <div className="text-xs font-normal text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-3 py-2">{authError}</div>
                   )}
-                  <button disabled={authLoading} className="w-full px-4 py-3 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-xs flex items-center justify-center gap-2 disabled:opacity-60">
+                  <button disabled={authLoading} className="w-full px-4 py-3 rounded-xl bg-[var(--color-ink)] text-[var(--color-surface)] font-medium text-xs flex items-center justify-center gap-2 disabled:opacity-60">
                     <LogIn className="w-4 h-4" />
                     {authLoading ? 'Please wait…' : registerMode ? 'Create account & continue' : 'Log in & continue'}
                   </button>
@@ -350,7 +350,7 @@ export const CheckoutModal = () => {
                     placeholder="e.g. Rahul Sharma"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-sm font-normal focus:outline-none focus:border-[var(--color-accent)] transition-all"
                   />
                 </div>
                 <div>
@@ -361,7 +361,7 @@ export const CheckoutModal = () => {
                     placeholder="name@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-sm font-normal focus:outline-none focus:border-[var(--color-accent)] transition-all"
                   />
                 </div>
                 <div>
@@ -372,7 +372,7 @@ export const CheckoutModal = () => {
                     placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-sm font-normal focus:outline-none focus:border-[var(--color-accent)] transition-all"
                   />
                 </div>
               </div>
@@ -384,23 +384,23 @@ export const CheckoutModal = () => {
                     placeholder="Enter Coupon (e.g. APEX100)"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-xs font-normal focus:outline-none focus:border-[var(--color-accent)]"
                   />
                   <button
                     type="button"
                     onClick={handleApplyPromo}
-                    className="px-4 py-2.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold hover:bg-brand-pink transition-colors"
+                    className="px-4 py-2.5 rounded-xl bg-[var(--color-ink)] text-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-accent)] transition-colors"
                   >
                     Apply
                   </button>
                 </div>
                 {promoApplied && (
-                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-normal text-[var(--color-success)] mt-1.5 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" /> Promo applied — {fmt(promoDiscount)} saved!
                   </p>
                 )}
                 {promoError && (
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mt-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-normal text-amber-700 dark:text-amber-400 mt-1.5 flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5" /> {promoError}
                   </p>
                 )}
@@ -412,7 +412,7 @@ export const CheckoutModal = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
-                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'border-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
+                    className={`p-3 rounded-xl border font-normal text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)]' : 'border-[var(--color-line)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)]'}`}
                   >
                     <QrCode className="w-4 h-4" />
                     <span>UPI / GPay / QR</span>
@@ -420,7 +420,7 @@ export const CheckoutModal = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'card' ? 'border-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink' : 'border-[#EAEAEA] dark:border-[#292929] bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-700 dark:text-neutral-300'}`}
+                    className={`p-3 rounded-xl border font-normal text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'card' ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)]' : 'border-[var(--color-line)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)]'}`}
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>Card / NetBanking</span>
@@ -428,22 +428,22 @@ export const CheckoutModal = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20 p-4 space-y-2 mt-3 text-sm font-bold">
+              <div className="rounded-2xl bg-[var(--color-accent)]/[0.08] border border-[var(--color-accent)]/20 p-4 space-y-2 mt-3 text-sm font-normal">
                 <Row label="Subtotal (MRP)" value={formatPrice(checkoutProduct.originalPrice)} line />
                 <Row label="Product discount" value={`− ${formatPrice(checkoutProduct.originalPrice - subtotal)}`} good />
                 {promoApplied && <Row label="Promo code" value={`− ${fmt(promoDiscount)}`} good />}
-                <div className="h-px bg-brand-pink/20 my-1" />
+                <div className="h-px bg-[var(--color-accent)]/20 my-1" />
                 <Row label="Total Payable" value={formatPrice(finalPrice)} big />
               </div>
 
               {error && (
-                <div className="text-xs font-bold text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                <div className="text-xs font-normal text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-4 py-3 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
                 </div>
               )}
 
               <div className="pt-2 space-y-2">
-                <button type="submit" disabled={isProcessing} className="w-full btn-pink !py-4 !rounded-xl !text-base font-black flex items-center justify-center gap-2 shadow-xl disabled:opacity-60">
+                <button type="submit" disabled={isProcessing} className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white py-4 rounded-xl text-base font-medium flex items-center justify-center gap-2 shadow-lg transition-colors disabled:opacity-60 cursor-pointer">
                   {isProcessing ? (
                     <span>
                       {processingState === 'creating' && 'Creating Secure Payment…'}
@@ -459,7 +459,7 @@ export const CheckoutModal = () => {
                     </>
                   )}
                 </button>
-                <p className="text-center text-[11px] font-bold text-neutral-400 flex items-center justify-center gap-1.5">
+                <p className="text-center text-[11px] font-normal text-neutral-400 flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                   <span>256-bit Encrypted SSL Gateway • 100% Genuine Official Vouchers</span>
                 </p>
@@ -468,18 +468,18 @@ export const CheckoutModal = () => {
           </div>
         ) : (
           <div className="text-center space-y-6 py-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-md">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-[var(--color-success)] flex items-center justify-center mx-auto shadow-md">
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-brand-pink block mb-1">
+              <span className="text-xs font-medium uppercase tracking-widest text-[var(--color-accent)] block mb-1">
                 ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
               </span>
-              <h2 className="font-heading font-black text-3xl">Voucher Code Issued!</h2>
-              <p className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium mt-1">
+              <h2 className="font-heading font-medium text-3xl">Voucher Code Issued!</h2>
+              <p className="text-xs text-[var(--color-ink-muted)] font-normal mt-1">
                 Your voucher is now in your Apex account dashboard and email.
               </p>
-              <div className="mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-xl py-2 px-3 inline-block">
+              <div className="mt-3 text-xs font-normal text-[var(--color-success)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-xl py-2 px-3 inline-block">
                 📧 Confirmation email sent to <span className="underline">{formData.email || user?.email}</span>
               </div>
             </div>
@@ -487,25 +487,25 @@ export const CheckoutModal = () => {
             {completedVouchers?.length > 0 ? (
               <div className="space-y-3">
                 {completedVouchers.map((v, i) => (
-                  <div key={i} className="p-5 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border-2 border-dashed border-brand-pink/40 text-left space-y-3">
+                  <div key={i} className="p-5 rounded-2xl bg-[var(--color-accent)]/[0.08] border-2 border-dashed border-[var(--color-accent)]/40 text-left space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black text-brand-pink uppercase tracking-wider">{v.productName || 'Your Voucher Code'}</span>
-                      <span className="text-[10px] font-black text-neutral-500 dark:text-[#B5B5B5]">
+                      <span className="text-[11px] font-medium text-[var(--color-accent)] uppercase tracking-wider">{v.productName || 'Your Voucher Code'}</span>
+                      <span className="text-[10px] font-medium text-[var(--color-ink-muted)]">
                         Exp {new Date(v.expiryDate).toLocaleDateString()}
                       </span>
                     </div>
-                    <div className="font-mono font-black text-2xl sm:text-3xl tracking-wider select-all break-all">
+                    <div className="font-mono font-medium text-2xl sm:text-3xl tracking-wider select-all break-all">
                       {v.code}
                     </div>
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => handleCopy(i, v.code)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#161616] text-brand-pink font-black text-xs border border-brand-pink/40 shadow-sm hover:bg-brand-pink hover:text-white transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-surface)] text-[var(--color-accent)] font-medium text-xs border border-[var(--color-accent)]/40 shadow-sm hover:bg-[var(--color-accent)] hover:text-white transition-all"
                       >
                         {copiedIdx === i ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         <span>{copiedIdx === i ? 'Copied!' : 'Copy Code'}</span>
                       </button>
-                      <a href="https://pearsonpte.com" target="_blank" rel="noreferrer" className="text-[11px] font-black text-[#6C3CE0] inline-flex items-center gap-1">
+                      <a href="https://pearsonpte.com" target="_blank" rel="noreferrer" className="text-[11px] font-medium text-[var(--color-accent)] inline-flex items-center gap-1">
                         Redeem on Pearson <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
@@ -513,7 +513,7 @@ export const CheckoutModal = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-xs font-bold text-amber-700 dark:text-amber-300">
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-xs font-normal text-amber-700 dark:text-amber-300">
                 Voucher codes are available in your Account dashboard → My Vouchers.
               </div>
             )}
@@ -525,7 +525,7 @@ export const CheckoutModal = () => {
                   setActiveTab('dashboard');
                   window.location.hash = '#/account';
                 }}
-                className="w-full btn-pink !py-3.5 !rounded-xl !text-sm font-extrabold"
+                className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white py-3.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
               >
                 Open My Voucher Dashboard
               </button>
@@ -539,7 +539,7 @@ export const CheckoutModal = () => {
 
 function MiniLabel({ children }) {
   return (
-    <span className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+    <span className="block text-xs font-normal text-[var(--color-ink-muted)] uppercase tracking-wider mb-1.5">
       {children}
     </span>
   );
@@ -555,7 +555,7 @@ function MiniField({ label, type = 'text', value, onChange, required = false, pl
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all"
+        className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-sm font-normal focus:outline-none focus:border-[var(--color-accent)] transition-all"
       />
     </label>
   );
@@ -564,10 +564,10 @@ function MiniField({ label, type = 'text', value, onChange, required = false, pl
 function Row({ label, value, line = false, good = false, big = false }) {
   return (
     <div className="flex items-center justify-between">
-      <span className={`${line ? 'line-through text-neutral-400' : good ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-600 dark:text-neutral-300'} ${big ? 'uppercase tracking-wider text-black dark:text-white' : ''}`}>
+      <span className={`${line ? 'line-through text-neutral-400' : good ? 'text-[var(--color-success)]' : 'text-[var(--color-ink-muted)]'} ${big ? 'uppercase tracking-wider text-black dark:text-white' : ''}`}>
         {label}
       </span>
-      <span className={big ? 'font-heading font-black text-2xl' : ''}>{value}</span>
+      <span className={big ? 'font-heading font-medium text-2xl' : ''}>{value}</span>
     </div>
   );
 }

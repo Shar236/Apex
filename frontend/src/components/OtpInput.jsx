@@ -94,16 +94,16 @@ export const OtpInput = ({ value, onChange, error, disabled = false, autoFocus =
             onKeyDown={handleKeyDown(index)}
             onPaste={handlePaste(index)}
             aria-label={`Digit ${index + 1} of ${LENGTH}`}
-            className={`w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-black rounded-2xl border-2 outline-none transition-colors bg-neutral-50 dark:bg-[#1A1A1A] text-neutral-900 dark:text-white disabled:opacity-50 ${
+            className={`w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-medium rounded-2xl border-2 outline-none transition-colors bg-[var(--color-surface-raised)] text-[var(--color-ink)] disabled:opacity-50 ${
               error
                 ? 'border-rose-500 focus:border-rose-500'
-                : 'border-[#EAEAEA] dark:border-[#292929] focus:border-brand-pink'
+                : 'border-[var(--color-line)] focus:border-[var(--color-accent)]'
             }`}
           />
         ))}
       </div>
       {error && (
-        <p role="alert" aria-live="assertive" className="mt-2 text-center text-xs font-bold text-rose-500">
+        <p role="alert" aria-live="assertive" className="mt-2 text-center text-xs font-normal text-rose-500">
           {error}
         </p>
       )}

@@ -21,50 +21,50 @@ export const BestSellingVouchers = () => {
   const features = [
     {
       icon: Zap,
-      iconBg: 'bg-brand-pink/20 text-brand-pink',
+      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
       title: 'Instant Digital Delivery',
       subtitle: 'Get voucher in 10 seconds'
     },
     {
       icon: ShieldCheck,
-      iconBg: 'bg-[#10B981]/20 text-[#10B981]',
+      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
       title: '100% Genuine Vouchers',
       subtitle: 'Official exam partners'
     },
     {
       icon: Tag,
-      iconBg: 'bg-purple-500/20 text-purple-400',
+      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
       title: 'Best Prices Guaranteed',
       subtitle: 'Save more on every purchase'
     },
     {
       icon: Headphones,
-      iconBg: 'bg-blue-500/20 text-blue-400',
+      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
       title: '24/7 Customer Support',
       subtitle: "We're here to help you"
     }
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-[#06080E] text-white border-b border-slate-800 transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-[#0B0D12] text-white border-b border-white/5 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Top Header Section */}
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
           
           {/* Top Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D1322] border border-slate-800 shadow-sm text-xs font-bold text-slate-200">
-            <ShieldCheck className="w-4 h-4 text-brand-pink" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-sm text-xs font-normal text-neutral-200">
+            <ShieldCheck className="w-4 h-4 text-[var(--color-accent)]" />
             <span>TRUSTED BY 15,000+ STUDENTS</span>
           </div>
 
           {/* Main Title */}
-          <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight">
-            PTE <span className="text-brand-pink">Vouchers</span>
+          <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-light text-white tracking-tight">
+            PTE <span className="text-[var(--color-accent)]">Vouchers</span>
           </h2>
 
           {/* Subtitle */}
-          <p className="text-slate-400 font-medium text-base sm:text-lg">
+          <p className="text-neutral-400 font-medium text-base sm:text-lg">
             Choose the right PTE option for your test preparation, study or eligible pathway.
           </p>
 
@@ -77,14 +77,14 @@ export const BestSellingVouchers = () => {
             return (
               <div
                 key={idx}
-                className="bg-[#0D1322] p-4 rounded-2xl border border-slate-800/80 flex items-center gap-3.5 shadow-md"
+                className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center gap-3.5 shadow-md"
               >
                 <div className={`w-10 h-10 rounded-xl ${feat.iconBg} flex items-center justify-center shrink-0`}>
                   <IconComp className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col text-left leading-snug">
-                  <span className="text-xs font-black text-white">{feat.title}</span>
-                  <span className="text-[11px] font-medium text-slate-400">{feat.subtitle}</span>
+                  <span className="text-xs font-medium text-white">{feat.title}</span>
+                  <span className="text-[11px] font-medium text-neutral-400">{feat.subtitle}</span>
                 </div>
               </div>
             );
@@ -102,9 +102,9 @@ export const BestSellingVouchers = () => {
         <div className="text-center">
           <button
             onClick={() => setActiveTab('shop')}
-            className="inline-flex items-center gap-2 bg-[#0D1322] hover:bg-[#1A2338] text-white font-bold text-xs px-7 py-3.5 rounded-full border border-slate-800 transition-all cursor-pointer shadow-lg hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium text-xs px-7 py-3.5 rounded-full border border-white/10 transition-colors cursor-pointer shadow-md"
           >
-            <LayoutGrid className="w-4 h-4 text-brand-pink" />
+            <LayoutGrid className="w-4 h-4 text-[var(--color-accent)]" />
             <span>Explore All Vouchers</span>
             <ArrowRight className="w-4 h-4" />
           </button>

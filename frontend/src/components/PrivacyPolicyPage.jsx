@@ -42,49 +42,49 @@ export function PrivacyPolicyPage() {
   }, [globalSEO]);
 
   return (
-    <div className="bg-[#FAF8F5] dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 min-h-screen antialiased transition-colors duration-300">
+    <div className="bg-[var(--color-surface-sunken)] text-[var(--color-ink)] min-h-screen antialiased transition-colors duration-300">
       
       {/* Breadcrumb */}
-      <div className="bg-white dark:bg-[#121212] border-b border-[#EAEAEA] dark:border-[#222]">
+      <div className="bg-[var(--color-surface)] border-b border-[var(--color-line)]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <nav className="flex items-center gap-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-            <a href="/" className="hover:text-brand-pink transition-colors">Home</a>
+          <nav className="flex items-center gap-2 text-xs font-normal text-[var(--color-ink-muted)]">
+            <a href="/" className="hover:text-[var(--color-accent)] transition-colors">Home</a>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-neutral-400">Policies</span>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-brand-pink font-bold">Privacy Policy</span>
+            <span className="text-[var(--color-accent)] font-normal">Privacy Policy</span>
           </nav>
         </div>
       </div>
 
       {/* Header */}
-      <header className="bg-white dark:bg-[#121212] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16 text-center">
+      <header className="bg-[var(--color-surface)] border-b border-[var(--color-line)] py-12 sm:py-16 text-center">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
-          <h1 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl text-neutral-900 dark:text-white tracking-tight">
+          <h1 className="font-heading font-medium text-3xl sm:text-4xl lg:text-5xl text-[var(--color-ink)] tracking-tight">
             Privacy Policy
           </h1>
-          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
+          <p className="text-sm sm:text-base text-[var(--color-ink-muted)] font-medium leading-relaxed">
             Apex Vouchers respects your privacy and is committed to protecting the personal information provided by customers and visitors when using our website, purchasing PTE exam vouchers, contacting our support team, or using our services.
           </p>
-          <div className="pt-2 text-xs font-mono text-neutral-400 font-semibold">
+          <div className="pt-2 text-xs font-mono text-neutral-400 font-normal">
             Last Updated: {effectiveDate}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 text-sm sm:text-base text-[var(--color-ink-muted)] leading-relaxed">
         
         {/* Section 1: Information We Collect */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Eye className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Eye className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>1. Information We Collect</span>
           </h2>
           <p>
             When you use our website, create an account, purchase discounted examination vouchers, or contact our customer support team, Apex Vouchers may collect information that is reasonably necessary to fulfill your orders and operate our services, such as:
           </p>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 pt-1">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm text-[var(--color-ink-muted)] pt-1">
             {[
               'Name',
               'Email address',
@@ -96,9 +96,9 @@ export function PrivacyPolicyPage() {
               'Device, browser and technical information',
               'IP address where technically required for security, fraud prevention or website operations',
             ].map((item, idx) => (
-              <li key={idx} className="flex items-start gap-2 bg-[#FAF8F5] dark:bg-[#1A1A1A] p-3 rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-                <span className="text-brand-pink font-bold mt-0.5">•</span>
-                <span className="font-medium text-neutral-800 dark:text-neutral-200">{item}</span>
+              <li key={idx} className="flex items-start gap-2 bg-[var(--color-surface-raised)] p-3 rounded-2xl border border-[var(--color-line)]">
+                <span className="text-[var(--color-accent)] font-normal mt-0.5">•</span>
+                <span className="font-medium text-[var(--color-ink)]">{item}</span>
               </li>
             ))}
           </ul>
@@ -108,15 +108,15 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 2: How We Use Your Information */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Server className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Server className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>2. How We Use Your Information</span>
           </h2>
           <p>
             Collected information may be used to:
           </p>
-          <ul className="space-y-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 pl-1">
+          <ul className="space-y-2 text-xs sm:text-sm text-[var(--color-ink-muted)] pl-1">
             {[
               'Process voucher orders and deliver purchased products or services',
               'Deliver exam voucher codes and transaction receipts instantly to your Email and WhatsApp',
@@ -130,7 +130,7 @@ export function PrivacyPolicyPage() {
               'Communicate important information relating to an order or service',
             ].map((use, idx) => (
               <li key={idx} className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-pink mt-2 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] mt-2 shrink-0" />
                 <span className="leading-relaxed">{use}</span>
               </li>
             ))}
@@ -138,16 +138,16 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 3: Payment Information */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <CreditCard className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <CreditCard className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>3. Payment Information</span>
           </h2>
           <p>
             Payment information is processed securely through authorized third-party payment providers (such as Cashfree Payments), which maintain certified PCI-DSS Level 1 compliance standards.
           </p>
           <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 font-medium space-y-1">
-            <p className="font-bold flex items-center gap-1.5">
+            <p className="font-normal flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Zero Card Credential Storage:
             </p>
             <p className="text-xs">
@@ -157,29 +157,29 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 4: Cookies and Similar Technologies */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Cookie className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Cookie className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>4. Cookies and Similar Technologies</span>
           </h2>
           <p>
             The website may use cookies and similar technologies for:
           </p>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
-            <li className="p-3 bg-[#FAF8F5] dark:bg-[#1A1A1A] rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-              <strong className="text-neutral-900 dark:text-white block mb-0.5">Website Functionality</strong>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm text-[var(--color-ink-muted)]">
+            <li className="p-3 bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)]">
+              <strong className="text-[var(--color-ink)] block mb-0.5">Website Functionality</strong>
               <span className="text-neutral-500 text-xs">Managing your session, login authentication, and cart items</span>
             </li>
-            <li className="p-3 bg-[#FAF8F5] dark:bg-[#1A1A1A] rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-              <strong className="text-neutral-900 dark:text-white block mb-0.5">Preferences</strong>
+            <li className="p-3 bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)]">
+              <strong className="text-[var(--color-ink)] block mb-0.5">Preferences</strong>
               <span className="text-neutral-500 text-xs">Remembering dark mode and display preferences</span>
             </li>
-            <li className="p-3 bg-[#FAF8F5] dark:bg-[#1A1A1A] rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-              <strong className="text-neutral-900 dark:text-white block mb-0.5">Analytics</strong>
+            <li className="p-3 bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)]">
+              <strong className="text-[var(--color-ink)] block mb-0.5">Analytics</strong>
               <span className="text-neutral-500 text-xs">Analyzing aggregated website traffic and popular vouchers</span>
             </li>
-            <li className="p-3 bg-[#FAF8F5] dark:bg-[#1A1A1A] rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-              <strong className="text-neutral-900 dark:text-white block mb-0.5">Security & Performance</strong>
+            <li className="p-3 bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)]">
+              <strong className="text-[var(--color-ink)] block mb-0.5">Security & Performance</strong>
               <span className="text-neutral-500 text-xs">Protecting against malicious traffic and improving load times</span>
             </li>
           </ul>
@@ -189,15 +189,15 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 5: Sharing of Information */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Share2 className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Share2 className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>5. Sharing of Information</span>
           </h2>
           <p>
             Personal information may be shared with trusted service providers only where reasonably necessary to operate our business, such as:
           </p>
-          <ul className="space-y-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 pl-1">
+          <ul className="space-y-2 text-xs sm:text-sm text-[var(--color-ink-muted)] pl-1">
             {[
               'Payment processors to complete transactions',
               'Website and cloud hosting infrastructure providers',
@@ -207,7 +207,7 @@ export function PrivacyPolicyPage() {
               'Legal or regulatory authorities where required by applicable law',
             ].map((partner, idx) => (
               <li key={idx} className="flex items-start gap-2">
-                <span className="text-brand-pink font-bold">•</span>
+                <span className="text-[var(--color-accent)] font-normal">•</span>
                 <span>{partner}</span>
               </li>
             ))}
@@ -218,9 +218,9 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 6: Data Security */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>6. Data Security</span>
           </h2>
           <p>
@@ -232,15 +232,15 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 7: Data Retention */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Clock className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Clock className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>7. Data Retention</span>
           </h2>
           <p>
             Personal information may be retained for as long as reasonably necessary for:
           </p>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-[var(--color-ink-muted)]">
             {[
               'Providing services and delivering vouchers',
               'Maintaining transaction records',
@@ -250,8 +250,8 @@ export function PrivacyPolicyPage() {
               'Dispute resolution',
               'Security and fraud prevention',
             ].map((item, idx) => (
-              <li key={idx} className="flex items-center gap-2 bg-[#FAF8F5] dark:bg-[#1A1A1A] p-2.5 rounded-2xl border border-[#EAEAEA] dark:border-[#292929]">
-                <span className="text-brand-pink font-bold">✓</span>
+              <li key={idx} className="flex items-center gap-2 bg-[var(--color-surface-raised)] p-2.5 rounded-2xl border border-[var(--color-line)]">
+                <span className="text-[var(--color-accent)] font-normal">✓</span>
                 <span className="text-xs font-medium">{item}</span>
               </li>
             ))}
@@ -259,15 +259,15 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 8: Your Privacy Rights */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <FileCheck className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <FileCheck className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>8. Your Privacy Rights</span>
           </h2>
           <p>
             Subject to applicable law, users may have rights relating to their personal information, including:
           </p>
-          <ul className="space-y-1.5 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 pl-1 list-disc list-inside">
+          <ul className="space-y-1.5 text-xs sm:text-sm text-[var(--color-ink-muted)] pl-1 list-disc list-inside">
             <li>Requesting access to the personal data we hold about you</li>
             <li>Requesting correction or updates to inaccurate or incomplete information</li>
             <li>Requesting deletion of your personal data where applicable and permitted by legal and statutory recordkeeping requirements</li>
@@ -278,9 +278,9 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 9: Third-Party Websites */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <ExternalLink className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <ExternalLink className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>9. Third-Party Websites</span>
           </h2>
           <p>
@@ -292,9 +292,9 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 10: Children's Privacy */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <Users className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <Users className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>10. Children's Privacy</span>
           </h2>
           <p>
@@ -303,9 +303,9 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 11: Changes to This Privacy Policy */}
-        <section className="bg-white dark:bg-[#141414] p-6 sm:p-8 rounded-3xl border border-[#EAEAEA] dark:border-[#262626] shadow-sm space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-neutral-900 dark:text-white flex items-center gap-2.5">
-            <AlertCircle className="w-5 h-5 text-brand-pink shrink-0" />
+        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-[var(--color-accent)] shrink-0" />
             <span>11. Changes to This Privacy Policy</span>
           </h2>
           <p>
@@ -314,8 +314,8 @@ export function PrivacyPolicyPage() {
         </section>
 
         {/* Section 12: Contact Us */}
-        <section className="p-6 sm:p-8 rounded-3xl bg-[#111111] text-white border border-neutral-800 space-y-4">
-          <h2 className="font-heading font-black text-xl sm:text-2xl text-white">
+        <section className="p-6 sm:p-8 rounded-3xl bg-[#0B0D12] text-white border border-white/5 space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-white">
             12. Questions about this Privacy Policy?
           </h2>
           <p className="text-sm text-neutral-300 leading-relaxed">
@@ -323,25 +323,25 @@ export function PrivacyPolicyPage() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
-              <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-brand-pink" /> Official Email
+            <div className="p-4 rounded-2xl bg-neutral-900 border border-white/5 space-y-1">
+              <div className="text-xs text-neutral-400 font-normal uppercase tracking-wider flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-[var(--color-accent)]" /> Official Email
               </div>
               <a
                 href={`mailto:${supportEmail}`}
-                className="text-brand-pink hover:text-pink-400 font-bold text-sm sm:text-base break-all transition-colors"
+                className="text-[var(--color-accent)] hover:text-pink-400 font-normal text-sm sm:text-base break-all transition-colors"
               >
                 {supportEmail}
               </a>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
-              <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-brand-pink" /> Phone / WhatsApp
+            <div className="p-4 rounded-2xl bg-neutral-900 border border-white/5 space-y-1">
+              <div className="text-xs text-neutral-400 font-normal uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-[var(--color-accent)]" /> Phone / WhatsApp
               </div>
               <a
                 href={`tel:${supportPhone.replace(/\s+/g, '')}`}
-                className="text-brand-pink hover:text-pink-400 font-bold text-sm sm:text-base transition-colors"
+                className="text-[var(--color-accent)] hover:text-pink-400 font-normal text-sm sm:text-base transition-colors"
               >
                 {supportPhone}
               </a>
@@ -349,7 +349,7 @@ export function PrivacyPolicyPage() {
           </div>
 
           <div className="pt-2 text-xs text-neutral-400">
-            Website: <a href="https://apexvouchers.com" className="text-brand-pink hover:underline">https://apexvouchers.com</a>
+            Website: <a href="https://apexvouchers.com" className="text-[var(--color-accent)] hover:underline">https://apexvouchers.com</a>
           </div>
         </section>
 

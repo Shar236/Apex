@@ -152,18 +152,18 @@ export function PhoneInput({
 
   return (
     <div className="relative" id={id}>
-      <div className={`flex items-stretch rounded-2xl border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[#EAEAEA] dark:border-[#292929]'} bg-neutral-50 dark:bg-[#0E0E0E] overflow-hidden focus-within:border-brand-pink focus-within:ring-2 focus-within:ring-brand-pink/20 transition-all ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className={`flex items-stretch rounded-2xl border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[var(--color-line)]'} bg-[var(--color-surface-raised)] overflow-hidden focus-within:border-[var(--color-accent)] focus-within:ring-2 focus-within:ring-[var(--color-accent)]/20 transition-all ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
         {/* Country selector */}
         <button
           ref={triggerRef}
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 px-3 py-3 bg-neutral-100 dark:bg-[#1A1A1A] border-r border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-200 dark:hover:bg-[#222] transition-colors shrink-0 min-w-25"
+          className="flex items-center gap-1.5 px-3 py-3 bg-[var(--color-surface-raised)] border-r border-[var(--color-line)] hover:bg-[var(--color-surface-sunken)] transition-colors shrink-0 min-w-25"
           aria-label="Select country"
           aria-expanded={isOpen}
         >
           <span className="text-lg leading-none">{currentCountryData.flag}</span>
-          <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300 whitespace-nowrap">+{currentCountryData.callingCode}</span>
+          <span className="text-xs font-normal text-[var(--color-ink-muted)] whitespace-nowrap">+{currentCountryData.callingCode}</span>
           <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
@@ -174,24 +174,24 @@ export function PhoneInput({
           onChange={handleInputChange}
           placeholder={placeholder}
           disabled={disabled}
-          className="flex-1 px-3 py-3 bg-transparent text-neutral-900 dark:text-white text-sm font-bold focus:outline-none min-w-0 placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
+          className="flex-1 px-3 py-3 bg-transparent text-[var(--color-ink)] text-sm font-normal focus:outline-none min-w-0 placeholder:text-[var(--color-ink-muted)]"
           autoComplete="tel-national"
         />
       </div>
 
       {error && (
-        <p className="mt-1.5 text-xs font-bold text-rose-500">{error}</p>
+        <p className="mt-1.5 text-xs font-normal text-rose-500">{error}</p>
       )}
 
       {/* Country dropdown */}
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute top-full left-0 mt-2 w-full max-h-75 z-50 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-2xl overflow-hidden flex flex-col"
+          className="absolute top-full left-0 mt-2 w-full max-h-75 z-50 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-line)] shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Search */}
-          <div className="p-2.5 border-b border-[#EAEAEA] dark:border-[#292929] shrink-0">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
+          <div className="p-2.5 border-b border-[var(--color-line)] shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
               <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
               <input
                 ref={searchRef}
@@ -199,7 +199,7 @@ export function PhoneInput({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search country..."
-                className="flex-1 bg-transparent text-xs font-bold text-neutral-900 dark:text-white focus:outline-none placeholder:text-neutral-400 min-w-0"
+                className="flex-1 bg-transparent text-xs font-normal text-[var(--color-ink)] focus:outline-none placeholder:text-neutral-400 min-w-0"
               />
               {search && (
                 <button type="button" onClick={() => setSearch('')} className="p-0.5">
@@ -212,7 +212,7 @@ export function PhoneInput({
           {/* Country list */}
           <div className="overflow-y-auto flex-1">
             {filteredCountries.length === 0 && (
-              <div className="px-4 py-6 text-center text-xs font-bold text-neutral-400">No countries found</div>
+              <div className="px-4 py-6 text-center text-xs font-normal text-neutral-400">No countries found</div>
             )}
             {filteredCountries.map((c, i) => {
               const isSelected = c.code === selectedCountry;
@@ -223,17 +223,17 @@ export function PhoneInput({
               return (
                 <React.Fragment key={c.code}>
                   {showDivider && (
-                    <div className="h-px bg-[#EAEAEA] dark:bg-[#292929] mx-3" />
+                    <div className="h-px bg-[var(--color-line)] mx-3" />
                   )}
                   <button
                     type="button"
                     onClick={() => handleCountrySelect(c)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-[#1A1A1A] transition-colors ${isSelected ? 'bg-[#FFF0F5] dark:bg-[#2A0A17]' : ''}`}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--color-surface-raised)] transition-colors ${isSelected ? 'bg-[var(--color-accent)]/[0.08]' : ''}`}
                   >
                     <span className="text-base leading-none shrink-0">{c.flag}</span>
-                    <span className="text-xs font-bold text-neutral-900 dark:text-white flex-1 truncate">{c.name}</span>
-                    <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 tabular-nums shrink-0">+{c.callingCode}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-brand-pink shrink-0" />}
+                    <span className="text-xs font-normal text-[var(--color-ink)] flex-1 truncate">{c.name}</span>
+                    <span className="text-[11px] font-normal text-[var(--color-ink-muted)] tabular-nums shrink-0">+{c.callingCode}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[var(--color-accent)] shrink-0" />}
                   </button>
                 </React.Fragment>
               );

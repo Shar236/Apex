@@ -21,19 +21,19 @@ const maskEmailForDisplay = (email) => {
 };
 
 const PageShell = ({ title, subtitle, children, badge = null }) => (
-  <section className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center py-16 px-4 transition-colors duration-300">
+  <section className="min-h-screen bg-[var(--color-surface-sunken)] flex items-center justify-center py-16 px-4 transition-colors duration-300">
     <div className="w-full max-w-md">
       <div className="flex flex-col items-center justify-center mb-6">
         <ApexLogo />
         {badge && (
-          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/20 text-[11px] font-black uppercase tracking-wider">
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 text-[11px] font-medium uppercase tracking-wider">
             {badge}
           </div>
         )}
       </div>
-      <div className="bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-3xl shadow-2xl p-7 text-neutral-900 dark:text-white">
-        <h1 className="font-heading text-2xl font-black mb-1 tracking-tight">{title}</h1>
-        <p className="text-sm text-neutral-500 dark:text-[#B5B5B5] mb-6">{subtitle}</p>
+      <div className="bg-[var(--color-surface)] border border-[var(--color-line)] rounded-3xl shadow-xl p-7 text-[var(--color-ink)]">
+        <h1 className="font-heading text-2xl font-medium mb-1 tracking-tight">{title}</h1>
+        <p className="text-sm text-[var(--color-ink-muted)] mb-6">{subtitle}</p>
         {children}
       </div>
     </div>
@@ -97,14 +97,14 @@ export const LoginPage = () => {
           required
         />
         {error && (
-          <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2.5 space-y-2">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2.5 space-y-2">
             <p>{error}</p>
             {errorCode === 'EMAIL_NOT_VERIFIED' && (
               <button
                 type="button"
                 onClick={handleResendVerification}
                 disabled={resendState !== 'idle'}
-                className="text-brand-pink hover:underline font-black disabled:opacity-60"
+                className="text-[var(--color-accent)] hover:underline font-medium disabled:opacity-60"
               >
                 {resendState === 'sending' && 'Sending…'}
                 {resendState === 'sent' && 'Verification code sent — check your inbox'}
@@ -115,7 +115,7 @@ export const LoginPage = () => {
               <Link
                 to="/register"
                 state={{ pendingEmail: email }}
-                className="block text-brand-pink hover:underline font-black"
+                className="block text-[var(--color-accent)] hover:underline font-medium"
               >
                 Enter verification code →
               </Link>
@@ -124,22 +124,22 @@ export const LoginPage = () => {
         )}
         <button
           disabled={loading}
-          className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {loading ? 'Signing in…' : 'Log in'}
           {!loading && <ArrowRight className="w-4 h-4" />}
         </button>
-        <div className="flex justify-between text-xs font-semibold text-neutral-500 dark:text-[#B5B5B5] pt-1">
-          <Link className="hover:text-brand-pink transition-colors" to="/forgot-password">Forgot password?</Link>
-          <Link className="hover:text-brand-pink transition-colors" to="/register">Create Account →</Link>
+        <div className="flex justify-between text-xs font-semibold text-[var(--color-ink-muted)] pt-1">
+          <Link className="hover:text-[var(--color-accent)] transition-colors" to="/forgot-password">Forgot password?</Link>
+          <Link className="hover:text-[var(--color-accent)] transition-colors" to="/register">Create Account →</Link>
         </div>
-        <div className="mt-4 pt-4 border-t border-[#EAEAEA] dark:border-[#292929] flex items-center justify-between text-[11px] font-bold text-neutral-400">
+        <div className="mt-4 pt-4 border-t border-[var(--color-line)] flex items-center justify-between text-[11px] font-bold text-neutral-400">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> 256-bit Encrypted
           </span>
-          <Link to="/admin/login" className="text-neutral-500 hover:text-brand-pink transition-colors flex items-center gap-1 font-extrabold">
-            <Crown className="w-3 h-3 text-brand-pink" /> Admin Login
+          <Link to="/admin/login" className="text-neutral-500 hover:text-[var(--color-accent)] transition-colors flex items-center gap-1 font-medium">
+            <Crown className="w-3 h-3 text-[var(--color-accent)]" /> Admin Login
           </Link>
         </div>
       </form>
@@ -200,21 +200,21 @@ export const AdminLoginPage = () => {
           required
         />
         {error && (
-          <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-4 py-3 flex items-start gap-2">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-4 py-3 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
         <button
           disabled={loading}
-          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-brand-pink dark:hover:bg-brand-pink dark:hover:text-white transition-all disabled:opacity-60"
+          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-medium text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-[var(--color-accent)] dark:hover:bg-[var(--color-accent)] dark:hover:text-white transition-all disabled:opacity-60"
         >
-          <Crown className="w-4 h-4 text-brand-pink" />
+          <Crown className="w-4 h-4 text-[var(--color-accent)]" />
           <span>{loading ? 'Authenticating…' : 'Secure Admin Login'}</span>
         </button>
 
         <div className="pt-2 text-center">
-          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-brand-pink transition-colors">
+          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-[var(--color-accent)] transition-colors">
             ← Return to Candidate Login
           </Link>
         </div>
@@ -236,12 +236,12 @@ function StepProgress({ step }) {
           <React.Fragment key={label}>
             <div className="flex items-center gap-1.5">
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition-colors ${
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium shrink-0 transition-colors ${
                   isDone
                     ? 'bg-emerald-500 text-white'
                     : isActive
-                    ? 'bg-brand-pink text-white'
-                    : 'bg-neutral-100 dark:bg-[#222] text-neutral-400'
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'bg-neutral-100  text-neutral-400'
                 }`}
               >
                 {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : stepNum}
@@ -251,7 +251,7 @@ function StepProgress({ step }) {
               </span>
             </div>
             {idx < REGISTER_STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-neutral-100 dark:bg-[#222]'}`} />
+              <div className={`flex-1 h-0.5 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-neutral-100 '}`} />
             )}
           </React.Fragment>
         );
@@ -401,7 +401,7 @@ export const RegisterPage = () => {
             required
           />
           <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 flex items-center gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-ink-muted)] mb-2 flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5" /> Phone Number
             </span>
             <PhoneInput
@@ -433,41 +433,41 @@ export const RegisterPage = () => {
             required
           />
           {error && (
-            <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2">
+            <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl px-3 py-2">
               {error}
             </div>
           )}
           <button
             disabled={loading}
-            className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Creating account…' : 'Continue'}
           </button>
-          <p className="text-xs text-center font-semibold text-neutral-500 dark:text-[#B5B5B5]">
+          <p className="text-xs text-center font-semibold text-[var(--color-ink-muted)]">
             Already have an account?{' '}
-            <Link className="text-brand-pink" to="/login">Log in</Link>
+            <Link className="text-[var(--color-accent)]" to="/login">Log in</Link>
           </p>
         </form>
       )}
 
       {step === 2 && (
         <form onSubmit={onVerifyOtp} className="space-y-5">
-          <p className="text-xs text-center text-neutral-500 dark:text-[#B5B5B5] font-semibold">
+          <p className="text-xs text-center text-[var(--color-ink-muted)] font-semibold">
             We've sent a 6-digit verification code to{' '}
             <strong className="text-neutral-900 dark:text-white">{maskEmailForDisplay(form.email)}</strong>
           </p>
           <OtpInput value={otp} onChange={setOtp} error={otpError} disabled={verifying} />
           <button
             disabled={verifying}
-            className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {verifying && <Loader2 className="w-4 h-4 animate-spin" />}
             {verifying ? 'Verifying…' : 'Verify OTP'}
           </button>
           <div className="text-center text-xs font-bold">
             {resendActive ? (
-              <button type="button" onClick={handleResend} className="text-brand-pink hover:underline flex items-center gap-1 justify-center mx-auto">
+              <button type="button" onClick={handleResend} className="text-[var(--color-accent)] hover:underline flex items-center gap-1 justify-center mx-auto">
                 <RotateCcw className="w-3 h-3" /> Resend Code
               </button>
             ) : (
@@ -482,7 +482,7 @@ export const RegisterPage = () => {
           <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <p className="font-black text-neutral-900 dark:text-white">Email verified — your account is ready!</p>
+          <p className="font-medium text-neutral-900 dark:text-white">Email verified — your account is ready!</p>
         </div>
       )}
     </PageShell>
@@ -506,11 +506,11 @@ export const ForgotPasswordPage = () => {
     <PageShell title="Reset Password" subtitle="We'll send a reset link to your email.">
       {sent ? (
         <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40">
-          <p className="font-black text-emerald-700 dark:text-emerald-300 text-sm">Check your email</p>
+          <p className="font-medium text-emerald-700 dark:text-emerald-300 text-sm">Check your email</p>
           <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-1">
             If an account exists, a reset link has been sent.
           </p>
-          <Link to="/login" className="btn-pink text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-black">Back to login</Link>
+          <Link to="/login" className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Back to login</Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -523,7 +523,7 @@ export const ForgotPasswordPage = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Sending…' : 'Send Reset Link'}
           </button>
@@ -565,8 +565,8 @@ export const ResetPasswordPage = () => {
     <PageShell title="Set a New Password" subtitle="Choose a strong password you don't use elsewhere.">
       {done ? (
         <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200">
-          <p className="font-black text-emerald-700 dark:text-emerald-300 text-sm">Password updated!</p>
-          <Link to="/login" className="btn-pink text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-black">Log in now</Link>
+          <p className="font-medium text-emerald-700 dark:text-emerald-300 text-sm">Password updated!</p>
+          <Link to="/login" className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Log in now</Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -590,11 +590,11 @@ export const ResetPasswordPage = () => {
             required
           />
           {error && (
-            <div className="text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-3 py-2">
+            <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 rounded-xl px-3 py-2">
               {error}
             </div>
           )}
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl btn-pink text-white font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-60">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Updating…' : 'Update Password'}
           </button>
@@ -607,7 +607,7 @@ export const ResetPasswordPage = () => {
 function LabeledInput({ icon, label, value, onChange, type = 'text', placeholder = '', required = false }) {
   return (
     <label className="block">
-      <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-[#B5B5B5] mb-2 block">
+      <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-ink-muted)] mb-2 block">
         {label}
       </span>
       <div className="relative">
@@ -618,7 +618,7 @@ function LabeledInput({ icon, label, value, onChange, type = 'text', placeholder
           value={value}
           placeholder={placeholder}
           onChange={onChange}
-          className="w-full pl-11 pr-4 py-3.5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] rounded-2xl text-neutral-900 dark:text-white text-sm font-bold placeholder-neutral-400 focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/20 transition"
+          className="w-full pl-11 pr-4 py-3.5 bg-[var(--color-surface-raised)] border border-[var(--color-line)] rounded-2xl text-[var(--color-ink)] text-sm font-normal placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 transition"
         />
       </div>
     </label>
