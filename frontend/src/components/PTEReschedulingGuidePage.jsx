@@ -242,7 +242,7 @@ export function PTEReschedulingGuidePage() {
       </div>
 
       {/* ── Hero Article Header ───────────────────────────────────────────── */}
-      <header className="relative bg-gradient-to-b from-white via-[#FFF5F8] to-[#FAF8F5] dark:from-[#121212] dark:via-[#1A0C13] dark:to-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16">
+      <header className="relative bg-linear-to-b from-white via-[#FFF5F8] to-[#FAF8F5] dark:from-[#121212] dark:via-[#1A0C13] dark:to-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-pink/10 dark:bg-brand-pink/20 border border-brand-pink/30 text-brand-pink text-xs font-black tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5" /> Official 2026 Academic & Core Guide
@@ -310,7 +310,7 @@ export function PTEReschedulingGuidePage() {
               </div>
 
               {/* Sidebar Quick Assistance Card */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FFF0F5] to-rose-50 dark:from-[#2A0A17] dark:to-[#1A0710] border border-brand-pink/20 space-y-3">
+              <div className="p-6 rounded-3xl bg-linear-to-br from-[#FFF0F5] to-rose-50 dark:from-[#2A0A17] dark:to-[#1A0710] border border-brand-pink/20 space-y-3">
                 <span className="text-[10px] font-black uppercase tracking-wider text-brand-pink">Need Urgent Help?</span>
                 <h4 className="font-heading font-black text-base text-neutral-900 dark:text-white">Exam Date Tomorrow?</h4>
                 <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed font-medium">
@@ -628,7 +628,7 @@ export function PTEReschedulingGuidePage() {
                 </div>
 
                 {/* Option 2 */}
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FFF0F5] to-rose-50 dark:from-[#2A0A17] dark:to-[#1A0710] border border-brand-pink/30 space-y-3.5">
+                <div className="p-6 rounded-3xl bg-linear-to-br from-[#FFF0F5] to-rose-50 dark:from-[#2A0A17] dark:to-[#1A0710] border border-brand-pink/30 space-y-3.5">
                   <div className="inline-flex px-3 py-1 rounded-full bg-brand-pink text-white text-[10px] font-black uppercase">
                     Option 2
                   </div>
@@ -867,7 +867,7 @@ export function PTEReschedulingGuidePage() {
             </section>
 
             {/* ── SECTION 13: Buy PTE Voucher CTA ────────────────────────────── */}
-            <section id="buy-voucher-cta" className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#1E0A14] via-[#111111] to-[#1E0A14] text-white border border-brand-pink/30 shadow-2xl relative overflow-hidden space-y-6">
+            <section id="buy-voucher-cta" className="p-8 sm:p-10 rounded-3xl bg-linear-to-r from-[#1E0A14] via-[#111111] to-[#1E0A14] text-white border border-brand-pink/30 shadow-2xl relative overflow-hidden space-y-6">
               <div className="absolute top-0 right-0 w-64 h-64 bg-brand-pink/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="space-y-2 relative z-10">

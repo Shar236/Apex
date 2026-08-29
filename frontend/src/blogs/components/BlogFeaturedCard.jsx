@@ -22,7 +22,7 @@ export default function BlogFeaturedCard({ post }) {
           ) : (
             <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600">No image</div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/60 via-black/10 to-transparent" />
           <span className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-brand-pink text-white text-[11px] font-black uppercase tracking-wider shadow-md">{post.category}</span>
         </div>
         <div className="flex flex-col justify-center p-6 sm:p-10 space-y-4">

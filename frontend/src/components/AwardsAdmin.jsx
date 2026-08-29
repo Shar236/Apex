@@ -540,7 +540,7 @@ return (
                   <Trophy className="w-12 h-12" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-black/10" />
               {(previewAward.videoUrl || previewAward.videoPublicId) && (
                 <span className="absolute inset-0 flex items-center justify-center">
                   <span className="w-14 h-14 rounded-full bg-white/90 dark:bg-brand-pink shadow-xl flex items-center justify-center">
