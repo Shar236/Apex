@@ -106,13 +106,13 @@ export const AwardImage = ({ award, width = 800, className = '', eager = false }
 export const StatusPill = ({ award }) => {
   if (award.featured) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-medium uppercase tracking-wider shadow-md">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent text-white text-[10px] font-medium uppercase tracking-wider shadow-md">
         <Star className="w-3 h-3 fill-current" /> Featured
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-surface)]/95 text-[var(--color-ink)] border border-[var(--color-line)] text-[10px] font-medium uppercase tracking-wider shadow-md">
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface/95 text-ink border border-line text-[10px] font-medium uppercase tracking-wider shadow-md">
       <AwardIcon className="w-3 h-3" /> {award.category || 'Recognition'}
     </span>
   );
@@ -121,14 +121,14 @@ export const StatusPill = ({ award }) => {
 export const AwardCard = ({ award, index, onView, onPlay }) => {
   return (
     <article
-      className="group relative flex flex-col rounded-3xl bg-[var(--color-surface)] border border-[var(--color-line)] card-shadow overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-[var(--color-accent)]/40 animate-fade-up"
+      className="group relative flex flex-col rounded-3xl bg-surface border border-line card-shadow overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-accent/40 animate-fade-up"
       style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
     >
       {/* Media */}
       <button
         type="button"
         onClick={() => onView(award)}
-        className="relative block w-full aspect-4/3 overflow-hidden bg-[var(--color-surface-sunken)] text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        className="relative block w-full aspect-4/3 overflow-hidden bg-surface-sunken text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={`View details of ${award.title}`}
       >
         <AwardImage award={award} width={800} className="w-full h-full transition-transform duration-500 group-hover:scale-105" />
@@ -137,7 +137,7 @@ export const AwardCard = ({ award, index, onView, onPlay }) => {
         {/* Play video overlay */}
         {award.videoUrl && (
           <span className="absolute inset-0 flex items-center justify-center">
-            <span className="w-14 h-14 rounded-full bg-[var(--color-accent)] shadow-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+            <span className="w-14 h-14 rounded-full bg-accent shadow-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
               <Play className="w-6 h-6 text-white fill-white ml-0.5" />
             </span>
           </span>
@@ -150,23 +150,23 @@ export const AwardCard = ({ award, index, onView, onPlay }) => {
       {/* Body */}
       <div className="flex flex-col flex-1 p-5 space-y-3">
         <div className="flex items-start gap-2">
-          <span className="w-8 h-8 rounded-xl bg-[var(--color-accent)]/[0.08] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0 mt-0.5">
-            <Trophy className="w-4 h-4 text-[var(--color-accent)]" />
+          <span className="w-8 h-8 rounded-xl bg-accent/8 border border-accent/20 flex items-center justify-center shrink-0 mt-0.5">
+            <Trophy className="w-4 h-4 text-accent" />
           </span>
           <div className="min-w-0">
-            <h3 className="font-heading font-medium text-base text-[var(--color-ink)] leading-tight line-clamp-2">
+            <h3 className="font-heading font-medium text-base text-ink leading-tight line-clamp-2">
               {award.title}
             </h3>
             {award.organization && (
-              <p className="text-[11px] font-normal text-[var(--color-ink-muted)] mt-0.5 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-[var(--color-accent)]" />
+              <p className="text-[11px] font-normal text-ink-muted mt-0.5 flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-accent" />
                 <span className="line-clamp-1">{award.organization}</span>
               </p>
             )}
           </div>
         </div>
 
-        <p className="text-xs font-medium text-[var(--color-ink-muted)] leading-relaxed line-clamp-2 flex-1">
+        <p className="text-xs font-medium text-ink-muted leading-relaxed line-clamp-2 flex-1">
           {award.description || 'A recognised achievement from the Apex Vouchers journey.'}
         </p>
 
@@ -274,23 +274,23 @@ export const AwardsAndAchievements = () => {
   const featured = awards.find((a) => a.featured) || null;
 
   return (
-<section className="relative bg-[var(--color-surface)] text-[var(--color-ink)] transition-colors duration-300 overflow-hidden">
+<section className="relative bg-surface text-ink transition-colors duration-300 overflow-hidden">
       {/* Subtle decorative background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[var(--color-accent)]/8 blur-3xl animate-float-gentle" />
-        <div className="absolute top-1/2 -left-32 w-80 h-80 rounded-full bg-[var(--color-accent)]/5 blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-accent/8 blur-3xl animate-float-gentle" />
+        <div className="absolute top-1/2 -left-32 w-80 h-80 rounded-full bg-accent/5 blur-3xl" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] text-[11px] font-medium uppercase tracking-widest border border-[var(--color-accent)]/25 mb-4">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/8 text-accent text-[11px] font-medium uppercase tracking-widest border border-accent/25 mb-4">
             <Sparkles className="w-3.5 h-3.5" /> Our Milestones
           </span>
           <h1 className="font-heading font-medium text-3xl sm:text-4xl lg:text-5xl tracking-tight mb-4">
             Awards &amp; <span className="text-gradient-pink">Achievements</span>
           </h1>
-          <p className="text-sm sm:text-base font-medium text-[var(--color-ink-muted)] leading-relaxed">
+          <p className="text-sm sm:text-base font-medium text-ink-muted leading-relaxed">
             Recognitions, honours and milestones earned along the way — proof of our commitment to genuine
             exam vouchers, fast delivery and trusted customer support.
           </p>
@@ -298,8 +298,8 @@ export const AwardsAndAchievements = () => {
 
         {/* Loading state */}
         {loading && awards.length === 0 && (
-          <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)] gap-2.5">
-            <Loader2 className="w-5 h-5 animate-spin text-[var(--color-accent)]" />
+          <div className="flex items-center justify-center py-20 text-ink-muted gap-2.5">
+            <Loader2 className="w-5 h-5 animate-spin text-accent" />
             <span className="text-sm font-normal">Loading achievements…</span>
           </div>
         )}
@@ -311,7 +311,7 @@ export const AwardsAndAchievements = () => {
               <TriangleAlert className="w-7 h-7 text-amber-500" />
             </div>
             <h2 className="font-heading font-medium text-lg mb-1.5">Couldn’t load achievements</h2>
-            <p className="text-sm font-medium text-[var(--color-ink-muted)] mb-5">{error}</p>
+            <p className="text-sm font-medium text-ink-muted mb-5">{error}</p>
             <Button onClick={() => loadAwards(1, false)} variant="primary" size="md" className="rounded-xl!">
               Try Again
             </Button>
@@ -321,11 +321,11 @@ export const AwardsAndAchievements = () => {
         {/* Empty state */}
         {!loading && !error && awards.length === 0 && (
           <div className="py-20 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface-sunken)] border border-[var(--color-line)] flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-surface-sunken border border-line flex items-center justify-center mx-auto">
               <Trophy className="w-7 h-7 text-neutral-400" />
             </div>
             <p className="font-heading font-medium text-lg">New achievements coming soon!</p>
-            <p className="text-sm font-medium text-[var(--color-ink-muted)]">
+            <p className="text-sm font-medium text-ink-muted">
               We’re adding our latest awards and recognitions here.
             </p>
           </div>
@@ -334,21 +334,21 @@ export const AwardsAndAchievements = () => {
         {featured && awards.length > 1 && (
           <div className="mb-12">
             <div className="flex items-center gap-2 mb-4">
-              <Star className="w-4 h-4 text-[var(--color-accent)] fill-[var(--color-accent)]" />
+              <Star className="w-4 h-4 text-accent fill-accent" />
               <h2 className="font-heading font-medium text-lg sm:text-xl">Featured Achievement</h2>
             </div>
             <div
-              className="group relative grid md:grid-cols-2 rounded-3xl overflow-hidden border border-[var(--color-accent)]/25 bg-[var(--color-surface)] card-shadow hover:shadow-2xl transition-all duration-300 cursor-pointer animate-fade-up"
+              className="group relative grid md:grid-cols-2 rounded-3xl overflow-hidden border border-accent/25 bg-surface card-shadow hover:shadow-2xl transition-all duration-300 cursor-pointer animate-fade-up"
               onClick={() => setSelectedAward(featured)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedAward(featured); } }}
             >
-              <div className="relative aspect-video md:aspect-auto md:min-h-72 overflow-hidden bg-[var(--color-surface-sunken)]">
+              <div className="relative aspect-video md:aspect-auto md:min-h-72 overflow-hidden bg-surface-sunken">
                 <AwardImage award={featured} width={1200} eager className="w-full h-full transition-transform duration-500 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/60 via-black/10 to-transparent" />
                 {featured.videoUrl && (
-                  <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-[11px] font-medium shadow-lg">
+                  <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-white text-[11px] font-medium shadow-lg">
                     <Play className="w-3.5 h-3.5 fill-current" /> Watch Video
                   </span>
                 )}
@@ -357,21 +357,21 @@ export const AwardsAndAchievements = () => {
               <div className="flex flex-col justify-center p-6 sm:p-10 space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
                   {featured.year && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] text-xs font-medium border border-[var(--color-accent)]/20">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/8 text-accent text-xs font-medium border border-accent/20">
                       <Calendar className="w-3 h-3" /> {featured.year}
                     </span>
                   )}
                   {featured.organization && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] text-xs font-normal">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-sunken text-ink-muted text-xs font-normal">
                       <Building2 className="w-3 h-3" /> {featured.organization}
                     </span>
                   )}
                 </div>
                 <h3 className="font-heading font-medium text-2xl sm:text-3xl leading-tight">{featured.title}</h3>
-                <p className="text-sm font-medium text-[var(--color-ink-muted)] leading-relaxed line-clamp-3">
+                <p className="text-sm font-medium text-ink-muted leading-relaxed line-clamp-3">
                   {featured.description}
                 </p>
-                <div className="pt-1 inline-flex items-center gap-2 text-[var(--color-accent)] text-sm font-medium">
+                <div className="pt-1 inline-flex items-center gap-2 text-accent text-sm font-medium">
                   View Full Details <ChevronRight className="w-4 h-4" strokeWidth={3} />
                 </div>
               </div>
@@ -416,7 +416,7 @@ export const AwardsAndAchievements = () => {
               </div>
             )}
 
-            <p className="text-center text-[11px] font-normal text-[var(--color-ink-muted)] mt-6" aria-live="polite">
+            <p className="text-center text-[11px] font-normal text-ink-muted mt-6" aria-live="polite">
               Showing {awards.length} of {total} achievements{featuredCount ? ` • ${featuredCount} featured` : ''}
             </p>
           </>
@@ -462,7 +462,7 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="award-modal-title"
-      className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[var(--color-surface)] border border-[var(--color-line)] shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
+      className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl bg-surface border border-line shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
     >
       <button
         ref={closeRef}
@@ -472,22 +472,22 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
           onClose?.();
         }}
         aria-label="Close award details"
-        className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-[var(--color-surface)] text-[var(--color-ink)] shadow-lg hover:bg-[var(--color-accent)] hover:text-white transition-colors cursor-pointer"
+        className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-surface text-ink shadow-lg hover:bg-accent hover:text-white transition-colors cursor-pointer"
       >
         <X className="w-5 h-5" />
       </button>
 
       {/* Hero image */}
-      <div className="relative aspect-video overflow-hidden bg-[var(--color-surface-sunken)]">
+      <div className="relative aspect-video overflow-hidden bg-surface-sunken">
         <AwardImage award={award} width={1600} eager className="w-full h-full" />
         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
         <div className="absolute bottom-4 left-4 sm:bottom-5 sm:left-6 flex items-center gap-2 flex-wrap">
-          <span className="px-3 py-1 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-medium uppercase tracking-wider">
+          <span className="px-3 py-1 rounded-full bg-accent text-white text-[10px] font-medium uppercase tracking-wider">
             {award.featured ? '★ Featured' : award.category || 'Recognition'}
           </span>
           {award.year && (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium">
-              <Calendar className="w-3 h-3 text-[var(--color-accent)]" /> {award.year}
+              <Calendar className="w-3 h-3 text-accent" /> {award.year}
             </span>
           )}
         </div>
@@ -495,7 +495,7 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
         <button
           type="button"
           onClick={() => setFullImage(true)}
-          className="absolute bottom-4 right-4 sm:bottom-5 sm:right-6 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-[var(--color-accent)] transition-colors cursor-pointer"
+          className="absolute bottom-4 right-4 sm:bottom-5 sm:right-6 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-accent transition-colors cursor-pointer"
         >
           <ExternalLink className="w-3.5 h-3.5" /> Full Size
         </button>
@@ -509,13 +509,13 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
         {/* Meta rows */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           {award.organization && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-surface-sunken)] text-xs font-normal text-[var(--color-ink-muted)]">
-              <Building2 className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-sunken text-xs font-normal text-ink-muted">
+              <Building2 className="w-3.5 h-3.5 text-accent" />
               {award.organization}
             </span>
           )}
           {award.year && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-accent)]/[0.08] text-xs font-medium text-[var(--color-accent)] border border-[var(--color-accent)]/20">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/8 text-xs font-medium text-accent border border-accent/20">
               <Calendar className="w-3.5 h-3.5" /> Awarded {award.year}
             </span>
           )}
@@ -524,14 +524,14 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
               href={award.externalLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] text-xs font-medium border border-[var(--color-line)] hover:text-[var(--color-ink)] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-sunken text-ink-muted text-xs font-medium border border-line hover:text-ink transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Learn More
             </a>
           )}
         </div>
 
-        <p className="text-sm sm:text-[15px] font-medium text-[var(--color-ink-muted)] leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm sm:text-[15px] font-medium text-ink-muted leading-relaxed whitespace-pre-wrap">
           {award.description || 'No additional details available for this achievement yet.'}
         </p>
 
@@ -546,7 +546,7 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
       {/* Full-size image overlay */}
       {fullImage && (
         <div
-          className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
+          className="fixed inset-0 z-60 bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
           onClick={() => setFullImage(false)}
           role="dialog"
           aria-modal="true"
@@ -556,7 +556,7 @@ export const AwardDetailModal = ({ award, onClose, onPlay }) => {
             type="button"
             onClick={() => setFullImage(false)}
             aria-label="Close full size image"
-            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/15 text-white hover:bg-[var(--color-accent)] transition-colors cursor-pointer"
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/15 text-white hover:bg-accent transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -599,7 +599,7 @@ export const AwardVideoModal = ({ award, onClose }) => {
           onClose?.();
         }}
         aria-label="Close video player"
-        className="absolute top-3 right-3 z-20 p-2.5 rounded-full bg-black/60 text-white hover:bg-[var(--color-accent)] transition-colors cursor-pointer"
+        className="absolute top-3 right-3 z-20 p-2.5 rounded-full bg-black/60 text-white hover:bg-accent transition-colors cursor-pointer"
       >
         <X className="w-5 h-5" />
       </button>
@@ -626,7 +626,7 @@ export const AwardVideoModal = ({ award, onClose }) => {
           >
             <track kind="captions" label="None" />
             Your browser does not support embedded videos. You can{' '}
-            <a href={award.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] underline">
+            <a href={award.videoUrl} target="_blank" rel="noopener noreferrer" className="text-accent underline">
               open the video directly
             </a>
             .
@@ -634,12 +634,12 @@ export const AwardVideoModal = ({ award, onClose }) => {
         )}
       </div>
 
-      <div className="p-4 sm:p-5 bg-[var(--color-surface)] flex items-start justify-between gap-4">
+      <div className="p-4 sm:p-5 bg-surface flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-heading font-medium text-sm sm:text-base text-[var(--color-ink)] line-clamp-2">{award.title}</p>
+          <p className="font-heading font-medium text-sm sm:text-base text-ink line-clamp-2">{award.title}</p>
           {award.organization && (
-            <p className="text-[11px] font-normal text-[var(--color-ink-muted)] mt-0.5 flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-[var(--color-accent)]" /> {award.organization}
+            <p className="text-[11px] font-normal text-ink-muted mt-0.5 flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-accent" /> {award.organization}
             </p>
           )}
         </div>
@@ -647,7 +647,7 @@ export const AwardVideoModal = ({ award, onClose }) => {
           href={award.videoUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] text-[11px] font-medium border border-[var(--color-accent)]/25 shrink-0 hover:bg-[var(--color-accent)]/[0.12] transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent/8 text-accent text-[11px] font-medium border border-accent/25 shrink-0 hover:bg-accent/12 transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" /> Open
         </a>

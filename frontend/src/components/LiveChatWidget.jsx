@@ -46,7 +46,7 @@ export const LiveChatWidget = () => {
           <MessageSquare className="w-5 h-5 text-brand-pink" />
         </button>
       ) : (
-        <div className="w-80 sm:w-96 bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden flex flex-col h-[480px] animate-in slide-in-from-bottom-5 duration-200">
+        <div className="w-80 sm:w-96 bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden flex flex-col h-120 animate-in slide-in-from-bottom-5 duration-200">
           
           {/* Chat Header */}
           <div className="bg-[#111111] dark:bg-[#0A0A0A] text-white p-4 flex items-center justify-between border-b border-[#292929]">

@@ -9,17 +9,17 @@ export default function SectionHeading({ eyebrow, title, subtitle, align = 'cent
   return (
     <div className={`flex flex-col ${alignCls} max-w-2xl mb-10 ${className}`}>
       {eyebrow && (
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-3">
           {eyebrow}
         </span>
       )}
       {title && (
-        <h2 className="font-heading font-light text-3xl sm:text-4xl leading-[1.15] text-[var(--color-ink)]">
+        <h2 className="font-heading font-light text-3xl sm:text-4xl leading-[1.15] text-ink">
           {title}
         </h2>
       )}
       {subtitle && (
-        <p className="mt-3 text-sm sm:text-base font-normal text-[var(--color-ink-muted)] leading-relaxed">
+        <p className="mt-3 text-sm sm:text-base font-normal text-ink-muted leading-relaxed">
           {subtitle}
         </p>
       )}

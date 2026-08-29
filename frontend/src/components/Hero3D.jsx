@@ -28,12 +28,12 @@ const CampaignCountdownTimer = ({ endDate }) => {
   }, [endDate]);
 
   const neutralChip =
-    'bg-[var(--color-surface-sunken)] text-[var(--color-ink)] border border-[var(--color-line)] px-1.5 py-0.5 rounded';
-  const accentChip = 'bg-[var(--color-accent)] text-white px-1.5 py-0.5 rounded';
+    'bg-surface-sunken text-ink border border-line px-1.5 py-0.5 rounded';
+  const accentChip = 'bg-accent text-white px-1.5 py-0.5 rounded';
 
   return (
-    <div className="inline-flex items-center gap-2 text-xs font-medium text-[var(--color-ink)] bg-[var(--color-surface)] px-3.5 py-1.5 rounded-full border border-[var(--color-accent)]/30 shadow-sm">
-      <span className="text-[var(--color-accent)]">🔥 Offer Ends In:</span>
+    <div className="inline-flex items-center gap-2 text-xs font-medium text-ink bg-surface px-3.5 py-1.5 rounded-full border border-accent/30 shadow-sm">
+      <span className="text-accent">🔥 Offer Ends In:</span>
       <div className="flex items-center gap-1 font-mono text-xs">
         <span className={accentChip}>{String(timeLeft.days).padStart(2, '0')}d</span>
         <span>:</span>
@@ -76,9 +76,9 @@ export const Hero3D = () => {
       : defaultBenefits;
 
   return (
-    <section className="relative overflow-hidden bg-linear-to-b from-[var(--color-surface-raised)] via-[var(--color-surface)] to-[var(--color-surface-raised)] pt-8 lg:pt-14 pb-16 border-b border-[var(--color-line)] transition-colors duration-300">
+    <section className="relative overflow-hidden bg-linear-to-b from-surface-raised via-surface to-surface-raised pt-8 lg:pt-14 pb-16 border-b border-line transition-colors duration-300">
       {/* Background Subtle Soft Glow */}
-      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-[var(--color-accent)]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <div className="absolute top-0 right-1/4 w-150 h-150 bg-accent/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center">
@@ -86,9 +86,9 @@ export const Hero3D = () => {
           <div className="lg:col-span-7 space-y-6">
             {/* Active Promotional Campaign Banner Card */}
             {activeCampaign ? (
-              <div className="p-4 sm:p-5 rounded-3xl bg-[var(--color-accent)]/[0.06] border border-[var(--color-accent)]/25 shadow-sm space-y-3">
+              <div className="p-4 sm:p-5 rounded-3xl bg-accent/6 border border-accent/25 shadow-sm space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--color-accent)] text-white font-medium text-xs uppercase tracking-wider shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent text-white font-medium text-xs uppercase tracking-wider shadow-sm">
                     {activeCampaign.badgeText || '🇮🇳 SPECIAL CAMPAIGN'}
                   </span>
                   {activeCampaign.showCountdown !== false && (
@@ -97,31 +97,31 @@ export const Hero3D = () => {
                 </div>
 
                 <div>
-                  <h2 className="font-heading text-xl sm:text-2xl font-normal text-[var(--color-ink)] leading-tight">
+                  <h2 className="font-heading text-xl sm:text-2xl font-normal text-ink leading-tight">
                     {activeCampaign.title || '50% OFF EXAM VOUCHERS'}
                   </h2>
-                  <p className="text-sm font-normal text-[var(--color-accent)] mt-0.5">
+                  <p className="text-sm font-normal text-accent mt-0.5">
                     {activeCampaign.subtitle || 'Limited period promotional offer'}
                   </p>
                 </div>
               </div>
             ) : (
               /* Normal Pill Badge */
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--color-accent)]/[0.08] border border-[var(--color-accent)]/20 text-xs font-medium text-[var(--color-accent)]">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/8 border border-accent/20 text-xs font-medium text-accent">
                 <span>🎟️</span>
                 <span>Save on Exam Fees with Apex Vouchers</span>
               </div>
             )}
 
             {/* Headline */}
-            <h1 className="font-heading font-light text-4xl sm:text-5xl lg:text-6xl leading-[1.08] text-[var(--color-ink)] tracking-tight">
+            <h1 className="font-heading font-light text-4xl sm:text-5xl lg:text-6xl leading-[1.08] text-ink tracking-tight">
               {heading1} <br />
-              <span className="text-[var(--color-accent)]">{headingHighlight}</span> <br />
+              <span className="text-accent">{headingHighlight}</span> <br />
               {heading3}
             </h1>
 
             {/* Subheading */}
-            <p className="text-[var(--color-ink-muted)] font-normal text-base sm:text-lg leading-relaxed max-w-xl">
+            <p className="text-ink-muted font-normal text-base sm:text-lg leading-relaxed max-w-xl">
               {descriptionText}
             </p>
 
@@ -130,13 +130,13 @@ export const Hero3D = () => {
               {displayBenefits.map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-2.5 bg-[var(--color-surface)] p-2.5 px-3 rounded-2xl border border-[var(--color-line)] shadow-sm"
+                  className="flex items-center gap-2.5 bg-surface p-2.5 px-3 rounded-2xl border border-line shadow-sm"
                 >
                   <span className="text-base">{item.icon}</span>
                   <div className="flex flex-col text-left leading-none">
-                    <span className="text-xs font-medium text-[var(--color-ink)]">{item.label}</span>
+                    <span className="text-xs font-medium text-ink">{item.label}</span>
                     {item.sub && (
-                      <span className="text-[10px] font-normal text-[var(--color-ink-muted)] mt-0.5">
+                      <span className="text-[10px] font-normal text-ink-muted mt-0.5">
                         {item.sub}
                       </span>
                     )}
@@ -166,7 +166,7 @@ export const Hero3D = () => {
         </div>
 
         {/* 6-Column Bottom Trust Bar */}
-        <div className="mt-12 bg-[var(--color-surface)] rounded-3xl p-5 border border-[var(--color-line)] shadow-sm grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="mt-12 bg-surface rounded-3xl p-5 border border-line shadow-sm grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { icon: Award, title: 'Official Exam Partners', sub: '100% Genuine Vouchers' },
             { icon: Mail, title: 'Instant Email Delivery', sub: 'Get in 10 Seconds' },
@@ -178,12 +178,12 @@ export const Hero3D = () => {
             const IconComp = item.icon;
             return (
               <div key={idx} className="flex items-center gap-3 p-1">
-                <div className="w-10 h-10 rounded-2xl bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-accent/8 text-accent flex items-center justify-center shrink-0">
                   <IconComp className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col text-left leading-tight">
-                  <span className="text-xs font-medium text-[var(--color-ink)]">{item.title}</span>
-                  <span className="text-[10px] font-normal text-[var(--color-ink-muted)] mt-0.5">{item.sub}</span>
+                  <span className="text-xs font-medium text-ink">{item.title}</span>
+                  <span className="text-[10px] font-normal text-ink-muted mt-0.5">{item.sub}</span>
                 </div>
               </div>
             );

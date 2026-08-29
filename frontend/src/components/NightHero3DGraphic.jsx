@@ -3,14 +3,14 @@ import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
 const FloatingVoucherCard = ({ position, animation, tile, initial, name, save }) => (
   <div className={`absolute ${position} z-30 pointer-events-auto ${animation} hero-floating-card-wrapper cursor-pointer`}>
-    <div className="hero-floating-card-inner bg-[var(--color-surface-raised)]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[var(--color-line)] shadow-2xl flex items-center gap-3">
+    <div className="hero-floating-card-inner bg-surface-raised/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-line shadow-2xl flex items-center gap-3">
       <div className={`w-10 h-10 rounded-2xl ${tile} font-medium text-lg flex items-center justify-center shrink-0 shadow-md`}>
         {initial}
       </div>
       <div className="flex flex-col text-left">
-        <span className="text-xs font-medium text-[var(--color-ink)] leading-tight">{name}</span>
-        <span className="text-[10px] font-normal text-[var(--color-ink-muted)] uppercase tracking-wider">VOUCHER</span>
-        <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[var(--color-success)] text-white font-medium text-[10px] shadow-sm">
+        <span className="text-xs font-medium text-ink leading-tight">{name}</span>
+        <span className="text-[10px] font-normal text-ink-muted uppercase tracking-wider">VOUCHER</span>
+        <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-success text-white font-medium text-[10px] shadow-sm">
           SAVE {save}
         </span>
       </div>
@@ -36,7 +36,7 @@ export const NightHero3DGraphic = () => {
 
   const cards = [
     { position: 'top-2 left-0 sm:-left-2', animation: 'animate-float-pte', tile: 'bg-linear-to-br from-[#005A9C] to-[#003B66] text-white', initial: 'P', name: 'PTE Academic', save: '₹3,101' },
-    { position: 'top-4 right-0 sm:-right-2', animation: 'animate-float-ielts', tile: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30', initial: 'I', name: 'IELTS Test', save: '₹2,751' },
+    { position: 'top-4 right-0 sm:-right-2', animation: 'animate-float-ielts', tile: 'bg-accent/15 text-accent border border-accent/30', initial: 'I', name: 'IELTS Test', save: '₹2,751' },
     { position: 'bottom-14 left-1 sm:-left-3', animation: 'animate-float-toefl', tile: 'bg-linear-to-br from-[#F59E0B] to-[#D97706] text-white', initial: 'T', name: 'TOEFL iBT', save: '₹2,401' },
     { position: 'bottom-10 right-1 sm:-right-3', animation: 'animate-float-duolingo', tile: 'bg-linear-to-br from-[#58CC02] to-[#10B981] text-white', initial: '🦉', name: 'Duolingo Test', save: '₹1,901' },
   ];
@@ -46,7 +46,7 @@ export const NightHero3DGraphic = () => {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full max-w-[620px] h-[480px] sm:h-[520px] mx-auto flex items-center justify-center select-none overflow-visible"
+      className="relative w-full max-w-155 h-120 sm:h-130 mx-auto flex items-center justify-center select-none overflow-visible"
     >
       {/* Background Glow Layer */}
       <div
@@ -55,7 +55,7 @@ export const NightHero3DGraphic = () => {
           transform: `translate3d(${mouseOffset.x * 6}px, ${mouseOffset.y * 6}px, 0)`,
         }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] rounded-full bg-linear-to-tr from-[var(--color-accent)]/20 via-[var(--color-accent)]/5 to-transparent blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-115 h-115 rounded-full bg-linear-to-tr from-accent/20 via-accent/5 to-transparent blur-3xl" />
       </div>
 
       {/* Central Night Vector Illustration with 3D Character */}
@@ -125,7 +125,7 @@ export const NightHero3DGraphic = () => {
             height={400}
             loading="eager"
             fetchPriority="high"
-            className="w-[320px] sm:w-[370px] md:w-[400px] max-w-full h-auto object-contain drop-shadow-[0_20px_35px_rgba(255,0,92,0.2)] select-none pointer-events-none"
+            className="w-80 sm:w-92.5 md:w-100 max-w-full h-auto object-contain drop-shadow-[0_20px_35px_rgba(255,0,92,0.2)] select-none pointer-events-none"
           />
         </div>
       </div>

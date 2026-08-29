@@ -54,14 +54,14 @@ export const PTEBookingAssistance = () => {
   return (
     <section
       id="pte-booking-assistance"
-      className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] transition-colors duration-300"
+      className="py-16 sm:py-24 bg-surface-raised border-b border-line transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* ── Section Header ── */}
         <div className="flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 mb-3">
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-accent)]">
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent">
               Need Help Booking PTE?
             </span>
             <span className="text-[#000048] dark:text-white">
@@ -82,7 +82,7 @@ export const PTEBookingAssistance = () => {
             return (
               <div
                 key={card.slug}
-                className="flex flex-col p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-line)] shadow-sm hover:border-[var(--color-accent)]/40 hover:-translate-y-1 transition-all duration-300"
+                className="flex flex-col p-5 rounded-2xl bg-surface border border-line shadow-sm hover:border-accent/40 hover:-translate-y-1 transition-all duration-300"
               >
                 {/* ── Badge + Pearson row ── */}
                 <div className="flex items-center justify-between mb-3">
@@ -93,7 +93,7 @@ export const PTEBookingAssistance = () => {
                 </div>
 
                 {/* ── Illustration ── */}
-                <div className="w-full h-[178px] sm:h-[178px] rounded-xl overflow-hidden bg-[var(--color-surface-sunken)] shrink-0 mb-3.5">
+                <div className="w-full h-44.5 sm:h-44.5 rounded-xl overflow-hidden bg-surface-sunken shrink-0 mb-3.5">
                   <img
                     src={imageUrl(card.illustration, { width: 600 })}
                     srcSet={cldSrcSet(card.illustration, [300, 480, 600]) || undefined}
@@ -108,16 +108,16 @@ export const PTEBookingAssistance = () => {
                 </div>
 
                 {/* ── Icon ── */}
-                <div className="w-12 h-12 rounded-2xl mb-3 border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl mb-3 border border-accent/20 bg-accent/8 text-accent flex items-center justify-center shrink-0">
                   <Icon className="w-6 h-6" strokeWidth={2} />
                 </div>
 
                 {/* ── Text ── */}
                 <div className="space-y-1.5 mb-5 flex-1">
-                  <h3 className="font-heading font-medium text-xl leading-snug text-[var(--color-ink)]">
+                  <h3 className="font-heading font-medium text-xl leading-snug text-ink">
                     {card.examType}
                   </h3>
-                  <p className="text-xs font-normal leading-relaxed text-[var(--color-ink-muted)]">
+                  <p className="text-xs font-normal leading-relaxed text-ink-muted">
                     {card.desc}
                   </p>
                 </div>
@@ -139,12 +139,12 @@ export const PTEBookingAssistance = () => {
         </div>
 
         {/* ── Trust Highlights Strip ── */}
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 pt-6 border-t border-[var(--color-line)]">
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 pt-6 border-t border-line">
           {HIGHLIGHTS.map((h, i) => {
             const Icon = h.icon;
             return (
-              <div key={i} className="flex items-center gap-2 text-xs font-normal text-[var(--color-ink-muted)]">
-                <Icon className="w-4 h-4 text-[var(--color-accent)]" strokeWidth={2} />
+              <div key={i} className="flex items-center gap-2 text-xs font-normal text-ink-muted">
+                <Icon className="w-4 h-4 text-accent" strokeWidth={2} />
                 <span>{h.text}</span>
               </div>
             );

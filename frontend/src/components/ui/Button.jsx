@@ -19,16 +19,16 @@ const SIZES = {
 
 const VARIANTS = {
   primary:
-    'bg-[var(--color-accent)] text-white shadow-sm shadow-[var(--color-accent)]/20 ' +
-    'hover:bg-[var(--color-accent-hover)] hover:-translate-y-0.5 hover:shadow-md active:translate-y-0',
+    'bg-accent text-white shadow-sm shadow-accent/20 ' +
+    'hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-md active:translate-y-0',
   secondary:
-    'bg-[var(--color-surface)] text-[var(--color-accent)] border border-[var(--color-accent)]/45 ' +
-    'hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/[0.06]',
+    'bg-surface text-accent border border-accent/45 ' +
+    'hover:border-accent hover:bg-accent/6',
   ghost:
-    'bg-transparent text-[var(--color-ink-muted)] border border-[var(--color-line)] ' +
-    'hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)]',
+    'bg-transparent text-ink-muted border border-line ' +
+    'hover:text-ink hover:bg-surface-raised',
   disabled:
-    'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] border border-[var(--color-line)] ' +
+    'bg-surface-sunken text-ink-muted border border-line ' +
     'cursor-not-allowed select-none',
 };
 

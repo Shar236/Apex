@@ -15,7 +15,7 @@ export const FAQSection = () => {
   });
 
   return (
-    <section className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-surface-raised border-b border-line transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -27,13 +27,13 @@ export const FAQSection = () => {
 
         {/* Live Filter Search Bar */}
         <div className="relative mb-8 max-w-lg mx-auto">
-          <Search className="w-4 h-4 text-[var(--color-ink-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-ink-muted absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search FAQ questions (e.g. refund, validity, PTE)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-line)] text-[var(--color-ink)] text-xs font-normal placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-surface border border-line text-ink text-xs font-normal placeholder:text-ink-muted focus:outline-none focus:border-accent transition-all shadow-sm"
           />
         </div>
 
@@ -46,21 +46,21 @@ export const FAQSection = () => {
             return (
               <div
                 key={idx}
-                className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-line)] overflow-hidden transition-all duration-200"
+                className="bg-surface rounded-2xl border border-line overflow-hidden transition-all duration-200"
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? -1 : idx)}
-                  className="w-full p-5 text-left font-heading font-medium text-sm sm:text-base text-[var(--color-ink)] flex items-center justify-between gap-4 hover:text-[var(--color-accent)] transition-colors"
+                  className="w-full p-5 text-left font-heading font-medium text-sm sm:text-base text-ink flex items-center justify-between gap-4 hover:text-accent transition-colors"
                 >
                   <span className="flex items-center gap-3">
-                    <HelpCircle className="w-4 h-4 text-[var(--color-accent)] shrink-0" />
+                    <HelpCircle className="w-4 h-4 text-accent shrink-0" />
                     <span>{qStr}</span>
                   </span>
-                  <ChevronDown className={`w-4 h-4 text-[var(--color-accent)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-accent shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-[var(--color-ink-muted)] text-xs sm:text-sm font-normal leading-relaxed border-t border-[var(--color-line)] animate-in fade-in slide-in-from-top-1">
+                  <div className="px-5 pb-5 pt-1 text-ink-muted text-xs sm:text-sm font-normal leading-relaxed border-t border-line animate-in fade-in slide-in-from-top-1">
                     {aStr}
                   </div>
                 )}

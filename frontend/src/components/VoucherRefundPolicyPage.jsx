@@ -38,30 +38,30 @@ export function VoucherRefundPolicyPage() {
   }, [globalSEO]);
 
   return (
-    <div className="bg-[var(--color-surface-sunken)] text-[var(--color-ink)] min-h-screen antialiased transition-colors duration-300">
+    <div className="bg-surface-sunken text-ink min-h-screen antialiased transition-colors duration-300">
       {/* Breadcrumb */}
-      <div className="bg-[var(--color-surface)] border-b border-[var(--color-line)]">
+      <div className="bg-surface border-b border-line">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <nav className="flex items-center gap-2 text-xs font-normal text-[var(--color-ink-muted)]">
-            <a href="/" className="hover:text-[var(--color-accent)] transition-colors">Home</a>
+          <nav className="flex items-center gap-2 text-xs font-normal text-ink-muted">
+            <a href="/" className="hover:text-accent transition-colors">Home</a>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-neutral-400">Policies</span>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[var(--color-accent)] font-normal">Voucher Refund Policy</span>
+            <span className="text-accent font-normal">Voucher Refund Policy</span>
           </nav>
         </div>
       </div>
 
       {/* Header */}
-      <header className="bg-[var(--color-surface)] border-b border-[var(--color-line)] py-12 sm:py-16 text-center">
+      <header className="bg-surface border-b border-line py-12 sm:py-16 text-center">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-medium uppercase tracking-wide">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium uppercase tracking-wide">
             <Ticket className="w-4 h-4" /> Official Voucher Terms
           </div>
-          <h1 className="font-heading font-medium text-3xl sm:text-4xl text-[var(--color-ink)] tracking-tight">
+          <h1 className="font-heading font-medium text-3xl sm:text-4xl text-ink tracking-tight">
             Voucher Refund & Replacement Policy
           </h1>
-          <p className="text-sm sm:text-base text-[var(--color-ink-muted)] font-medium">
+          <p className="text-sm sm:text-base text-ink-muted font-medium">
             100% Genuine Official Exam Codes with Instant Replacement & Unredeemed Return Guarantees.
           </p>
           <div className="pt-2 text-xs font-mono text-neutral-400">
@@ -71,11 +71,11 @@ export function VoucherRefundPolicyPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-10 text-sm sm:text-base text-[var(--color-ink-muted)] leading-relaxed">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-10 text-sm sm:text-base text-ink-muted leading-relaxed">
         
         {/* Section 1 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
-          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-ink">
             1. 100% Unredeemed Voucher Return Guarantee
           </h2>
           <p>
@@ -87,48 +87,48 @@ export function VoucherRefundPolicyPage() {
         </section>
 
         {/* Section 2 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
-          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-ink">
             2. Instant Replacement Guarantee
           </h2>
           <p>
             In the extremely rare event that an issued voucher code displays an error or is flagged as invalid during portal checkout, our security team provides an <strong>immediate verified replacement code within 15 minutes</strong> or an instant full refund.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-normal text-[var(--color-ink-muted)]">
-            <div className="p-4 rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-center space-y-1">
-              <Zap className="w-5 h-5 text-[var(--color-accent)] mx-auto" />
-              <div className="font-normal text-[var(--color-ink)]">15-Min Response</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-normal text-ink-muted">
+            <div className="p-4 rounded-2xl bg-surface-raised border border-line text-center space-y-1">
+              <Zap className="w-5 h-5 text-accent mx-auto" />
+              <div className="font-normal text-ink">15-Min Response</div>
               <div className="text-neutral-500 text-[11px]">Expedited support review</div>
             </div>
-            <div className="p-4 rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-center space-y-1">
+            <div className="p-4 rounded-2xl bg-surface-raised border border-line text-center space-y-1">
               <ShieldCheck className="w-5 h-5 text-emerald-500 mx-auto" />
-              <div className="font-normal text-[var(--color-ink)]">100% Genuine</div>
+              <div className="font-normal text-ink">100% Genuine</div>
               <div className="text-neutral-500 text-[11px]">Direct partner inventory</div>
             </div>
-            <div className="p-4 rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-center space-y-1">
+            <div className="p-4 rounded-2xl bg-surface-raised border border-line text-center space-y-1">
               <Lock className="w-5 h-5 text-blue-500 mx-auto" />
-              <div className="font-normal text-[var(--color-ink)]">Safe Encryption</div>
+              <div className="font-normal text-ink">Safe Encryption</div>
               <div className="text-neutral-500 text-[11px]">Unmasked on-demand</div>
             </div>
           </div>
         </section>
 
         {/* Section 3 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
-          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-ink">
             3. Voucher Expiry & Validity Rules
           </h2>
           <p>
             Standard vouchers issued by Apex Vouchers are valid for <strong>{apex.voucherValidityPeriod || '6 to 11 months from purchase date'}</strong>. The test must be scheduled and taken on or before the voucher expiry date indicated on your order receipt.
           </p>
-          <p className="text-xs text-[var(--color-ink-muted)]">
+          <p className="text-xs text-ink-muted">
             * Once a voucher passes its official expiration date without redemption, it cannot be refunded, renewed, or extended.
           </p>
         </section>
 
         {/* Section 4 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-4">
-          <h2 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-4">
+          <h2 className="font-heading font-medium text-xl sm:text-2xl text-ink">
             4. Transferability & Gifting
           </h2>
           <p>
@@ -140,7 +140,7 @@ export function VoucherRefundPolicyPage() {
         <section className="p-8 rounded-3xl bg-[#0B0D12] text-white border border-white/5 space-y-3">
           <h3 className="font-heading font-medium text-xl text-white">Need Assistance with a Voucher?</h3>
           <p className="text-xs text-neutral-400 font-medium">
-            Contact our dedicated voucher verification desk via email at <a href={`mailto:${supportEmail}`} className="text-[var(--color-accent)]">{supportEmail}</a> or phone/WhatsApp at <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="text-[var(--color-accent)]">{supportPhone}</a>.
+            Contact our dedicated voucher verification desk via email at <a href={`mailto:${supportEmail}`} className="text-accent">{supportEmail}</a> or phone/WhatsApp at <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="text-accent">{supportPhone}</a>.
           </p>
         </section>
 

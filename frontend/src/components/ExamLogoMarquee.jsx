@@ -20,7 +20,7 @@ export const ExamLogoMarquee = () => {
     'flex items-center justify-center',
     'bg-white dark:bg-white',
     'border-slate-200 dark:border-slate-200/30',
-    'hover:border-[var(--color-accent)] hover:shadow-md',
+    'hover:border-accent hover:shadow-md',
     'transition-all duration-200',
   ].join(' ');
 
@@ -33,7 +33,7 @@ export const ExamLogoMarquee = () => {
             <div className={pillClass} aria-label={item.label}>
               <LogoComp inverted={false} />
             </div>
-            <span className="text-[var(--color-line-strong)] font-normal text-sm select-none">•</span>
+            <span className="text-line-strong font-normal text-sm select-none">•</span>
           </React.Fragment>
         );
       })}
@@ -43,17 +43,17 @@ export const ExamLogoMarquee = () => {
   return (
     <section
       aria-label="Exam platforms supported by Apex Vouchers"
-      className="py-6 sm:py-8 bg-[var(--color-surface)] border-y border-[var(--color-line)] relative overflow-hidden transition-colors duration-300"
+      className="py-6 sm:py-8 bg-surface border-y border-line relative overflow-hidden transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-3 text-center">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--color-ink-muted)]">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-ink-muted">
           Vouchers Available For Leading English-Language Exams
         </span>
       </div>
 
       <div className="relative w-full overflow-hidden">
-        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-linear-to-r from-[var(--color-surface)] via-[var(--color-surface)]/80 to-transparent z-10 pointer-events-none" />
-        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-linear-to-l from-[var(--color-surface)] via-[var(--color-surface)]/80 to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 left-0 bottom-0 w-16 sm:w-32 bg-linear-to-r from-surface via-surface/80 to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 bottom-0 w-16 sm:w-32 bg-linear-to-l from-surface via-surface/80 to-transparent z-10 pointer-events-none" />
         <div className="flex w-max animate-marquee hover:[animation-play-state:paused] items-center space-x-8 sm:space-x-12 py-2">
           <LogoGroup prefix="g1" />
           <LogoGroup prefix="g2" />

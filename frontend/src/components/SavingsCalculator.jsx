@@ -42,7 +42,7 @@ export const SavingsCalculator = () => {
   const examOptions = products.filter(p => p.category === 'Exam Voucher');
 
   return (
-    <section id="savings-calculator" className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] relative transition-colors duration-300">
+    <section id="savings-calculator" className="py-16 sm:py-24 bg-surface-raised border-b border-line relative transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -52,20 +52,20 @@ export const SavingsCalculator = () => {
           subtitle="Select your target exam and compare the standard official fee against the Apex Voucher price."
         />
 
-        <div className="max-w-5xl mx-auto bg-[var(--color-surface)] p-6 sm:p-10 rounded-3xl border border-[var(--color-line)] shadow-xl relative overflow-hidden">
+        <div className="max-w-5xl mx-auto bg-surface p-6 sm:p-10 rounded-3xl border border-line shadow-xl relative overflow-hidden">
           <div className="grid md:grid-cols-12 gap-8 items-center">
 
             {/* Left Selector & Controls */}
             <div className="md:col-span-6 space-y-6">
 
               <div>
-                <label className="block text-xs font-medium text-[var(--color-ink)] uppercase tracking-wider mb-2">
+                <label className="block text-xs font-medium text-ink uppercase tracking-wider mb-2">
                   Select Your Exam
                 </label>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-[var(--color-ink)] font-normal text-sm focus:outline-none focus:border-[var(--color-accent)] transition-all cursor-pointer shadow-sm"
+                  className="w-full px-4 py-3.5 rounded-xl bg-surface-raised border border-line text-ink font-normal text-sm focus:outline-none focus:border-accent transition-all cursor-pointer shadow-sm"
                 >
                   {examOptions.map(p => (
                     <option key={p.id} value={p.id}>
@@ -77,10 +77,10 @@ export const SavingsCalculator = () => {
 
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-medium text-[var(--color-ink)] uppercase tracking-wider">
+                  <label className="block text-xs font-medium text-ink uppercase tracking-wider">
                     Number of Vouchers
                   </label>
-                  <span className="px-3 py-1 rounded-lg bg-[var(--color-accent)] text-white text-xs font-medium">
+                  <span className="px-3 py-1 rounded-lg bg-accent text-white text-xs font-medium">
                     {quantity} {quantity === 1 ? 'Voucher' : 'Vouchers'}
                   </span>
                 </div>
@@ -90,23 +90,23 @@ export const SavingsCalculator = () => {
                   max="10"
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value))}
-                  className="w-full h-2 rounded-full bg-[var(--color-surface-sunken)] appearance-none cursor-pointer accent-[var(--color-accent)]"
+                  className="w-full h-2 rounded-full bg-surface-sunken appearance-none cursor-pointer accent-accent"
                 />
-                <div className="flex justify-between text-xs font-normal text-[var(--color-ink-muted)] mt-1">
+                <div className="flex justify-between text-xs font-normal text-ink-muted mt-1">
                   <span>1</span>
                   <span>5</span>
                   <span>10</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] space-y-2.5">
+              <div className="p-4 rounded-xl bg-surface-raised border border-line space-y-2.5">
                 {[
                   '100% genuine voucher code accepted on official testing site',
                   'Instant 10-second delivery to Email & WhatsApp',
                   'Money-Back Guarantee if unredeemed',
                 ].map((feat, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs font-normal text-[var(--color-ink-muted)]">
-                    <CheckCircle2 className="w-4 h-4 text-[var(--color-success)] shrink-0 mt-0.5" strokeWidth={2} />
+                  <div key={i} className="flex items-start gap-2 text-xs font-normal text-ink-muted">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2} />
                     <span>{feat}</span>
                   </div>
                 ))}
@@ -125,7 +125,7 @@ export const SavingsCalculator = () => {
                 </div>
 
                 <div>
-                  <span className="text-[11px] font-medium text-[var(--color-accent)] uppercase tracking-wider block mb-1">Apex Voucher Price</span>
+                  <span className="text-[11px] font-medium text-accent uppercase tracking-wider block mb-1">Apex Voucher Price</span>
                   <p className="font-heading font-medium text-4xl sm:text-5xl text-white leading-none">
                     {formatPrice(totalDiscounted)}
                   </p>
@@ -133,8 +133,8 @@ export const SavingsCalculator = () => {
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-medium text-[var(--color-accent)] uppercase tracking-wider block">You Save</span>
-                    <span className="font-heading font-medium text-2xl text-[var(--color-accent)]">
+                    <span className="text-[10px] font-medium text-accent uppercase tracking-wider block">You Save</span>
+                    <span className="font-heading font-medium text-2xl text-accent">
                       {formatPrice(displayedSavings)}
                     </span>
                   </div>

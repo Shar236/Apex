@@ -56,7 +56,7 @@ export const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-[var(--color-surface)] border-b border-[var(--color-line)] relative transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-surface border-b border-line relative transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -68,32 +68,32 @@ export const HowItWorks = () => {
 
         {/* Horizontal Timeline Desktop / Vertical Mobile */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-          <div className="hidden md:block absolute top-1/3 left-12 right-12 h-0.5 bg-[var(--color-line)] -z-0" />
+          <div className="hidden md:block absolute top-1/3 left-12 right-12 h-0.5 bg-line z-0" />
 
           {steps.map((st, idx) => (
             <div
               key={idx}
-              className="relative z-10 bg-[var(--color-surface)] rounded-3xl p-6 border border-[var(--color-line)] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+              className="relative z-10 bg-surface rounded-3xl p-6 border border-line shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="font-heading font-normal text-3xl text-[var(--color-accent)]">{st.num}</span>
-                  <div className="p-2 rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
+                  <span className="font-heading font-normal text-3xl text-accent">{st.num}</span>
+                  <div className="p-2 rounded-2xl bg-surface-raised border border-line">
                     {st.illustration}
                   </div>
                 </div>
 
-                <h3 className="font-heading font-medium text-lg text-[var(--color-ink)] leading-snug mb-2">
+                <h3 className="font-heading font-medium text-lg text-ink leading-snug mb-2">
                   {st.title}
                 </h3>
 
-                <p className="text-[var(--color-ink-muted)] text-xs font-normal leading-relaxed">
+                <p className="text-ink-muted text-xs font-normal leading-relaxed">
                   {st.desc}
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--color-line)] flex items-center gap-1 text-[11px] font-normal text-[var(--color-ink-muted)]">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-success)]" />
+              <div className="mt-6 pt-4 border-t border-line flex items-center gap-1 text-[11px] font-normal text-ink-muted">
+                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                 <span>Verified Step {idx + 1}</span>
               </div>
             </div>

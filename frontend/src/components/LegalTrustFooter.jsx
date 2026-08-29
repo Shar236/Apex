@@ -13,7 +13,7 @@ export const LegalTrustFooter = () => {
   const footerEmail = footerSettings?.email || 'apexvouchers@gmail.com';
   const footerCopyright = footerSettings?.copyright || '© 2026 Apex Vouchers. All rights reserved.';
 
-  const linkCls = 'hover:text-[var(--color-accent)] transition-colors text-left font-normal';
+  const linkCls = 'hover:text-accent transition-colors text-left font-normal';
   const headingCls = 'font-heading font-medium text-xs text-white uppercase tracking-wider';
 
   return (
@@ -31,14 +31,14 @@ export const LegalTrustFooter = () => {
 
             <div className="space-y-1.5 pt-1 text-[11px]">
               <p className="text-neutral-300 font-normal flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-[var(--color-accent)]" />
-                <a href={`tel:${footerPhone.replace(/\s+/g, '')}`} className="hover:text-[var(--color-accent)]">
+                <Phone className="w-3.5 h-3.5 text-accent" />
+                <a href={`tel:${footerPhone.replace(/\s+/g, '')}`} className="hover:text-accent">
                   {footerPhone}
                 </a>
               </p>
               <p className="text-neutral-300 font-normal flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-[var(--color-accent)]" />
-                <a href={`mailto:${footerEmail}`} className="hover:text-[var(--color-accent)]">
+                <Mail className="w-3.5 h-3.5 text-accent" />
+                <a href={`mailto:${footerEmail}`} className="hover:text-accent">
                   {footerEmail}
                 </a>
               </p>
@@ -57,7 +57,7 @@ export const LegalTrustFooter = () => {
               <li>
                 <button onClick={() => { setActiveTab('exam-booking'); window.location.href = '/exam-booking'; }} className={`${linkCls} flex items-center gap-1`}>
                   <span>PTE Exam Booking</span>
-                  <span className="text-[9px] bg-[var(--color-accent)]/20 text-[var(--color-accent)] px-1.5 py-0.2 rounded font-medium">NEW</span>
+                  <span className="text-[9px] bg-accent/20 text-accent px-1.5 py-0.2 rounded font-medium">NEW</span>
                 </button>
               </li>
               <li>
@@ -109,7 +109,7 @@ export const LegalTrustFooter = () => {
               <li>
                 <a href="/how-to-reschedule-cancel-pte-exam" className={`${linkCls} flex items-center gap-1.5`}>
                   <span>PTE Rescheduling Guide</span>
-                  <span className="text-[9px] bg-[var(--color-accent)]/20 text-[var(--color-accent)] px-1.5 py-0.2 rounded font-medium">2026</span>
+                  <span className="text-[9px] bg-accent/20 text-accent px-1.5 py-0.2 rounded font-medium">2026</span>
                 </a>
               </li>
               <li>
@@ -169,7 +169,7 @@ export const LegalTrustFooter = () => {
           <p>{footerCopyright}</p>
           <div className="flex items-center gap-1 text-neutral-400 font-normal">
             <span>Built with</span>
-            <Heart className="w-3.5 h-3.5 text-[var(--color-accent)] fill-[var(--color-accent)]" />
+            <Heart className="w-3.5 h-3.5 text-accent fill-accent" />
             <span>for study abroad candidates worldwide.</span>
           </div>
         </div>

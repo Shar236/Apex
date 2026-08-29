@@ -21,19 +21,19 @@ const maskEmailForDisplay = (email) => {
 };
 
 const PageShell = ({ title, subtitle, children, badge = null }) => (
-  <section className="min-h-screen bg-[var(--color-surface-sunken)] flex items-center justify-center py-16 px-4 transition-colors duration-300">
+  <section className="min-h-screen bg-surface-sunken flex items-center justify-center py-16 px-4 transition-colors duration-300">
     <div className="w-full max-w-md">
       <div className="flex flex-col items-center justify-center mb-6">
         <ApexLogo />
         {badge && (
-          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 text-[11px] font-medium uppercase tracking-wider">
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20 text-[11px] font-medium uppercase tracking-wider">
             {badge}
           </div>
         )}
       </div>
-      <div className="bg-[var(--color-surface)] border border-[var(--color-line)] rounded-3xl shadow-xl p-7 text-[var(--color-ink)]">
+      <div className="bg-surface border border-line rounded-3xl shadow-xl p-7 text-ink">
         <h1 className="font-heading text-2xl font-medium mb-1 tracking-tight">{title}</h1>
-        <p className="text-sm text-[var(--color-ink-muted)] mb-6">{subtitle}</p>
+        <p className="text-sm text-ink-muted mb-6">{subtitle}</p>
         {children}
       </div>
     </div>
@@ -104,7 +104,7 @@ export const LoginPage = () => {
                 type="button"
                 onClick={handleResendVerification}
                 disabled={resendState !== 'idle'}
-                className="text-[var(--color-accent)] hover:underline font-medium disabled:opacity-60"
+                className="text-accent hover:underline font-medium disabled:opacity-60"
               >
                 {resendState === 'sending' && 'Sending…'}
                 {resendState === 'sent' && 'Verification code sent — check your inbox'}
@@ -115,7 +115,7 @@ export const LoginPage = () => {
               <Link
                 to="/register"
                 state={{ pendingEmail: email }}
-                className="block text-[var(--color-accent)] hover:underline font-medium"
+                className="block text-accent hover:underline font-medium"
               >
                 Enter verification code →
               </Link>
@@ -124,22 +124,22 @@ export const LoginPage = () => {
         )}
         <button
           disabled={loading}
-          className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+          className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {loading ? 'Signing in…' : 'Log in'}
           {!loading && <ArrowRight className="w-4 h-4" />}
         </button>
-        <div className="flex justify-between text-xs font-semibold text-[var(--color-ink-muted)] pt-1">
-          <Link className="hover:text-[var(--color-accent)] transition-colors" to="/forgot-password">Forgot password?</Link>
-          <Link className="hover:text-[var(--color-accent)] transition-colors" to="/register">Create Account →</Link>
+        <div className="flex justify-between text-xs font-semibold text-ink-muted pt-1">
+          <Link className="hover:text-accent transition-colors" to="/forgot-password">Forgot password?</Link>
+          <Link className="hover:text-accent transition-colors" to="/register">Create Account →</Link>
         </div>
-        <div className="mt-4 pt-4 border-t border-[var(--color-line)] flex items-center justify-between text-[11px] font-bold text-neutral-400">
+        <div className="mt-4 pt-4 border-t border-line flex items-center justify-between text-[11px] font-bold text-neutral-400">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> 256-bit Encrypted
           </span>
-          <Link to="/admin/login" className="text-neutral-500 hover:text-[var(--color-accent)] transition-colors flex items-center gap-1 font-medium">
-            <Crown className="w-3 h-3 text-[var(--color-accent)]" /> Admin Login
+          <Link to="/admin/login" className="text-neutral-500 hover:text-accent transition-colors flex items-center gap-1 font-medium">
+            <Crown className="w-3 h-3 text-accent" /> Admin Login
           </Link>
         </div>
       </form>
@@ -207,14 +207,14 @@ export const AdminLoginPage = () => {
         )}
         <button
           disabled={loading}
-          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-medium text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-[var(--color-accent)] dark:hover:bg-[var(--color-accent)] dark:hover:text-white transition-all disabled:opacity-60"
+          className="w-full py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-medium text-sm shadow-xl flex items-center justify-center gap-2.5 hover:bg-accent dark:hover:bg-accent dark:hover:text-white transition-all disabled:opacity-60"
         >
-          <Crown className="w-4 h-4 text-[var(--color-accent)]" />
+          <Crown className="w-4 h-4 text-accent" />
           <span>{loading ? 'Authenticating…' : 'Secure Admin Login'}</span>
         </button>
 
         <div className="pt-2 text-center">
-          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-[var(--color-accent)] transition-colors">
+          <Link to="/login" className="text-xs font-bold text-neutral-500 hover:text-accent transition-colors">
             ← Return to Candidate Login
           </Link>
         </div>
@@ -240,7 +240,7 @@ function StepProgress({ step }) {
                   isDone
                     ? 'bg-emerald-500 text-white'
                     : isActive
-                    ? 'bg-[var(--color-accent)] text-white'
+                    ? 'bg-accent text-white'
                     : 'bg-neutral-100  text-neutral-400'
                 }`}
               >
@@ -401,7 +401,7 @@ export const RegisterPage = () => {
             required
           />
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-ink-muted)] mb-2 flex items-center gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wider text-ink-muted mb-2 flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5" /> Phone Number
             </span>
             <PhoneInput
@@ -439,35 +439,35 @@ export const RegisterPage = () => {
           )}
           <button
             disabled={loading}
-            className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+            className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Creating account…' : 'Continue'}
           </button>
-          <p className="text-xs text-center font-semibold text-[var(--color-ink-muted)]">
+          <p className="text-xs text-center font-semibold text-ink-muted">
             Already have an account?{' '}
-            <Link className="text-[var(--color-accent)]" to="/login">Log in</Link>
+            <Link className="text-accent" to="/login">Log in</Link>
           </p>
         </form>
       )}
 
       {step === 2 && (
         <form onSubmit={onVerifyOtp} className="space-y-5">
-          <p className="text-xs text-center text-[var(--color-ink-muted)] font-semibold">
+          <p className="text-xs text-center text-ink-muted font-semibold">
             We've sent a 6-digit verification code to{' '}
             <strong className="text-neutral-900 dark:text-white">{maskEmailForDisplay(form.email)}</strong>
           </p>
           <OtpInput value={otp} onChange={setOtp} error={otpError} disabled={verifying} />
           <button
             disabled={verifying}
-            className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+            className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {verifying && <Loader2 className="w-4 h-4 animate-spin" />}
             {verifying ? 'Verifying…' : 'Verify OTP'}
           </button>
           <div className="text-center text-xs font-bold">
             {resendActive ? (
-              <button type="button" onClick={handleResend} className="text-[var(--color-accent)] hover:underline flex items-center gap-1 justify-center mx-auto">
+              <button type="button" onClick={handleResend} className="text-accent hover:underline flex items-center gap-1 justify-center mx-auto">
                 <RotateCcw className="w-3 h-3" /> Resend Code
               </button>
             ) : (
@@ -510,7 +510,7 @@ export const ForgotPasswordPage = () => {
           <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-1">
             If an account exists, a reset link has been sent.
           </p>
-          <Link to="/login" className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Back to login</Link>
+          <Link to="/login" className="bg-accent hover:bg-accent-hover transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Back to login</Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -523,7 +523,7 @@ export const ForgotPasswordPage = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Sending…' : 'Send Reset Link'}
           </button>
@@ -566,7 +566,7 @@ export const ResetPasswordPage = () => {
       {done ? (
         <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200">
           <p className="font-medium text-emerald-700 dark:text-emerald-300 text-sm">Password updated!</p>
-          <Link to="/login" className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Log in now</Link>
+          <Link to="/login" className="bg-accent hover:bg-accent-hover transition-colors text-white inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-medium">Log in now</Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -594,7 +594,7 @@ export const ResetPasswordPage = () => {
               {error}
             </div>
           )}
-          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
+          <button disabled={loading} className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Updating…' : 'Update Password'}
           </button>
@@ -607,7 +607,7 @@ export const ResetPasswordPage = () => {
 function LabeledInput({ icon, label, value, onChange, type = 'text', placeholder = '', required = false }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-ink-muted)] mb-2 block">
+      <span className="text-xs font-medium uppercase tracking-wider text-ink-muted mb-2 block">
         {label}
       </span>
       <div className="relative">
@@ -618,7 +618,7 @@ function LabeledInput({ icon, label, value, onChange, type = 'text', placeholder
           value={value}
           placeholder={placeholder}
           onChange={onChange}
-          className="w-full pl-11 pr-4 py-3.5 bg-[var(--color-surface-raised)] border border-[var(--color-line)] rounded-2xl text-[var(--color-ink)] text-sm font-normal placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 transition"
+          className="w-full pl-11 pr-4 py-3.5 bg-surface-raised border border-line rounded-2xl text-ink text-sm font-normal placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
         />
       </div>
     </label>

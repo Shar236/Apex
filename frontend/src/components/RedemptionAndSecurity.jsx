@@ -15,10 +15,10 @@ export const RedemptionAndSecurity = () => {
   return (
     <>
       {/* Dynamic Express Car Transport Delivery Section */}
-      <section className="py-16 sm:py-24 bg-[var(--color-surface-raised)] text-[var(--color-ink)] border-b border-[var(--color-line)] relative overflow-hidden transition-colors duration-300">
+      <section className="py-16 sm:py-24 bg-surface-raised text-ink border-b border-line relative overflow-hidden transition-colors duration-300">
 
         {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[var(--color-accent)]/5 blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-175 h-87.5 bg-accent/5 blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
@@ -26,18 +26,18 @@ export const RedemptionAndSecurity = () => {
 
             {/* Left Copy Column */}
             <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/[0.08] border border-[var(--color-accent)]/25 text-xs font-medium text-[var(--color-accent)] uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/8 border border-accent/25 text-xs font-medium text-accent uppercase tracking-wider">
                 <Zap className="w-4 h-4" />
                 <span>Express Speed Delivery</span>
               </div>
 
-              <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight leading-tight text-[var(--color-ink)]">
+              <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight leading-tight text-ink">
                 Delivered Faster Than <br />
-                <span className="text-[var(--color-accent)]">Your OTP.</span>
+                <span className="text-accent">Your OTP.</span>
               </h2>
 
-              <p className="text-[var(--color-ink-muted)] font-normal text-base leading-relaxed max-w-lg">
-                No waiting around! The moment your payment completes, our automated engine dispatches your official voucher code directly to your <strong className="text-[var(--color-ink)] font-medium">WhatsApp and Email in under 10 seconds</strong>.
+              <p className="text-ink-muted font-normal text-base leading-relaxed max-w-lg">
+                No waiting around! The moment your payment completes, our automated engine dispatches your official voucher code directly to your <strong className="text-ink font-medium">WhatsApp and Email in under 10 seconds</strong>.
               </p>
 
               {/* Express Speed Checkpoints */}
@@ -47,8 +47,8 @@ export const RedemptionAndSecurity = () => {
                   '100% Genuine, verified official reseller codes',
                   'Up to 11 months validity with zero hassle',
                 ].map((feat, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm font-normal text-[var(--color-ink)] bg-[var(--color-surface)] p-3 rounded-2xl border border-[var(--color-line)] shadow-sm">
-                    <div className="w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center font-medium text-xs shrink-0">
+                  <div key={i} className="flex items-center gap-3 text-sm font-normal text-ink bg-surface p-3 rounded-2xl border border-line shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center font-medium text-xs shrink-0">
                       ✓
                     </div>
                     <span>{feat}</span>
@@ -59,7 +59,7 @@ export const RedemptionAndSecurity = () => {
 
             {/* Right Express Car Vector Illustration Column */}
             <div className="lg:col-span-6 flex justify-center">
-              <div className="w-full max-w-lg bg-[var(--color-surface)] p-6 rounded-3xl border border-[var(--color-line)] shadow-2xl backdrop-blur-sm">
+              <div className="w-full max-w-lg bg-surface p-6 rounded-3xl border border-line shadow-2xl backdrop-blur-sm">
                 <div className="block dark:hidden">
                   <DaylightExpressCarDeliveryVector className="w-full h-auto drop-shadow-2xl" />
                 </div>
@@ -75,7 +75,7 @@ export const RedemptionAndSecurity = () => {
       </section>
 
       {/* Section: Step-by-Step Redemption Guide */}
-      <section className="py-16 sm:py-24 bg-[var(--color-surface)] border-b border-[var(--color-line)] transition-colors duration-300">
+      <section className="py-16 sm:py-24 bg-surface border-b border-line transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <SectionHeading
@@ -86,15 +86,15 @@ export const RedemptionAndSecurity = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {redemptionSteps.map((s) => (
-              <div key={s.num} className="p-6 rounded-3xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] space-y-3 flex flex-col justify-between hover:border-[var(--color-accent)]/40 hover:-translate-y-1 transition-all duration-300">
+              <div key={s.num} className="p-6 rounded-3xl bg-surface-raised border border-line space-y-3 flex flex-col justify-between hover:border-accent/40 hover:-translate-y-1 transition-all duration-300">
                 <div>
-                  <div className="w-9 h-9 rounded-2xl bg-[var(--color-accent)] text-white font-medium text-xs flex items-center justify-center mb-3 shadow-md">
+                  <div className="w-9 h-9 rounded-2xl bg-accent text-white font-medium text-xs flex items-center justify-center mb-3 shadow-md">
                     0{s.num}
                   </div>
-                  <h3 className="font-heading font-medium text-sm text-[var(--color-ink)] leading-snug">
+                  <h3 className="font-heading font-medium text-sm text-ink leading-snug">
                     {s.title}
                   </h3>
-                  <p className="text-xs text-[var(--color-ink-muted)] font-normal leading-relaxed mt-1">
+                  <p className="text-xs text-ink-muted font-normal leading-relaxed mt-1">
                     {s.desc}
                   </p>
                 </div>
@@ -103,10 +103,10 @@ export const RedemptionAndSecurity = () => {
           </div>
 
           {/* Legal Disclaimer */}
-          <div className="mt-10 p-5 rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-xs text-[var(--color-ink-muted)] font-normal flex items-start gap-3 max-w-3xl mx-auto">
-            <Info className="w-5 h-5 text-[var(--color-accent)] shrink-0 mt-0.5" />
+          <div className="mt-10 p-5 rounded-2xl bg-surface-raised border border-line text-xs text-ink-muted font-normal flex items-start gap-3 max-w-3xl mx-auto">
+            <Info className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <p>
-              <strong className="text-[var(--color-ink)] font-medium">Official Acceptance Notice:</strong> Apex Vouchers provides authorized bulk reseller voucher codes. All vouchers are redeemed directly on official test provider portals (Pearson, ETS, Duolingo). Zero hassle & guaranteed acceptance.
+              <strong className="text-ink font-medium">Official Acceptance Notice:</strong> Apex Vouchers provides authorized bulk reseller voucher codes. All vouchers are redeemed directly on official test provider portals (Pearson, ETS, Duolingo). Zero hassle & guaranteed acceptance.
             </p>
           </div>
 
@@ -118,12 +118,12 @@ export const RedemptionAndSecurity = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="inline-flex text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
+            <span className="inline-flex text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-3">
               100% Security & Trust
             </span>
             <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight leading-[1.15]">
               Your Payment. Your Voucher. <br />
-              <span className="text-[var(--color-accent)]">Your Peace of Mind.</span>
+              <span className="text-accent">Your Peace of Mind.</span>
             </h2>
             <p className="text-neutral-400 font-normal text-base mt-3">
               Bank-grade security protocols so you can buy your voucher with 100% confidence.
@@ -140,8 +140,8 @@ export const RedemptionAndSecurity = () => {
             ].map((item, idx) => {
               const IconComp = item.icon;
               return (
-                <div key={idx} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3 hover:border-[var(--color-accent)]/50 hover:-translate-y-1 transition-all duration-300">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 text-[var(--color-accent)] border border-white/10 flex items-center justify-center mx-auto">
+                <div key={idx} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3 hover:border-accent/50 hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 text-accent border border-white/10 flex items-center justify-center mx-auto">
                     <IconComp className="w-6 h-6" />
                   </div>
                   <h3 className="font-heading font-medium text-sm text-white">{item.title}</h3>

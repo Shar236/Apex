@@ -32,30 +32,30 @@ export function TermsAndConditionsPage() {
   }, [globalSEO]);
 
   return (
-    <div className="bg-[var(--color-surface-sunken)] text-[var(--color-ink)] min-h-screen antialiased transition-colors duration-300">
+    <div className="bg-surface-sunken text-ink min-h-screen antialiased transition-colors duration-300">
       {/* Breadcrumb */}
-      <div className="bg-[var(--color-surface)] border-b border-[var(--color-line)]">
+      <div className="bg-surface border-b border-line">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <nav className="flex items-center gap-2 text-xs font-normal text-[var(--color-ink-muted)]">
-            <a href="/" className="hover:text-[var(--color-accent)] transition-colors">Home</a>
+          <nav className="flex items-center gap-2 text-xs font-normal text-ink-muted">
+            <a href="/" className="hover:text-accent transition-colors">Home</a>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-neutral-400">Legal</span>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[var(--color-accent)] font-normal">Terms & Conditions</span>
+            <span className="text-accent font-normal">Terms & Conditions</span>
           </nav>
         </div>
       </div>
 
       {/* Header */}
-      <header className="bg-[var(--color-surface)] border-b border-[var(--color-line)] py-12 sm:py-16 text-center">
+      <header className="bg-surface border-b border-line py-12 sm:py-16 text-center">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-medium uppercase tracking-wide">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium uppercase tracking-wide">
             <Scale className="w-4 h-4" /> Legal Agreement
           </div>
-          <h1 className="font-heading font-medium text-3xl sm:text-4xl text-[var(--color-ink)] tracking-tight">
+          <h1 className="font-heading font-medium text-3xl sm:text-4xl text-ink tracking-tight">
             Terms & Conditions
           </h1>
-          <p className="text-sm sm:text-base text-[var(--color-ink-muted)] font-medium">
+          <p className="text-sm sm:text-base text-ink-muted font-medium">
             Please read these terms and conditions carefully before purchasing exam vouchers or utilizing our booking assistance services.
           </p>
           <div className="pt-2 text-xs font-mono text-neutral-400">
@@ -65,11 +65,11 @@ export function TermsAndConditionsPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 text-sm sm:text-base text-[var(--color-ink-muted)] leading-relaxed">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 text-sm sm:text-base text-ink-muted leading-relaxed">
         
         {/* Section 1 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             1. Agreement to Terms
           </h2>
           <p>
@@ -78,8 +78,8 @@ export function TermsAndConditionsPage() {
         </section>
 
         {/* Section 2 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             2. Nature of Service & Digital Delivery
           </h2>
           <p>
@@ -91,8 +91,8 @@ export function TermsAndConditionsPage() {
         </section>
 
         {/* Section 3 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             3. Non-Affiliation & Independent Reseller Disclaimer
           </h2>
           <p>
@@ -101,8 +101,8 @@ export function TermsAndConditionsPage() {
         </section>
 
         {/* Section 4 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             4. Voucher Validity & Redemption Obligations
           </h2>
           <p>
@@ -111,8 +111,8 @@ export function TermsAndConditionsPage() {
         </section>
 
         {/* Section 5 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             5. Limitation of Liability
           </h2>
           <p>
@@ -121,8 +121,8 @@ export function TermsAndConditionsPage() {
         </section>
 
         {/* Section 6 */}
-        <section className="bg-[var(--color-surface)] p-6 sm:p-8 rounded-3xl border border-[var(--color-line)] shadow-sm space-y-3">
-          <h2 className="font-heading font-medium text-lg sm:text-xl text-[var(--color-ink)]">
+        <section className="bg-surface p-6 sm:p-8 rounded-3xl border border-line shadow-sm space-y-3">
+          <h2 className="font-heading font-medium text-lg sm:text-xl text-ink">
             6. Governing Law & Dispute Resolution
           </h2>
           <p>
@@ -134,7 +134,7 @@ export function TermsAndConditionsPage() {
         <section className="p-6 rounded-3xl bg-[#0B0D12] text-white border border-white/5 text-xs space-y-2">
           <div className="font-normal text-white">Questions regarding these terms?</div>
           <p className="text-neutral-400">
-            Reach out to our legal and compliance desk at <a href={`mailto:${supportEmail}`} className="text-[var(--color-accent)]">{supportEmail}</a> or call <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="text-[var(--color-accent)]">{supportPhone}</a>.
+            Reach out to our legal and compliance desk at <a href={`mailto:${supportEmail}`} className="text-accent">{supportEmail}</a> or call <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="text-accent">{supportPhone}</a>.
           </p>
         </section>
 

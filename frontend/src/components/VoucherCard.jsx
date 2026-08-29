@@ -42,32 +42,32 @@ export default function VoucherCard({ product }) {
     <div
       className={[
         'group relative flex flex-col h-full rounded-2xl overflow-hidden',
-        'bg-[var(--color-surface)] border border-[var(--color-line)]',
+        'bg-surface border border-line',
         'shadow-[0_1px_3px_rgba(15,20,35,0.04),0_10px_30px_-18px_rgba(15,20,35,0.12)]',
         'dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_10px_30px_-18px_rgba(0,0,0,0.7)]',
-        'transition-all duration-200 hover:border-[var(--color-accent)]/40 hover:-translate-y-1',
-        isOutOfStock ? 'opacity-[0.92]' : '',
+        'transition-all duration-200 hover:border-accent/40 hover:-translate-y-1',
+        isOutOfStock ? 'opacity-92' : '',
       ].join(' ')}
     >
       {/* 1 — status + partner */}
       <div className="flex items-start justify-between gap-2 px-4 pt-4">
         <StockBadge product={product} />
-        <span className="text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--color-ink-muted)] text-right leading-tight max-w-[42%]">
+        <span className="text-[9px] font-medium uppercase tracking-widest text-ink-muted text-right leading-tight max-w-[42%]">
           {partnerLabel}
         </span>
       </div>
 
       {/* 2 — provider logo */}
       <div className="px-4 pt-3">
-        <ProviderLogo product={product} className="h-[76px]" />
+        <ProviderLogo product={product} className="h-19" />
       </div>
 
       {/* 3 — title */}
-      <h3 className="px-4 pt-3 text-center font-heading font-normal text-[17px] leading-snug text-[var(--color-ink)] line-clamp-2 min-h-[2.6rem]">
+      <h3 className="px-4 pt-3 text-center font-heading font-normal text-[17px] leading-snug text-ink line-clamp-2 min-h-10.4">
         {product.name}
       </h3>
 
-      <div className="mx-4 mt-3 border-t border-[var(--color-line)]" />
+      <div className="mx-4 mt-3 border-t border-line" />
 
       {/* 4 — price + discount */}
       <div className="px-4 pt-3 flex items-end justify-between gap-2">

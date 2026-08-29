@@ -21,25 +21,25 @@ export const BestSellingVouchers = () => {
   const features = [
     {
       icon: Zap,
-      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
+      iconBg: 'bg-accent/15 text-accent',
       title: 'Instant Digital Delivery',
       subtitle: 'Get voucher in 10 seconds'
     },
     {
       icon: ShieldCheck,
-      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
+      iconBg: 'bg-accent/15 text-accent',
       title: '100% Genuine Vouchers',
       subtitle: 'Official exam partners'
     },
     {
       icon: Tag,
-      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
+      iconBg: 'bg-accent/15 text-accent',
       title: 'Best Prices Guaranteed',
       subtitle: 'Save more on every purchase'
     },
     {
       icon: Headphones,
-      iconBg: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
+      iconBg: 'bg-accent/15 text-accent',
       title: '24/7 Customer Support',
       subtitle: "We're here to help you"
     }
@@ -54,13 +54,13 @@ export const BestSellingVouchers = () => {
           
           {/* Top Pill Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-sm text-xs font-normal text-neutral-200">
-            <ShieldCheck className="w-4 h-4 text-[var(--color-accent)]" />
+            <ShieldCheck className="w-4 h-4 text-accent" />
             <span>TRUSTED BY 15,000+ STUDENTS</span>
           </div>
 
           {/* Main Title */}
           <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-light text-white tracking-tight">
-            PTE <span className="text-[var(--color-accent)]">Vouchers</span>
+            PTE <span className="text-accent">Vouchers</span>
           </h2>
 
           {/* Subtitle */}
@@ -104,7 +104,7 @@ export const BestSellingVouchers = () => {
             onClick={() => setActiveTab('shop')}
             className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium text-xs px-7 py-3.5 rounded-full border border-white/10 transition-colors cursor-pointer shadow-md"
           >
-            <LayoutGrid className="w-4 h-4 text-[var(--color-accent)]" />
+            <LayoutGrid className="w-4 h-4 text-accent" />
             <span>Explore All Vouchers</span>
             <ArrowRight className="w-4 h-4" />
           </button>

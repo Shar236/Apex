@@ -63,28 +63,28 @@ export const Dashboard = () => {
   };
 
   return (
-    <section className="py-16 bg-[var(--color-surface-sunken)] border-b border-[var(--color-line)] min-h-[80vh] transition-colors duration-300">
+    <section className="py-16 bg-surface-sunken border-b border-line min-h-[80vh] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 pb-6 border-b border-[var(--color-line)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 pb-6 border-b border-line">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <ApexLogo className="h-6" />
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--color-accent)]/[0.08] text-xs font-normal text-[var(--color-accent)] border border-[var(--color-accent)]/20">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/8 text-xs font-normal text-accent border border-accent/20">
                 <Ticket className="w-3.5 h-3.5" />
                 <span>SELF-SERVE CANDIDATE VAULT</span>
               </span>
             </div>
-            <h1 className="font-heading text-3xl font-medium text-[var(--color-ink)] pt-1">
+            <h1 className="font-heading text-3xl font-medium text-ink pt-1">
               My Voucher Vault
             </h1>
-            <p className="text-[var(--color-ink-muted)] text-xs sm:text-sm">
+            <p className="text-ink-muted text-xs sm:text-sm">
               Manage your active exam vouchers, reveal codes, transfer to friends, or request 1-click refunds.
             </p>
           </div>
 
           <button
             onClick={() => setActiveTab('shop')}
-            className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium transition-colors py-3 px-6 text-xs shadow-md cursor-pointer"
+            className="inline-flex items-center justify-center rounded-full bg-accent hover:bg-accent-hover text-white font-medium transition-colors py-3 px-6 text-xs shadow-md cursor-pointer"
           >
             + Buy Another Voucher
           </button>
@@ -111,11 +111,11 @@ export const Dashboard = () => {
               return (
                 <div
                   key={v.id}
-                  className={`bg-[var(--color-surface)] rounded-3xl p-6 sm:p-8 border border-[var(--color-line)] shadow-lg transition-all duration-300 ${
-                    isRefunded ? 'opacity-60 bg-[var(--color-surface-raised)]' : ''
+                  className={`bg-surface rounded-3xl p-6 sm:p-8 border border-line shadow-lg transition-all duration-300 ${
+                    isRefunded ? 'opacity-60 bg-surface-raised' : ''
                   } ${isUsed ? 'border-sky-200/40 dark:border-sky-900/40' : ''}`}
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[var(--color-line)]">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
@@ -136,14 +136,14 @@ export const Dashboard = () => {
                         </span>
                       </div>
 
-                      <h3 className="font-heading font-medium text-xl sm:text-2xl text-[var(--color-ink)] leading-tight">
+                      <h3 className="font-heading font-medium text-xl sm:text-2xl text-ink leading-tight">
                         {v.productName}
                       </h3>
 
-                      <p className="text-xs text-[var(--color-ink-muted)] font-medium flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+                      <p className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-accent" />
                         <span>
-                          Valid until <strong className="text-[var(--color-ink)]">
+                          Valid until <strong className="text-ink">
                             {new Date(v.expiryDate).toLocaleDateString()}
                           </strong> ({v.daysRemaining > 0 ? `${v.daysRemaining} days remaining` : 'Expired'}
                         </span>
@@ -156,11 +156,11 @@ export const Dashboard = () => {
                       )}
                     </div>
 
-                    <div className="bg-[var(--color-accent)]/[0.08] p-4 rounded-2xl border border-[var(--color-accent)]/20 text-right shrink-0">
-                      <span className="text-[10px] font-medium text-[var(--color-accent)] uppercase tracking-wider block">
+                    <div className="bg-accent/8 p-4 rounded-2xl border border-accent/20 text-right shrink-0">
+                      <span className="text-[10px] font-medium text-accent uppercase tracking-wider block">
                       Official Savings
                     </span>
-                      <span className="font-heading font-medium text-2xl text-[var(--color-accent)] block leading-none">
+                      <span className="font-heading font-medium text-2xl text-accent block leading-none">
                         Save {formatPrice(pricing.savings)}
                       </span>
                       <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold block mt-1">
@@ -172,12 +172,12 @@ export const Dashboard = () => {
 
                   <div className="pt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                     <div className="md:col-span-7">
-                      <div className="bg-[var(--color-surface-raised)] p-4 rounded-2xl border border-[var(--color-line)] flex flex-wrap items-center justify-between gap-3">
+                      <div className="bg-surface-raised p-4 rounded-2xl border border-line flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
                             Official Discount Code
                           </span>
-                          <span className="font-heading font-medium text-xl tracking-widest text-[var(--color-ink)] select-all">
+                          <span className="font-heading font-medium text-xl tracking-widest text-ink select-all">
                             {isRevealed ? v.code : '••••••••••••••••'}
                           </span>
                         </div>
@@ -185,7 +185,7 @@ export const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => toggleRevealCode(v.id)}
-                            className="px-3 py-2 rounded-xl bg-[var(--color-surface)] text-[var(--color-ink-muted)] border border-[var(--color-line)] text-xs font-normal hover:border-[var(--color-accent)] transition-colors"
+                            className="px-3 py-2 rounded-xl bg-surface text-ink-muted border border-line text-xs font-normal hover:border-accent transition-colors"
                           >
                             {isRevealed ? 'Hide Code' : 'Reveal Code'}
                           </button>
@@ -193,7 +193,7 @@ export const Dashboard = () => {
                           {isRevealed && (
                             <button
                               onClick={() => handleCopyCode(v.id, v.code)}
-                              className="px-3.5 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-normal flex items-center gap-1.5 shadow-sm hover:bg-[var(--color-accent-hover)] transition-colors"
+                              className="px-3.5 py-2 rounded-xl bg-accent text-white text-xs font-normal flex items-center gap-1.5 shadow-sm hover:bg-accent-hover transition-colors"
                             >
                               {copiedId === v.id ? (
                                 <Check className="w-4 h-4" />
@@ -212,7 +212,7 @@ export const Dashboard = () => {
                         <>
                           <button
                             onClick={() => setTransferModalId(v.id)}
-                            className="px-4 py-2.5 rounded-xl bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-line)] text-xs font-normal hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center gap-1.5"
+                            className="px-4 py-2.5 rounded-xl bg-surface text-ink border border-line text-xs font-normal hover:border-accent hover:text-accent transition-all flex items-center gap-1.5"
                           >
                             <Send className="w-3.5 h-3.5" />
                             <span>Transfer Code</span>
@@ -220,7 +220,7 @@ export const Dashboard = () => {
 
                           <button
                             onClick={() => setRefundConfirmId(v.id)}
-                            className="px-4 py-2.5 rounded-xl bg-[var(--color-surface)] text-neutral-500 hover:text-rose-600 border border-[var(--color-line)] text-xs font-normal transition-all flex items-center gap-1.5"
+                            className="px-4 py-2.5 rounded-xl bg-surface text-neutral-500 hover:text-rose-600 border border-line text-xs font-normal transition-all flex items-center gap-1.5"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
                             <span>Request Refund</span>
@@ -232,7 +232,7 @@ export const Dashboard = () => {
                         href={redeemUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2.5 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors text-xs font-medium flex items-center gap-1.5 shadow-sm"
+                        className="px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-hover transition-colors text-xs font-medium flex items-center gap-1.5 shadow-sm"
                       >
                         <span>Redeem on Official Site</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -244,18 +244,18 @@ export const Dashboard = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-20 bg-[var(--color-surface)] rounded-3xl border border-[var(--color-line)] p-8 space-y-4">
-            <div className="w-20 h-20 rounded-full bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] flex items-center justify-center mx-auto">
+          <div className="text-center py-20 bg-surface rounded-3xl border border-line p-8 space-y-4">
+            <div className="w-20 h-20 rounded-full bg-accent/8 text-accent flex items-center justify-center mx-auto">
               <Ticket className="w-10 h-10" />
             </div>
-            <h3 className="font-heading font-medium text-xl text-[var(--color-ink)]">
+            <h3 className="font-heading font-medium text-xl text-ink">
               No Exam Vouchers Found
             </h3>
-            <p className="text-xs text-[var(--color-ink-muted)] max-w-sm mx-auto font-medium">
+            <p className="text-xs text-ink-muted max-w-sm mx-auto font-medium">
               You don't have any active exam vouchers in your vault yet. Explore our discounted PTE, GRE, and TOEFL vouchers to get started.
             </p>
             <button
-              onClick={() => setActiveTab('shop')} className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium transition-colors py-3.5 px-8 text-xs cursor-pointer">
+              onClick={() => setActiveTab('shop')} className="inline-flex items-center justify-center rounded-full bg-accent hover:bg-accent-hover text-white font-medium transition-colors py-3.5 px-8 text-xs cursor-pointer">
               Browse Discount Vouchers
             </button>
           </div>
@@ -264,9 +264,9 @@ export const Dashboard = () => {
 
       {transferModalId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[var(--color-surface)] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[var(--color-line)] text-[var(--color-ink)] space-y-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 shadow-2xl border border-line text-ink space-y-4">
             <h3 className="font-heading font-medium text-xl">Transfer Voucher Code</h3>
-            <p className="text-xs text-[var(--color-ink-muted)] font-medium">
+            <p className="text-xs text-ink-muted font-medium">
               Enter recipient's email address to instantly transfer ownership of this voucher.
             </p>
             <form onSubmit={handleTransferSubmit} className="space-y-4">
@@ -276,17 +276,17 @@ export const Dashboard = () => {
                 placeholder="friend@gmail.com"
                 value={transferEmail}
                 onChange={(e) => setTransferEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)] text-xs font-normal focus:outline-none focus:border-[var(--color-accent)]"
+                className="w-full px-4 py-3 rounded-xl bg-surface-raised border border-line text-xs font-normal focus:outline-none focus:border-accent"
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setTransferModalId(null)}
-                  className="flex-1 py-3 rounded-xl bg-[var(--color-surface-raised)] font-normal text-xs"
+                  className="flex-1 py-3 rounded-xl bg-surface-raised font-normal text-xs"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white transition-colors py-3 text-xs font-medium cursor-pointer">
+                <button type="submit" className="flex-1 rounded-xl bg-accent hover:bg-accent-hover text-white transition-colors py-3 text-xs font-medium cursor-pointer">
                   Confirm Transfer
                 </button>
               </div>
@@ -297,18 +297,18 @@ export const Dashboard = () => {
 
       {refundConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[var(--color-surface)] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[var(--color-line)] text-[var(--color-ink)] space-y-4 text-center">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 shadow-2xl border border-line text-ink space-y-4 text-center">
             <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
             <h3 className="font-heading font-medium text-xl">100% Refund Guarantee</h3>
-            <p className="text-xs text-[var(--color-ink-muted)] font-medium">
+            <p className="text-xs text-ink-muted font-medium">
               Are you sure you want to request a refund? Your voucher code will be invalidated immediately, and funds returned to your source account within 24-48 hours.
             </p>
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setRefundConfirmId(null)}
-                className="flex-1 py-3 rounded-xl bg-[var(--color-surface-raised)] font-normal text-xs"
+                className="flex-1 py-3 rounded-xl bg-surface-raised font-normal text-xs"
               >
                 Cancel
               </button>

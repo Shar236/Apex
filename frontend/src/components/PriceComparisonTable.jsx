@@ -81,7 +81,7 @@ export const PriceComparisonTable = () => {
         <div className="mt-8 text-center">
           <button
             onClick={() => setActiveTab('shop')}
-            className="btn-primary !py-3.5 !px-8 !text-base"
+            className="btn-primary py-3.5! px-8! text-base!"
           >
             <ShieldCheck className="w-5 h-5" />
             <span>Book Your Exam With Apex Vouchers</span>

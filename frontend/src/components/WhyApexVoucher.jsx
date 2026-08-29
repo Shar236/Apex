@@ -46,7 +46,7 @@ export const WhyApexVoucher = () => {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-surface-raised border-b border-line transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -63,28 +63,28 @@ export const WhyApexVoucher = () => {
             return (
               <div
                 key={idx}
-                className="bg-[var(--color-surface)] rounded-3xl p-7 border border-[var(--color-line)] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+                className="bg-surface rounded-3xl p-7 border border-line shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
-                    <div className="w-12 h-12 rounded-2xl bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] flex items-center justify-center group-hover:scale-105 transition-transform border border-[var(--color-accent)]/20">
+                    <div className="w-12 h-12 rounded-2xl bg-accent/8 text-accent flex items-center justify-center group-hover:scale-105 transition-transform border border-accent/20">
                       <IconComp className="w-6 h-6" strokeWidth={2} />
                     </div>
-                    <span className="text-[10px] font-medium uppercase px-3 py-1 rounded-full bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]">
+                    <span className="text-[10px] font-medium uppercase px-3 py-1 rounded-full bg-surface-sunken text-ink-muted">
                       {feat.badge}
                     </span>
                   </div>
 
-                  <h3 className="font-heading font-medium text-xl text-[var(--color-ink)] leading-snug mb-2 group-hover:text-[var(--color-accent)] transition-colors">
+                  <h3 className="font-heading font-medium text-xl text-ink leading-snug mb-2 group-hover:text-accent transition-colors">
                     {feat.title}
                   </h3>
 
-                  <p className="text-[var(--color-ink-muted)] text-xs font-normal leading-relaxed">
+                  <p className="text-ink-muted text-xs font-normal leading-relaxed">
                     {feat.desc}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-[var(--color-line)] flex items-center text-xs font-normal text-[var(--color-success)]">
+                <div className="mt-6 pt-4 border-t border-line flex items-center text-xs font-normal text-success">
                   <span>✓ 100% Student Approved</span>
                 </div>
               </div>

@@ -93,8 +93,8 @@ export const Navbar = () => {
   const navLinkClass = (active) =>
     `px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
       active
-        ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
-        : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
+        ? 'text-accent font-medium bg-accent/8'
+        : 'hover:bg-accent/6 hover:text-accent'
     }`;
 
   return (
@@ -109,7 +109,7 @@ export const Navbar = () => {
               href={`tel:${supportPhone.replace(/\s+/g, '')}`}
               className="flex items-center gap-1.5 hover:text-white transition-colors"
             >
-              <Phone className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+              <Phone className="w-3.5 h-3.5 text-accent" />
               <span>
                 Support: <strong className="text-white font-medium">{supportPhone}</strong>
               </span>
@@ -118,7 +118,7 @@ export const Navbar = () => {
               href={`mailto:${supportEmail}`}
               className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors"
             >
-              <Mail className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+              <Mail className="w-3.5 h-3.5 text-accent" />
               <span>
                 Email: <strong className="text-white font-medium">{supportEmail}</strong>
               </span>
@@ -128,7 +128,7 @@ export const Navbar = () => {
           {/* Right Utility: Announcement Pill + Auth */}
           <div className="flex items-center gap-3 ml-auto sm:ml-0 whitespace-nowrap text-[11px] sm:text-xs">
             {announcementSettings?.enabled !== false && (
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium text-[10.5px] border border-[var(--color-accent)]/30">
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
                 {announcementText}
               </span>
             )}
@@ -137,7 +137,7 @@ export const Navbar = () => {
                 onClick={() => navigate('/account')}
                 className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors"
               >
-                <User className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+                <User className="w-3.5 h-3.5 text-accent" />
                 <span>My Account ({user?.name?.split(' ')[0] || 'Dashboard'})</span>
               </button>
             ) : (
@@ -145,7 +145,7 @@ export const Navbar = () => {
                 onClick={() => navigate('/login')}
                 className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors"
               >
-                <User className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+                <User className="w-3.5 h-3.5 text-accent" />
                 <span>Login / Register</span>
               </button>
             )}
@@ -158,8 +158,8 @@ export const Navbar = () => {
       <nav
         className={`w-full transition-all duration-300 ${
           scrolled
-            ? 'bg-[var(--color-surface)]/95 backdrop-blur-md shadow-sm py-2.5 border-b border-[var(--color-line)]'
-            : 'bg-[var(--color-surface)] border-b border-[var(--color-line)] py-3.5'
+            ? 'bg-surface/95 backdrop-blur-md shadow-sm py-2.5 border-b border-line'
+            : 'bg-surface border-b border-line py-3.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -175,7 +175,7 @@ export const Navbar = () => {
             </button>
 
             {/* 2. Compact Single-Line Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-[var(--color-ink-muted)] whitespace-nowrap">
+            <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-ink-muted whitespace-nowrap">
 
               {/* Home */}
               <button onClick={() => handleNav('home')} className={navLinkClass(isHomeActive)}>
@@ -192,21 +192,21 @@ export const Navbar = () => {
                   onClick={() => handleNav('shop')}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
                     isShopActive
-                      ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
-                      : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
+                      ? 'text-accent font-medium bg-accent/8'
+                      : 'hover:bg-accent/6 hover:text-accent'
                   }`}
                 >
                   <span>Vouchers</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      vouchersDropdownOpen ? 'rotate-180 text-[var(--color-accent)]' : 'text-[var(--color-ink-muted)]'
+                      vouchersDropdownOpen ? 'rotate-180 text-accent' : 'text-ink-muted'
                     }`}
                   />
                 </button>
 
                 {vouchersDropdownOpen && (
-                  <div className="absolute top-full left-0 w-100 bg-[var(--color-surface)] rounded-2xl shadow-xl border border-[var(--color-line)] p-3 mt-1 animate-in fade-in slide-in-from-top-2 z-50">
-                    <div className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-wider px-3 py-1.5">
+                  <div className="absolute top-full left-0 w-100 bg-surface rounded-2xl shadow-xl border border-line p-3 mt-1 animate-in fade-in slide-in-from-top-2 z-50">
+                    <div className="text-[11px] font-medium text-ink-muted uppercase tracking-wider px-3 py-1.5">
                       Supported Exams
                     </div>
                     <div className="space-y-1">
@@ -217,17 +217,17 @@ export const Navbar = () => {
                             handleNav(exam.tab);
                             setVouchersDropdownOpen(false);
                           }}
-                          className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-[var(--color-accent)]/[0.06] transition-all group flex items-center justify-between gap-3 cursor-pointer"
+                          className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-accent/6 transition-all group flex items-center justify-between gap-3 cursor-pointer"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
+                            <div className="font-medium text-sm text-ink group-hover:text-accent transition-colors leading-tight">
                               {exam.name}
                             </div>
-                            <div className="text-xs text-[var(--color-ink-muted)] font-normal mt-0.5 leading-snug">
+                            <div className="text-xs text-ink-muted font-normal mt-0.5 leading-snug">
                               {exam.desc}
                             </div>
                           </div>
-                          <span className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/25 whitespace-nowrap shrink-0">
+                          <span className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-accent/10 text-accent border border-accent/25 whitespace-nowrap shrink-0">
                             {exam.tag}
                           </span>
                         </button>
@@ -242,12 +242,12 @@ export const Navbar = () => {
                 onClick={handleExamBookingNav}
                 className={`px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${
                   isExamBookingActive
-                    ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
-                    : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
+                    ? 'text-accent font-medium bg-accent/8'
+                    : 'hover:bg-accent/6 hover:text-accent'
                 }`}
               >
                 <span>Exam Booking</span>
-                <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 leading-tight">
+                <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-accent/10 text-accent border border-accent/20 leading-tight">
                   PTE
                 </span>
               </button>
@@ -294,12 +294,12 @@ export const Navbar = () => {
               {/* Compact Cart Icon Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 rounded-xl bg-[var(--color-surface-raised)] hover:bg-[var(--color-accent)]/[0.06] text-[var(--color-ink)] hover:text-[var(--color-accent)] transition-all border border-[var(--color-line)]"
+                className="relative p-2 rounded-xl bg-surface-raised hover:bg-accent/6 text-ink hover:text-accent transition-all border border-line"
                 aria-label="Shopping Cart"
               >
                 <ShoppingCart className="w-4 h-4" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-medium flex items-center justify-center shadow-md">
+                  <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-accent text-white text-[10px] font-medium flex items-center justify-center shadow-md">
                     {cartCount}
                   </span>
                 )}
@@ -330,7 +330,7 @@ export const Navbar = () => {
               {/* Mobile Menu Toggle Button */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2 rounded-xl bg-[var(--color-surface-raised)] text-[var(--color-ink)] border border-[var(--color-line)]"
+                className="lg:hidden p-2 rounded-xl bg-surface-raised text-ink border border-line"
                 aria-label="Open navigation menu"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -342,74 +342,74 @@ export const Navbar = () => {
 
         {/* ── Mobile Navigation Drawer ──────────────────────────────────────── */}
         {isMenuOpen && (
-          <div className="lg:hidden bg-[var(--color-surface)] border-b border-[var(--color-line)] px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
+          <div className="lg:hidden bg-surface border-b border-line px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
 
             {/* Mobile Day/Night Theme Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
-              <span className="text-xs font-medium text-[var(--color-ink)]">Theme Mode</span>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-line">
+              <span className="text-xs font-medium text-ink">Theme Mode</span>
               <ThemeToggle compact={false} showLabel={true} />
             </div>
 
             <button
               onClick={() => handleNav('shop')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-medium text-[var(--color-ink)] bg-[var(--color-accent)]/[0.08] flex items-center justify-between"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-medium text-ink bg-accent/8 flex items-center justify-between"
             >
               <span>🎟️ Browse All Vouchers</span>
-              <span className="text-xs bg-[var(--color-accent)] text-white px-2 py-0.5 rounded-md font-medium">Save 22%</span>
+              <span className="text-xs bg-accent text-white px-2 py-0.5 rounded-md font-medium">Save 22%</span>
             </button>
 
             <button
               onClick={handleExamBookingNav}
               className={`w-full text-left px-4 py-2.5 rounded-xl font-normal flex items-center justify-between ${
                 isExamBookingActive
-                  ? 'bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)]'
-                  : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)]'
+                  ? 'bg-accent/8 text-accent'
+                  : 'text-ink-muted hover:bg-surface-raised hover:text-ink'
               }`}
             >
               <div className="flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4 text-[var(--color-accent)]" />
+                <CalendarCheck className="w-4 h-4 text-accent" />
                 <span>PTE Exam Booking Assistance</span>
               </div>
-              <span className="text-[10px] bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-2 py-0.5 rounded-md font-medium">NEW</span>
+              <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-md font-medium">NEW</span>
             </button>
 
             <button
               onClick={() => handleNav('how-it-works')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-[var(--color-accent)]" />
+              <Sparkles className="w-4 h-4 text-accent" />
               <span>How It Works</span>
             </button>
 
             <button
               onClick={() => handleNav('calculator')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2"
             >
-              <Calculator className="w-4 h-4 text-[var(--color-accent)]" />
+              <Calculator className="w-4 h-4 text-accent" />
               <span>Savings Calculator</span>
             </button>
 
             <button
               onClick={handleBlogNav}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2"
             >
-              <BookOpen className="w-4 h-4 text-[var(--color-accent)]" />
+              <BookOpen className="w-4 h-4 text-accent" />
               <span>Students Diary & Blog</span>
             </button>
 
             <button
               onClick={() => handleNav('awards')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2"
             >
-              <Trophy className="w-4 h-4 text-[var(--color-accent)]" />
+              <Trophy className="w-4 h-4 text-accent" />
               <span>Awards & Achievements</span>
             </button>
 
             <button
               onClick={() => handleNav('faq')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2"
             >
-              <HelpCircle className="w-4 h-4 text-[var(--color-ink-muted)]" />
+              <HelpCircle className="w-4 h-4 text-ink-muted" />
               <span>FAQ & Help</span>
             </button>
 

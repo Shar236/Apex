@@ -17,7 +17,7 @@ export const ExamCategorySection = () => {
   const { isDark } = useTheme();
 
   return (
-    <section id="choose-your-exam" className="py-16 sm:py-24 bg-[var(--color-surface)] border-b border-[var(--color-line)] transition-colors duration-300">
+    <section id="choose-your-exam" className="py-16 sm:py-24 bg-surface border-b border-line transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Choose your exam"
@@ -43,32 +43,32 @@ export const ExamCategorySection = () => {
                 key={cat.id}
                 className={[
                   'group relative flex flex-col rounded-2xl p-6 transition-all duration-200',
-                  'bg-[var(--color-surface)] border',
+                  'bg-surface border',
                   cat.featured
-                    ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/30 shadow-sm'
-                    : 'border-[var(--color-line)] hover:border-[var(--color-accent)]/45 hover:-translate-y-1',
+                    ? 'border-accent ring-1 ring-accent/30 shadow-sm'
+                    : 'border-line hover:border-accent/45 hover:-translate-y-1',
                 ].join(' ')}
               >
                 <div className="flex items-center justify-between mb-4">
                   <Badge tone={cat.featured ? 'accent' : 'neutral'}>{cat.badge}</Badge>
-                  <span className="text-[11px] font-normal text-[var(--color-ink-muted)]">{cat.validity}</span>
+                  <span className="text-[11px] font-normal text-ink-muted">{cat.validity}</span>
                 </div>
 
-                <div className="rounded-xl mb-4 h-20 flex items-center justify-center bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
+                <div className="rounded-xl mb-4 h-20 flex items-center justify-center bg-surface-raised border border-line">
                   <BrandLogoContainer brand={cat.searchKey} name={cat.fullName} className="h-9" inverted={isDark} />
                 </div>
 
-                <h3 className="font-heading font-normal text-lg leading-snug text-[var(--color-ink)]">{cat.name}</h3>
-                <p className="mt-1.5 text-xs font-normal leading-relaxed text-[var(--color-ink-muted)] flex-1">{cat.desc}</p>
+                <h3 className="font-heading font-normal text-lg leading-snug text-ink">{cat.name}</h3>
+                <p className="mt-1.5 text-xs font-normal leading-relaxed text-ink-muted flex-1">{cat.desc}</p>
 
-                <div className="mt-5 pt-4 border-t border-[var(--color-line)] space-y-3">
+                <div className="mt-5 pt-4 border-t border-line space-y-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <div className="min-w-0">
-                      <span className="block text-[10px] uppercase tracking-[0.08em] font-medium text-[var(--color-ink-muted)]">Starting from</span>
-                      <span className="font-heading font-semibold text-xl text-[var(--color-ink)]">{formatPrice(price)}</span>
+                      <span className="block text-[10px] uppercase tracking-[0.08em] font-medium text-ink-muted">Starting from</span>
+                      <span className="font-heading font-semibold text-xl text-ink">{formatPrice(price)}</span>
                     </div>
                     {savings > 0 && (
-                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-[var(--color-success)]/12 text-[var(--color-success)] border border-[var(--color-success)]/20 text-[11px] font-medium whitespace-nowrap">
+                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-success/12 text-success border border-success/20 text-[11px] font-medium whitespace-nowrap">
                         Save {formatPrice(savings)}
                       </span>
                     )}

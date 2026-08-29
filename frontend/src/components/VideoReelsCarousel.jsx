@@ -68,7 +68,7 @@ export const REEL_VIDEOS = [
     cloudinaryPublicId: "v1",
     youtubeEmbed: "",
     instagramUrl: "",
-    badgeColor: "bg-[var(--color-accent)] text-white",
+    badgeColor: "bg-accent text-white",
     icon: "🛒",
     views: "14.2K views",
     viewsCount: 14200,
@@ -90,7 +90,7 @@ export const REEL_VIDEOS = [
     cloudinaryPublicId: "v2",
     youtubeEmbed: "",
     instagramUrl: "",
-    badgeColor: "bg-[var(--color-accent)] text-white",
+    badgeColor: "bg-accent text-white",
     icon: "🎓",
     views: "22.8K views",
     viewsCount: 22800,
@@ -112,7 +112,7 @@ export const REEL_VIDEOS = [
     cloudinaryPublicId: "v3",
     youtubeEmbed: "",
     instagramUrl: "",
-    badgeColor: "bg-[var(--color-accent)] text-white",
+    badgeColor: "bg-accent text-white",
     icon: "🔑",
     views: "18.5K views",
     viewsCount: 18500,
@@ -134,7 +134,7 @@ export const REEL_VIDEOS = [
     cloudinaryPublicId: "v4",
     youtubeEmbed: "",
     instagramUrl: "",
-    badgeColor: "bg-[var(--color-accent)] text-white",
+    badgeColor: "bg-accent text-white",
     icon: "💰",
     views: "31.9K views",
     viewsCount: 31900,
@@ -156,7 +156,7 @@ export const REEL_VIDEOS = [
     cloudinaryPublicId: "v5",
     youtubeEmbed: "",
     instagramUrl: "",
-    badgeColor: "bg-[var(--color-accent)] text-white",
+    badgeColor: "bg-accent text-white",
     icon: "🇬🇧",
     views: "11.7K views",
     viewsCount: 11700,
@@ -244,7 +244,7 @@ export const VideoReelsCarousel = () => {
             cloudinaryPublicId: publicId || '',
             youtubeEmbed: v.youtubeEmbed || directVideo,
             instagramUrl: v.instagramUrl || (isInstagramUrl(directVideo) ? directVideo : ''),
-            badgeColor: v.badgeColor || 'bg-[var(--color-accent)] text-white',
+            badgeColor: v.badgeColor || 'bg-accent text-white',
             icon: v.icon || '🎬',
             viewsCount: viewsNum,
             views: viewsNum >= 1000 ? `${(viewsNum / 1000).toFixed(1)}K views` : `${viewsNum} views`,
@@ -534,21 +534,21 @@ export const VideoReelsCarousel = () => {
       onTouchEnd={handleTouchEnd}
     >
       {/* Gold Glow Backdrop & Dots */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[var(--color-accent)]/12 via-[var(--color-accent)]/4 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(#FF005C_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.04] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-175 h-175 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/12 via-accent/4 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(#FF005C_1px,transparent_1px)] [background-size:32px_32px] opacity-4 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-10">
         
         {/* Section Header */}
         <div className="space-y-3 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] text-xs font-medium uppercase tracking-widest">
-            <Film className="w-4 h-4 text-[var(--color-accent)]" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-medium uppercase tracking-widest">
+            <Film className="w-4 h-4 text-accent" />
             <span>WATCH & LEARN</span>
           </div>
 
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-white mt-2">
             Got Questions About <br />
-            <span className="text-[var(--color-accent)]">Exam Vouchers?</span>
+            <span className="text-accent">Exam Vouchers?</span>
           </h2>
 
           <p className="text-neutral-400 text-sm sm:text-base font-medium max-w-xl mx-auto">
@@ -566,8 +566,8 @@ export const VideoReelsCarousel = () => {
               }}
               className={`px-4 py-2 rounded-full border text-xs font-medium flex items-center gap-2 transition-all cursor-pointer ${
                 isMovieMode
-                  ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow-[0_0_20px_rgba(255,0,92,0.35)]'
-                  : 'bg-white/10 text-white border-white/20 hover:border-[var(--color-accent)]'
+                  ? 'bg-accent text-white border-accent shadow-[0_0_20px_rgba(255,0,92,0.35)]'
+                  : 'bg-white/10 text-white border-white/20 hover:border-accent'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -577,12 +577,12 @@ export const VideoReelsCarousel = () => {
         </div>
 
         {/* Desktop 5-Card Cinematic Film Strip Carousel */}
-        <div className="hidden md:flex items-center justify-center gap-4 lg:gap-6 min-h-[560px] py-4 relative">
+        <div className="hidden md:flex items-center justify-center gap-4 lg:gap-6 min-h-140 py-4 relative">
           
           {/* Far Left Card (offset -2) */}
           <div 
             onClick={() => goToIndex((activeIndex - 2 + total) % total)}
-            className="w-[200px] h-[370px] rounded-[20px] bg-[#12151B] border border-white/10 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
+            className="w-50 h-92.5 rounded-[20px] bg-[#12151B] border border-white/10 opacity-40 scale-75 cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
             {/* Real Video Frame Preview */}
             {getVideoAt(-2).videoStream && isDirectVideoFile(getVideoAt(-2).videoStream) ? (
@@ -600,28 +600,28 @@ export const VideoReelsCarousel = () => {
             <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
-              <span className="px-2 py-0.5 rounded bg-black/70 text-[9px] font-normal text-[var(--color-accent)] border border-[var(--color-accent)]/30">
+              <span className="px-2 py-0.5 rounded bg-black/70 text-[9px] font-normal text-accent border border-accent/30">
                 {getVideoAt(-2).category}
               </span>
               <span className="text-xs">{getVideoAt(-2).icon}</span>
             </div>
 
             <div className="relative z-10 text-center my-auto">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/90 text-white flex items-center justify-center mx-auto shadow-md group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-full bg-accent/90 text-white flex items-center justify-center mx-auto shadow-md group-hover:scale-110 transition-transform">
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>
 
             <div className="relative z-10 text-left space-y-1">
               <h4 className="font-heading font-medium text-xs text-white leading-tight">{getVideoAt(-2).title}</h4>
-              <span className="text-[10px] text-[var(--color-accent)] font-normal block">▶ {getVideoAt(-2).duration}</span>
+              <span className="text-[10px] text-accent font-normal block">▶ {getVideoAt(-2).duration}</span>
             </div>
           </div>
 
           {/* Immediate Left Card (offset -1) */}
           <div 
             onClick={() => goToIndex((activeIndex - 1 + total) % total)}
-            className="w-[240px] h-[440px] rounded-[22px] bg-[#12151B] border border-white/10 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
+            className="w-60 h-110 rounded-[22px] bg-[#12151B] border border-white/10 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-90 transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
             {/* Real Video Frame Preview */}
             {getVideoAt(-1).videoStream && isDirectVideoFile(getVideoAt(-1).videoStream) ? (
@@ -639,21 +639,21 @@ export const VideoReelsCarousel = () => {
             <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
-              <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-normal text-[var(--color-accent)] border border-[var(--color-accent)]/30">
+              <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-normal text-accent border border-accent/30">
                 {getVideoAt(-1).category}
               </span>
               <span className="text-sm">{getVideoAt(-1).icon}</span>
             </div>
 
             <div className="relative z-10 my-auto text-center">
-              <div className="w-12 h-12 rounded-full bg-[var(--color-accent)]/90 text-white flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-full bg-accent/90 text-white flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform">
                 <Play className="w-5 h-5 fill-current ml-0.5" />
               </div>
             </div>
 
             <div className="relative z-10 text-left space-y-1">
               <h4 className="font-heading font-medium text-sm text-white leading-tight">{getVideoAt(-1).title}</h4>
-              <span className="text-xs text-[var(--color-accent)] font-normal block">▶ {getVideoAt(-1).duration}</span>
+              <span className="text-xs text-accent font-normal block">▶ {getVideoAt(-1).duration}</span>
             </div>
           </div>
 
@@ -663,12 +663,12 @@ export const VideoReelsCarousel = () => {
             onMouseEnter={resetControlsTimer}
             onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
             onTouchStart={resetControlsTimer}
-            className="w-[300px] lg:w-[320px] h-[530px] lg:h-[560px] rounded-[24px] bg-[#12151B] border-2 border-[var(--color-accent)] shadow-[0_0_40px_rgba(255,0,92,0.28)] relative overflow-hidden shrink-0 transition-all duration-500 flex flex-col justify-between p-6 z-20 group"
+            className="w-75 lg:w-80 h-132.5 lg:h-140 rounded-3xl bg-[#12151B] border-2 border-accent shadow-[0_0_40px_rgba(255,0,92,0.28)] relative overflow-hidden shrink-0 transition-all duration-500 flex flex-col justify-between p-6 z-20 group"
           >
             {/* Direct HTML5 Video Player (Serves as Visual Content and Thumbnail Preview) */}
             {currentIsInsta ? (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white shadow-xl animate-pulse">
+                <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center text-white shadow-xl animate-pulse">
                   <Instagram className="w-7 h-7" />
                 </div>
                 <div>
@@ -679,7 +679,7 @@ export const VideoReelsCarousel = () => {
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-white font-medium text-xs inline-flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"
+                  className="px-5 py-2.5 rounded-xl bg-accent text-white font-medium text-xs inline-flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"
                 >
                   <Instagram className="w-4 h-4" />
                   <span>Watch on Instagram ↗</span>
@@ -746,11 +746,11 @@ export const VideoReelsCarousel = () => {
                       toggleMute();
                       resetControlsTimer();
                     }}
-                    className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-[var(--color-accent)] border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-105"
+                    className="p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-accent border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-105"
                     title={isMuted ? 'Unmute sound' : 'Mute sound'}
                     aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
                   >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-[var(--color-accent)]" />}
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-accent" />}
                   </button>
                 )}
                 <div className="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 shadow-lg">
@@ -773,13 +773,13 @@ export const VideoReelsCarousel = () => {
                     e.stopPropagation();
                     togglePlay();
                   }}
-                  className="w-16 h-16 rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white flex items-center justify-center mx-auto shadow-[0_0_35px_rgba(255,0,92,0.45)] transition-all transform hover:scale-110 border-2 border-white cursor-pointer"
+                  className="w-16 h-16 rounded-full bg-accent hover:bg-accent-hover text-white flex items-center justify-center mx-auto shadow-[0_0_35px_rgba(255,0,92,0.45)] transition-all transform hover:scale-110 border-2 border-white cursor-pointer"
                   aria-label="Play video"
                 >
                   <Play className="w-7 h-7 fill-current ml-1" />
                 </button>
                 
-                <span className="inline-block mt-3 text-[11px] font-medium text-[var(--color-accent)] uppercase tracking-widest bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-[var(--color-accent)]/40 shadow-lg">
+                <span className="inline-block mt-3 text-[11px] font-medium text-accent uppercase tracking-widest bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-accent/40 shadow-lg">
                   {currentVideo.duration} • Click to Play
                 </span>
               </div>
@@ -797,7 +797,7 @@ export const VideoReelsCarousel = () => {
                     e.stopPropagation();
                     togglePlay();
                   }}
-                  className="pointer-events-auto w-14 h-14 rounded-full bg-black/70 hover:bg-[var(--color-accent)] text-white backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 transition-all transform hover:scale-110 cursor-pointer"
+                  className="pointer-events-auto w-14 h-14 rounded-full bg-black/70 hover:bg-accent text-white backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 transition-all transform hover:scale-110 cursor-pointer"
                   aria-label="Pause video"
                 >
                   <Pause className="w-6 h-6 fill-current" />
@@ -830,7 +830,7 @@ export const VideoReelsCarousel = () => {
                     href={currentInstaLink || 'https://instagram.com'}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-2 rounded-xl bg-[var(--color-accent)] text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="flex-1 py-2 rounded-xl bg-accent text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Instagram className="w-3.5 h-3.5" />
                     <span>Watch Reel ↗</span>
@@ -841,7 +841,7 @@ export const VideoReelsCarousel = () => {
                       e.stopPropagation();
                       togglePlay();
                     }}
-                    className="flex-1 py-2 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                    className="flex-1 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-md"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
                     <span>Play Reel</span>
@@ -866,7 +866,7 @@ export const VideoReelsCarousel = () => {
           {/* Immediate Right Card (offset +1) */}
           <div 
             onClick={() => goToIndex((activeIndex + 1) % total)}
-            className="w-[240px] h-[440px] rounded-[22px] bg-[#12151B] border border-white/10 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-[0.9] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
+            className="w-60 h-110 rounded-[22px] bg-[#12151B] border border-white/10 opacity-65 scale-[0.86] cursor-pointer hover:opacity-90 hover:scale-90 transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-5"
           >
             {/* Real Video Frame Preview */}
             {getVideoAt(1).videoStream && isDirectVideoFile(getVideoAt(1).videoStream) ? (
@@ -884,28 +884,28 @@ export const VideoReelsCarousel = () => {
             <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
-              <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-normal text-[var(--color-accent)] border border-[var(--color-accent)]/30">
+              <span className="px-2.5 py-1 rounded bg-black/70 text-[10px] font-normal text-accent border border-accent/30">
                 {getVideoAt(1).category}
               </span>
               <span className="text-sm">{getVideoAt(1).icon}</span>
             </div>
 
             <div className="relative z-10 my-auto text-center">
-              <div className="w-12 h-12 rounded-full bg-[var(--color-accent)]/90 text-white flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-full bg-accent/90 text-white flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform">
                 <Play className="w-5 h-5 fill-current ml-0.5" />
               </div>
             </div>
 
             <div className="relative z-10 text-left space-y-1">
               <h4 className="font-heading font-medium text-sm text-white leading-tight">{getVideoAt(1).title}</h4>
-              <span className="text-xs text-[var(--color-accent)] font-normal block">▶ {getVideoAt(1).duration}</span>
+              <span className="text-xs text-accent font-normal block">▶ {getVideoAt(1).duration}</span>
             </div>
           </div>
 
           {/* Far Right Card (offset +2) */}
           <div 
             onClick={() => goToIndex((activeIndex + 2) % total)}
-            className="w-[200px] h-[370px] rounded-[20px] bg-[#12151B] border border-white/10 opacity-40 scale-[0.75] cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
+            className="w-50 h-92.5 rounded-[20px] bg-[#12151B] border border-white/10 opacity-40 scale-75 cursor-pointer hover:opacity-80 hover:scale-[0.82] transition-all duration-500 overflow-hidden relative shadow-xl shrink-0 group flex flex-col justify-between p-4"
           >
             {/* Real Video Frame Preview */}
             {getVideoAt(2).videoStream && isDirectVideoFile(getVideoAt(2).videoStream) ? (
@@ -923,21 +923,21 @@ export const VideoReelsCarousel = () => {
             <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex justify-between items-start">
-              <span className="px-2 py-0.5 rounded bg-black/60 text-[9px] font-normal text-[var(--color-accent)] border border-[var(--color-accent)]/30">
+              <span className="px-2 py-0.5 rounded bg-black/60 text-[9px] font-normal text-accent border border-accent/30">
                 {getVideoAt(2).category}
               </span>
               <span className="text-xs">{getVideoAt(2).icon}</span>
             </div>
 
             <div className="relative z-10 text-center my-auto">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/80 text-white flex items-center justify-center mx-auto shadow-md group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-full bg-accent/80 text-white flex items-center justify-center mx-auto shadow-md group-hover:scale-110 transition-transform">
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>
 
             <div className="relative z-10 text-left space-y-1">
               <h4 className="font-heading font-medium text-xs text-white leading-tight">{getVideoAt(2).title}</h4>
-              <span className="text-[10px] text-[var(--color-accent)] font-normal block">▶ {getVideoAt(2).duration}</span>
+              <span className="text-[10px] text-accent font-normal block">▶ {getVideoAt(2).duration}</span>
             </div>
           </div>
 
@@ -947,18 +947,18 @@ export const VideoReelsCarousel = () => {
         <div className="md:hidden space-y-6">
           <div 
             onTouchStart={resetControlsTimer}
-            className="w-full max-w-xs mx-auto aspect-9/16 rounded-[22px] bg-[#12151B] border-2 border-[var(--color-accent)] shadow-xl relative overflow-hidden flex flex-col justify-between p-5"
+            className="w-full max-w-xs mx-auto aspect-9/16 rounded-[22px] bg-[#12151B] border-2 border-accent shadow-xl relative overflow-hidden flex flex-col justify-between p-5"
           >
             {/* Direct HTML5 Video Player */}
             {currentIsInsta ? (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <Instagram className="w-10 h-10 text-[var(--color-accent)]" />
+                <Instagram className="w-10 h-10 text-accent" />
                 <p className="text-xs text-neutral-300 font-medium">This video tutorial is hosted on Instagram.</p>
                 <a
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-[var(--color-accent)] text-white font-medium text-xs inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-accent text-white font-medium text-xs inline-flex items-center gap-1.5"
                 >
                   <Instagram className="w-4 h-4" />
                   <span>Watch on Instagram ↗</span>
@@ -1012,7 +1012,7 @@ export const VideoReelsCarousel = () => {
                 isPlaying && !showControls ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
               }`}
             >
-              <span className="px-2.5 py-1 rounded-full bg-[var(--color-accent)] text-white font-medium text-[10px] uppercase">
+              <span className="px-2.5 py-1 rounded-full bg-accent text-white font-medium text-[10px] uppercase">
                 {currentVideo.category}
               </span>
 
@@ -1024,10 +1024,10 @@ export const VideoReelsCarousel = () => {
                       toggleMute();
                       resetControlsTimer();
                     }}
-                    className="p-1 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-[var(--color-accent)] border border-white/20 cursor-pointer"
+                    className="p-1 rounded-full bg-black/60 backdrop-blur-md text-white hover:text-accent border border-white/20 cursor-pointer"
                     title={isMuted ? 'Unmute' : 'Mute'}
                   >
-                    {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[var(--color-accent)]" />}
+                    {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-accent" />}
                   </button>
                 )}
                 <ApexLogo className="h-4" whiteText={true} />
@@ -1048,12 +1048,12 @@ export const VideoReelsCarousel = () => {
                     e.stopPropagation();
                     togglePlay();
                   }}
-                  className="w-14 h-14 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center mx-auto shadow-xl border-2 border-white cursor-pointer"
+                  className="w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center mx-auto shadow-xl border-2 border-white cursor-pointer"
                   aria-label="Play video"
                 >
                   <Play className="w-6 h-6 fill-current ml-1" />
                 </button>
-                <span className="inline-block mt-2 text-[10px] font-medium text-[var(--color-accent)] uppercase tracking-widest bg-black/80 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-[var(--color-accent)]/40">
+                <span className="inline-block mt-2 text-[10px] font-medium text-accent uppercase tracking-widest bg-black/80 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-accent/40">
                   {currentVideo.duration} • Click to Play
                 </span>
               </div>
@@ -1071,7 +1071,7 @@ export const VideoReelsCarousel = () => {
                     e.stopPropagation();
                     togglePlay();
                   }}
-                  className="pointer-events-auto w-12 h-12 rounded-full bg-black/70 hover:bg-[var(--color-accent)] text-white backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 cursor-pointer"
+                  className="pointer-events-auto w-12 h-12 rounded-full bg-black/70 hover:bg-accent text-white backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 cursor-pointer"
                   aria-label="Pause video"
                 >
                   <Pause className="w-5 h-5 fill-current" />
@@ -1093,7 +1093,7 @@ export const VideoReelsCarousel = () => {
                   href={currentInstaLink || 'https://instagram.com'}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-2 rounded-lg bg-[var(--color-accent)] text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer"
+                  className="w-full py-2 rounded-lg bg-accent text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <Instagram className="w-3.5 h-3.5" />
                   <span>Watch on Instagram ↗</span>
@@ -1104,7 +1104,7 @@ export const VideoReelsCarousel = () => {
                     e.stopPropagation();
                     togglePlay();
                   }}
-                  className="w-full py-2 rounded-lg bg-[var(--color-accent)] text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer shadow-md"
+                  className="w-full py-2 rounded-lg bg-accent text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer shadow-md"
                 >
                   <Play className="w-3 h-3 fill-current" />
                   <span>Play Reel</span>
@@ -1122,13 +1122,13 @@ export const VideoReelsCarousel = () => {
             <button
               onClick={handlePrev}
               aria-label="Previous video"
-              className="w-11 h-11 rounded-full bg-white text-slate-950 hover:bg-[var(--color-accent)] hover:text-white flex items-center justify-center transition-all shadow-lg border border-white/20 cursor-pointer"
+              className="w-11 h-11 rounded-full bg-white text-slate-950 hover:bg-accent hover:text-white flex items-center justify-center transition-all shadow-lg border border-white/20 cursor-pointer"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
 
             {/* Pagination Indicators */}
-            <div className="flex items-center gap-2 overflow-x-auto max-w-[220px] sm:max-w-none px-2 py-1">
+            <div className="flex items-center gap-2 overflow-x-auto max-w-55 sm:max-w-none px-2 py-1">
               {videoList.map((_, idx) => (
                 <button
                   key={idx}
@@ -1136,7 +1136,7 @@ export const VideoReelsCarousel = () => {
                   aria-label={`Go to video ${idx + 1}`}
                   className={`h-2.5 rounded-full transition-all shrink-0 cursor-pointer ${
                     activeIndex === idx
-                      ? 'w-7 bg-[var(--color-accent)]'
+                      ? 'w-7 bg-accent'
                       : 'w-2.5 bg-white/30 hover:bg-white/60'
                   }`}
                 />
@@ -1147,7 +1147,7 @@ export const VideoReelsCarousel = () => {
             <button
               onClick={handleNext}
               aria-label="Next video"
-              className="w-11 h-11 rounded-full bg-white text-slate-950 hover:bg-[var(--color-accent)] hover:text-white flex items-center justify-center transition-all shadow-lg border border-white/20 cursor-pointer"
+              className="w-11 h-11 rounded-full bg-white text-slate-950 hover:bg-accent hover:text-white flex items-center justify-center transition-all shadow-lg border border-white/20 cursor-pointer"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
@@ -1174,14 +1174,14 @@ export const VideoReelsCarousel = () => {
               
               <button
                 onClick={() => setActiveModalVideo(null)}
-                className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-[var(--color-accent)] hover:text-white text-white transition-colors cursor-pointer"
+                className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-accent hover:text-white text-white transition-colors cursor-pointer"
                 aria-label="Close modal video player"
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-[var(--color-accent)] text-white text-xs font-medium uppercase">
+                <span className="px-3 py-1 rounded-full bg-accent text-white text-xs font-medium uppercase">
                   {activeModalVideo.category}
                 </span>
                 <ApexLogo className="h-5" whiteText={true} />
@@ -1197,7 +1197,7 @@ export const VideoReelsCarousel = () => {
                     <img src={activeModalVideo.poster} alt={activeModalVideo.title} className="absolute inset-0 w-full h-full object-cover opacity-40" />
                     <div className="absolute inset-0 bg-slate-950/70" />
                     
-                    <div className="relative z-10 w-16 h-16 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white shadow-2xl animate-pulse">
+                    <div className="relative z-10 w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white shadow-2xl animate-pulse">
                       <Instagram className="w-8 h-8" />
                     </div>
                     
@@ -1210,7 +1210,7 @@ export const VideoReelsCarousel = () => {
                       href={modalInstaLink || 'https://instagram.com'}
                       target="_blank"
                       rel="noreferrer"
-                      className="relative z-10 px-6 py-3 rounded-2xl bg-[var(--color-accent)] text-white font-medium text-xs inline-flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"
+                      className="relative z-10 px-6 py-3 rounded-2xl bg-accent text-white font-medium text-xs inline-flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"
                     >
                       <Instagram className="w-4 h-4" />
                       <span>Watch on Instagram ↗</span>
@@ -1244,7 +1244,7 @@ export const VideoReelsCarousel = () => {
                           href={activeModalVideo.videoStream}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-white font-medium text-xs inline-flex items-center gap-2"
+                          className="px-5 py-2.5 rounded-xl bg-accent text-white font-medium text-xs inline-flex items-center gap-2"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Open Video ↗</span>
@@ -1265,14 +1265,14 @@ export const VideoReelsCarousel = () => {
                     href={modalInstaLink || 'https://instagram.com'}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] inline-flex items-center gap-1"
+                    className="text-xs font-medium text-accent hover:text-accent-hover inline-flex items-center gap-1"
                   >
                     <Instagram className="w-4 h-4" /> Open Reel in New Tab ↗
                   </a>
                 )}
                 <button
                   onClick={() => setActiveModalVideo(null)}
-                  className="px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-white font-medium text-xs hover:bg-[var(--color-accent-hover)] transition-colors cursor-pointer ml-auto"
+                  className="px-5 py-2.5 rounded-xl bg-accent text-white font-medium text-xs hover:bg-accent-hover transition-colors cursor-pointer ml-auto"
                 >
                   Close Video Player
                 </button>

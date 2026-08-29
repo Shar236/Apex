@@ -211,7 +211,7 @@ export const StudyDestinations = () => {
                   setSelectedCountry(null);
                   setActiveTab('shop');
                 }}
-                className="w-full btn-primary !py-3 !text-sm"
+                className="w-full btn-primary py-3! text-sm!"
               >
                 Buy {selectedCountry.name} Exam Voucher
               </button>

@@ -46,14 +46,14 @@ export const ProductDetailModal = () => {
     >
       <div
         className="relative w-full max-w-2xl rounded-3xl p-6 sm:p-8 overflow-y-auto max-h-[90vh] space-y-6
-                   bg-[var(--color-surface)] border border-[var(--color-line)] text-[var(--color-ink)]
+                   bg-surface border border-line text-ink
                    shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={closeProductDetail}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors cursor-pointer"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-surface-raised text-ink-muted hover:text-ink transition-colors cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -65,20 +65,20 @@ export const ProductDetailModal = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="shrink-0 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-raised)]">
+          <div className="shrink-0 rounded-xl border border-line bg-surface-raised">
             <ProviderLogo product={p} className="h-16 w-40" />
           </div>
           <div className="min-w-0 space-y-1.5">
-            <h2 className="font-heading font-normal text-2xl sm:text-[28px] leading-tight text-[var(--color-ink)]">{p.name}</h2>
+            <h2 className="font-heading font-normal text-2xl sm:text-[28px] leading-tight text-ink">{p.name}</h2>
             <StockBadge product={p} />
           </div>
         </div>
 
-        <p className="text-sm font-normal text-[var(--color-ink-muted)] leading-relaxed">
+        <p className="text-sm font-normal text-ink-muted leading-relaxed">
           {p.description || '100% genuine official exam voucher code, accepted on the official test-registration portals.'}
         </p>
 
-        <div className="rounded-2xl p-5 bg-[var(--color-surface-sunken)] border border-[var(--color-line)] flex items-end justify-between gap-3">
+        <div className="rounded-2xl p-5 bg-surface-sunken border border-line flex items-end justify-between gap-3">
           <PriceDisplay original={original} current={current} formatPrice={formatPrice} size="lg" emphasis="accent" showSaved />
           <DiscountBadge percent={percent} savings={savings} formatPrice={formatPrice} />
         </div>
@@ -86,11 +86,11 @@ export const ProductDetailModal = () => {
         <DeliveryValidityBar product={p} />
 
         <div className="space-y-3">
-          <h4 className="font-heading font-medium text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">What's included</h4>
+          <h4 className="font-heading font-medium text-[11px] uppercase tracking-[0.12em] text-ink-muted">What's included</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {inclusions.map((inc, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs font-normal text-[var(--color-ink)]">
-                <CheckCircle2 className="w-4 h-4 text-[var(--color-success)] shrink-0 mt-0.5" />
+              <div key={i} className="flex items-start gap-2 text-xs font-normal text-ink">
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                 <span className="leading-snug">{inc}</span>
               </div>
             ))}
@@ -98,12 +98,12 @@ export const ProductDetailModal = () => {
         </div>
 
         {officialLink && (
-          <a href={officialLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors">
+          <a href={officialLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-accent transition-colors">
             Official Website <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-[var(--color-line)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-line">
           <Button variant="secondary" size="lg" onClick={() => { addToCart(p); closeProductDetail(); }} disabled={!p.inStock}>
             <ShoppingCart className="w-4 h-4" /> Add to Cart
           </Button>

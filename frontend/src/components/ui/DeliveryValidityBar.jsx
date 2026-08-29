@@ -15,8 +15,8 @@ export default function DeliveryValidityBar({ product, className = '' }) {
     <div
       className={[
         'flex items-center justify-center gap-3 rounded-lg py-2 px-3',
-        'bg-[var(--color-accent)]/[0.06] border border-[var(--color-accent)]/20',
-        'text-[11px] font-medium text-[var(--color-accent)]',
+        'bg-accent/6 border border-accent/20',
+        'text-[11px] font-medium text-accent',
         className,
       ].join(' ')}
     >
@@ -24,7 +24,7 @@ export default function DeliveryValidityBar({ product, className = '' }) {
         <Zap className="w-3 h-3 fill-current" />
         {delivery}
       </span>
-      <span className="w-px h-3 bg-[var(--color-accent)]/25" />
+      <span className="w-px h-3 bg-accent/25" />
       <span>{validity}</span>
     </div>
   );

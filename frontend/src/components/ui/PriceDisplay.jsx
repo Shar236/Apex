@@ -15,12 +15,12 @@ const CUR = {
 export default function PriceDisplay({ original, current, formatPrice, size = 'md', emphasis = 'ink', showSaved = false, className = '' }) {
   const hasDiscount = original && original > current;
   const saved = hasDiscount ? original - current : 0;
-  const curColor = emphasis === 'accent' ? 'text-[var(--color-accent)]' : 'text-[var(--color-ink)]';
+  const curColor = emphasis === 'accent' ? 'text-accent' : 'text-ink';
 
   return (
     <div className={`min-w-0 ${className}`}>
       {hasDiscount ? (
-        <span className="block text-xs font-normal text-[var(--color-ink-muted)] line-through leading-none mb-1">
+        <span className="block text-xs font-normal text-ink-muted line-through leading-none mb-1">
           {formatPrice(original)}
         </span>
       ) : (
@@ -30,7 +30,7 @@ export default function PriceDisplay({ original, current, formatPrice, size = 'm
         {formatPrice(current)}
       </span>
       {showSaved && saved > 0 && (
-        <span className="block mt-1 text-xs font-normal text-[var(--color-success)]">
+        <span className="block mt-1 text-xs font-normal text-success">
           You save {formatPrice(saved)}
         </span>
       )}

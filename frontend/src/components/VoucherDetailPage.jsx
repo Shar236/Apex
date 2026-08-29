@@ -33,9 +33,9 @@ import VoucherCard from './VoucherCard.jsx';
 const GuideScreenshot = ({ image, alt, caption, onOpen }) => {
   if (!image) {
     return (
-      <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-surface-raised)] flex flex-col items-center justify-center gap-2 text-center px-4">
-        <ImageOff className="w-6 h-6 text-[var(--color-ink-muted)]" />
-        <span className="text-[11px] font-normal text-[var(--color-ink-muted)]">Screenshot coming soon</span>
+      <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-line bg-surface-raised flex flex-col items-center justify-center gap-2 text-center px-4">
+        <ImageOff className="w-6 h-6 text-ink-muted" />
+        <span className="text-[11px] font-normal text-ink-muted">Screenshot coming soon</span>
       </div>
     );
   }
@@ -43,7 +43,7 @@ const GuideScreenshot = ({ image, alt, caption, onOpen }) => {
     <button
       type="button"
       onClick={() => onOpen({ image, alt, caption })}
-      className="w-full aspect-video rounded-2xl border border-[var(--color-line)] overflow-hidden bg-[var(--color-surface-raised)] cursor-zoom-in group relative"
+      className="w-full aspect-video rounded-2xl border border-line overflow-hidden bg-surface-raised cursor-zoom-in group relative"
     >
       <img src={imageUrl(image, { width: 900 })} alt={alt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
     </button>
@@ -96,7 +96,7 @@ const OfficialWebsiteButton = ({ url, providerLabel }) => {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--color-ink)] text-[var(--color-surface)] font-medium text-sm shadow-lg hover:scale-[1.02] transition-all cursor-pointer"
+      className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-ink text-surface font-medium text-sm shadow-lg hover:scale-[1.02] transition-all cursor-pointer"
     >
       <span>Visit Official {providerLabel} Website</span>
       <ExternalLink className="w-4 h-4" />
@@ -183,17 +183,17 @@ export const VoucherDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-[var(--color-surface)]">
-        <div className="animate-pulse text-sm font-normal text-[var(--color-ink-muted)]">Loading voucher guide…</div>
+      <div className="min-h-[60vh] flex items-center justify-center bg-surface">
+        <div className="animate-pulse text-sm font-normal text-ink-muted">Loading voucher guide…</div>
       </div>
     );
   }
 
   if (notFound || !product) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-[var(--color-surface)] text-center px-4">
-        <p className="font-heading text-2xl font-normal text-[var(--color-ink)]">Voucher not found</p>
-        <p className="text-sm font-normal text-[var(--color-ink-muted)] max-w-sm">This voucher may have been removed or is no longer available.</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-surface text-center px-4">
+        <p className="font-heading text-2xl font-normal text-ink">Voucher not found</p>
+        <p className="text-sm font-normal text-ink-muted max-w-sm">This voucher may have been removed or is no longer available.</p>
         <Button variant="primary" size="md" onClick={goBackToVouchers}>Browse All Exam Vouchers</Button>
       </div>
     );
@@ -268,7 +268,7 @@ export const VoucherDetailPage = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <button
           onClick={goBackToVouchers}
-          className="inline-flex items-center gap-1.5 text-xs font-normal text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs font-normal text-ink-muted hover:text-accent transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Exam Vouchers
@@ -276,12 +276,12 @@ export const VoucherDetailPage = () => {
       </div>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="py-8 sm:py-12 bg-[var(--color-surface)] transition-colors duration-300">
+      <section className="py-8 sm:py-12 bg-surface transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[0_1px_3px_rgba(15,20,35,0.04),0_20px_50px_-24px_rgba(15,20,35,0.15)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_20px_50px_-24px_rgba(0,0,0,0.7)] p-6 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          <div className="rounded-3xl border border-line bg-surface shadow-[0_1px_3px_rgba(15,20,35,0.04),0_20px_50px_-24px_rgba(15,20,35,0.15)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_20px_50px_-24px_rgba(0,0,0,0.7)] p-6 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
 
             <div className="md:col-span-4 flex justify-center">
-              <div className="w-full max-w-55 aspect-square rounded-2xl border border-[var(--color-line)] bg-white flex items-center justify-center p-6">
+              <div className="w-full max-w-55 aspect-square rounded-2xl border border-line bg-white flex items-center justify-center p-6">
                 {product.logo ? (
                   <img src={imageUrl(product.logo, { width: 440 })} alt={`${product.name} logo`} className="max-h-full max-w-full object-contain" />
                 ) : (
@@ -292,15 +292,15 @@ export const VoucherDetailPage = () => {
 
             <div className="md:col-span-8 space-y-5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">{product.provider || product.brand}</span>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-ink-muted">{product.provider || product.brand}</span>
                 <StockBadge product={product} />
               </div>
 
-              <h1 className="font-heading font-normal text-2xl sm:text-3xl lg:text-4xl text-[var(--color-ink)] leading-tight">
+              <h1 className="font-heading font-normal text-2xl sm:text-3xl lg:text-4xl text-ink leading-tight">
                 {product.name} Voucher
               </h1>
 
-              <p className="text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">
+              <p className="text-sm text-ink-muted font-normal leading-relaxed">
                 {product.shortDescription || product.description || 'Official genuine exam voucher with instant digital delivery from Apex Vouchers.'}
               </p>
 
@@ -333,7 +333,7 @@ export const VoucherDetailPage = () => {
                   href={product.officialWebsiteUrl || product.officialProductUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-accent transition-colors"
                 >
                   Official Website <ExternalLink className="w-3.5 h-3.5" />
                 </a>
@@ -344,7 +344,7 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── How It Works ─────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface-raised)] border-y border-[var(--color-line)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Simple 3-Step Process" title="How It Works" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -353,10 +353,10 @@ export const VoucherDetailPage = () => {
               { n: '02', title: 'Receive Your Code', desc: `Your voucher is delivered to your registered email — ${(product.deliveryType || 'Instant Delivery').toLowerCase()}.` },
               { n: '03', title: 'Redeem on Official Website', desc: `Visit the official ${redemptionGuide.providerLabel} website and apply your code during checkout.` },
             ].map((step, i) => (
-              <div key={i} className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-line)] p-6 space-y-3 shadow-sm">
-                <span className="font-heading font-medium text-4xl text-[var(--color-accent)]/20">{step.n}</span>
-                <h3 className="font-heading font-medium text-lg text-[var(--color-ink)]">{step.title}</h3>
-                <p className="text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">{step.desc}</p>
+              <div key={i} className="bg-surface rounded-3xl border border-line p-6 space-y-3 shadow-sm">
+                <span className="font-heading font-medium text-4xl text-accent/20">{step.n}</span>
+                <h3 className="font-heading font-medium text-lg text-ink">{step.title}</h3>
+                <p className="text-sm text-ink-muted font-normal leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -364,16 +364,16 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── How to Purchase from Apex ────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Buying Guide" title="How to Purchase from Apex Vouchers" subtitle="A simple, secure checkout — from selection to your inbox." />
           <div className="space-y-10">
             {purchaseSteps.map((step, i) => (
               <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className={`space-y-2.5 ${i % 2 === 1 ? 'md:order-2' : ''}`}>
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] font-medium text-xs border border-[var(--color-accent)]/20">{i + 1}</span>
-                  <h3 className="font-heading font-medium text-lg text-[var(--color-ink)]">Step {i + 1} — {step.title}</h3>
-                  <p className="text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">{step.description}</p>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/8 text-accent font-medium text-xs border border-accent/20">{i + 1}</span>
+                  <h3 className="font-heading font-medium text-lg text-ink">Step {i + 1} — {step.title}</h3>
+                  <p className="text-sm text-ink-muted font-normal leading-relaxed">{step.description}</p>
                 </div>
                 <div className={i % 2 === 1 ? 'md:order-1' : ''}>
                   <GuideScreenshot onOpen={setLightboxItem} />
@@ -385,16 +385,16 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── How to Redeem ────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface-raised)] border-y border-[var(--color-line)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Redemption Guide" title={`How to Redeem Your ${product.name}`} />
           <div className="space-y-10">
             {redemptionSteps.map((step, i) => (
               <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className={`space-y-2.5 ${i % 2 === 1 ? 'md:order-2' : ''}`}>
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] font-medium text-xs border border-[var(--color-accent)]/20">{i + 1}</span>
-                  <h3 className="font-heading font-medium text-lg text-[var(--color-ink)]">Step {i + 1} — {step.title}</h3>
-                  <p className="text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">{step.description}</p>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/8 text-accent font-medium text-xs border border-accent/20">{i + 1}</span>
+                  <h3 className="font-heading font-medium text-lg text-ink">Step {i + 1} — {step.title}</h3>
+                  <p className="text-sm text-ink-muted font-normal leading-relaxed">{step.description}</p>
                   {i === 0 && <OfficialWebsiteButton url={redemptionGuide.officialUrl} providerLabel={redemptionGuide.providerLabel} />}
                 </div>
                 <div className={i % 2 === 1 ? 'md:order-1' : ''}>
@@ -407,14 +407,14 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── What You Get ─────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="What You Get" title="Everything Included With Your Voucher" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {inclusions.map((inc, i) => (
-              <div key={i} className="flex items-center gap-3 bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)] px-4 py-3.5">
-                <CheckCircle2 className="w-5 h-5 text-[var(--color-success)] shrink-0" />
-                <span className="text-sm font-normal text-[var(--color-ink)]">{inc}</span>
+              <div key={i} className="flex items-center gap-3 bg-surface-raised rounded-2xl border border-line px-4 py-3.5">
+                <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                <span className="text-sm font-normal text-ink">{inc}</span>
               </div>
             ))}
           </div>
@@ -422,10 +422,10 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── Important Information ────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface-raised)] border-y border-[var(--color-line)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Good to Know" title="Important Information" />
-          <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-line)] divide-y divide-[var(--color-line)] overflow-hidden">
+          <div className="bg-surface rounded-3xl border border-line divide-y divide-line overflow-hidden">
             {[
               product.validityMonths ? { label: 'Voucher Validity', value: `${product.validityMonths} Months from purchase date` } : null,
               product.deliveryType ? { label: 'Delivery Method', value: product.deliveryType } : null,
@@ -433,8 +433,8 @@ export const VoucherDetailPage = () => {
               { label: 'Refund Policy', value: 'Refund guarantee if the voucher code is unredeemed within 7 days of purchase. Contact support to request one.' },
             ].filter(Boolean).map((row, i) => (
               <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-6 py-4">
-                <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-ink-muted)]">{row.label}</span>
-                <span className="text-sm font-normal text-[var(--color-ink)]">{row.value}</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">{row.label}</span>
+                <span className="text-sm font-normal text-ink">{row.value}</span>
               </div>
             ))}
           </div>
@@ -442,23 +442,23 @@ export const VoucherDetailPage = () => {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[var(--color-surface)] transition-colors duration-300">
+      <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="FAQ" title="Frequently Asked Questions" />
           <div className="space-y-3">
             {faqs.map((f, i) => {
               const open = openFaqIndex === i;
               return (
-                <div key={i} className="bg-[var(--color-surface-raised)] rounded-2xl border border-[var(--color-line)] overflow-hidden">
+                <div key={i} className="bg-surface-raised rounded-2xl border border-line overflow-hidden">
                   <button
                     onClick={() => setOpenFaqIndex(open ? -1 : i)}
                     className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer"
                   >
-                    <span className="font-heading font-medium text-sm text-[var(--color-ink)]">{f.question}</span>
+                    <span className="font-heading font-medium text-sm text-ink">{f.question}</span>
                     <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
                   </button>
                   {open && (
-                    <div className="px-5 pb-4 text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">
+                    <div className="px-5 pb-4 text-sm text-ink-muted font-normal leading-relaxed">
                       {f.answer}
                     </div>
                   )}
@@ -472,13 +472,13 @@ export const VoucherDetailPage = () => {
       {/* ── Support ───────────────────────────────────────────── */}
       <section className="py-16 sm:py-20 bg-[#0B0D12] text-white transition-colors duration-300">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
-          <Headphones className="w-8 h-8 text-[var(--color-accent)] mx-auto" />
+          <Headphones className="w-8 h-8 text-accent mx-auto" />
           <h2 className="font-heading text-2xl sm:text-3xl font-light">Need Help Redeeming Your Voucher?</h2>
           <p className="text-neutral-400 font-normal text-sm sm:text-base max-w-xl mx-auto">
             Our support team can help you understand the purchase and redemption process.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-            <a href={supportWhatsAppLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded-full py-3.5 px-6 text-sm font-medium shadow-lg transition-all cursor-pointer">
+            <a href={supportWhatsAppLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-full py-3.5 px-6 text-sm font-medium shadow-lg transition-all cursor-pointer">
               <MessageCircle className="w-4 h-4" />
               <span>WhatsApp Support</span>
             </a>
@@ -492,7 +492,7 @@ export const VoucherDetailPage = () => {
 
       {/* ── Related Vouchers ──────────────────────────────────── */}
       {related.length > 0 && (
-        <section className="py-16 sm:py-20 bg-[var(--color-surface)] transition-colors duration-300">
+        <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeading eyebrow="Explore More" title="Related Vouchers" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-stretch">
@@ -505,16 +505,16 @@ export const VoucherDetailPage = () => {
       )}
 
       {/* ── Brand disclaimer ──────────────────────────────────── */}
-      <p className="text-center text-[11px] font-medium text-[var(--color-ink-muted)] py-8 px-4 max-w-2xl mx-auto leading-relaxed">
+      <p className="text-center text-[11px] font-medium text-ink-muted py-8 px-4 max-w-2xl mx-auto leading-relaxed">
         All trademarks and logos belong to their respective owners. Apex Vouchers is an independent voucher/service provider unless otherwise stated.
       </p>
 
       {/* ── Sticky mobile Buy Now bar ─────────────────────────── */}
       {!isOutOfStock && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-line)] px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
           <div className="min-w-0">
-            <span className="block text-[10px] font-normal text-[var(--color-ink-muted)] uppercase tracking-wider truncate">{product.name}</span>
-            <span className="font-heading font-semibold text-lg text-[var(--color-ink)]">{formatPrice(product.discountedPrice)}</span>
+            <span className="block text-[10px] font-normal text-ink-muted uppercase tracking-wider truncate">{product.name}</span>
+            <span className="font-heading font-semibold text-lg text-ink">{formatPrice(product.discountedPrice)}</span>
           </div>
           <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(product)}>
             <Lock className="w-3.5 h-3.5" /> Buy This Voucher

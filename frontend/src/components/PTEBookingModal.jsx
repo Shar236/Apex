@@ -316,7 +316,7 @@ export const PTEBookingModal = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full btn-pink !py-4 !rounded-xl !text-base font-black flex items-center justify-center gap-2 shadow-xl disabled:opacity-60"
+                className="w-full btn-pink py-4! rounded-xl! text-base! font-black flex items-center justify-center gap-2 shadow-xl disabled:opacity-60"
               >
                 {isSubmitting ? (
                   <>
@@ -369,7 +369,7 @@ export const PTEBookingModal = () => {
                   handleClose();
                   setActiveTab('shop');
                 }}
-                className="w-full btn-pink !py-3.5 !rounded-xl !text-sm font-extrabold"
+                className="w-full btn-pink py-3.5! rounded-xl! text-sm! font-extrabold"
               >
                 Back to Vouchers
               </button>
