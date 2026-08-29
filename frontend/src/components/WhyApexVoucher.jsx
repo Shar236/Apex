@@ -1,6 +1,7 @@
 import React from 'react';
-import { Tag, Zap, Lock, GraduationCap, Headphones, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Tag, Zap, Lock, GraduationCap, Headphones, CheckCircle2 } from 'lucide-react';
 import { useVoucher } from '../context/VoucherContext';
+import { SectionHeading } from './ui';
 
 export const WhyApexVoucher = () => {
   const { setActiveTab } = useVoucher();
@@ -45,22 +46,15 @@ export const WhyApexVoucher = () => {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-slate-50/80 dark:bg-[#0A0A0A] border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20 shadow-sm">
-            WHY STUDENTS LOVE APEX
-          </span>
-          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
-            Why 13,500+ Aspirants Trust <br />
-            <span className="text-pink-highlight">Apex Vouchers</span>
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400 font-medium text-base mt-3">
-            Built from the ground up to give study abroad aspirants a faster, cheaper, and reassuring exam booking experience.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Why Students Love Apex"
+          title="Why 13,500+ Aspirants Trust Apex Vouchers"
+          subtitle="Built from the ground up to give study abroad aspirants a faster, cheaper, and reassuring exam booking experience."
+        />
 
         {/* 6 Feature Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -69,28 +63,28 @@ export const WhyApexVoucher = () => {
             return (
               <div
                 key={idx}
-                className="bg-white dark:bg-[#161616] rounded-3xl p-7 border border-slate-200/80 dark:border-[#292929] shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between group"
+                className="bg-[var(--color-surface)] rounded-3xl p-7 border border-[var(--color-line)] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
-                    <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform border border-brand-pink/20">
-                      <IconComp className="w-6 h-6 text-brand-pink" strokeWidth={2.5} />
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)] flex items-center justify-center group-hover:scale-105 transition-transform border border-[var(--color-accent)]/20">
+                      <IconComp className="w-6 h-6" strokeWidth={2} />
                     </div>
-                    <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-slate-100 dark:bg-[#262626] text-slate-800 dark:text-slate-200">
+                    <span className="text-[10px] font-medium uppercase px-3 py-1 rounded-full bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]">
                       {feat.badge}
                     </span>
                   </div>
 
-                  <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white leading-snug mb-2 group-hover:text-brand-pink transition-colors">
+                  <h3 className="font-heading font-medium text-xl text-[var(--color-ink)] leading-snug mb-2 group-hover:text-[var(--color-accent)] transition-colors">
                     {feat.title}
                   </h3>
 
-                  <p className="text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                  <p className="text-[var(--color-ink-muted)] text-xs font-normal leading-relaxed">
                     {feat.desc}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-[#292929] flex items-center text-xs font-black text-[#10B981]">
+                <div className="mt-6 pt-4 border-t border-[var(--color-line)] flex items-center text-xs font-normal text-[var(--color-success)]">
                   <span>✓ 100% Student Approved</span>
                 </div>
               </div>

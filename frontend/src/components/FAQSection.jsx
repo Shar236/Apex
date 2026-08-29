@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Search, HelpCircle } from 'lucide-react';
 import { FAQ_ITEMS } from '../types/data';
+import { SectionHeading } from './ui';
 
 export const FAQSection = () => {
   const [openIndex, setOpenIndex] = useState(0);
@@ -14,31 +15,25 @@ export const FAQSection = () => {
   });
 
   return (
-    <section className="py-16 sm:py-24 bg-slate-50 dark:bg-[#111111] border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-[var(--color-surface-raised)] border-b border-[var(--color-line)] transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-slate-800 dark:text-white bg-white dark:bg-[#161616] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929] shadow-sm">
-            FREQUENTLY ASKED QUESTIONS
-          </span>
-          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
-            Got Questions? <span className="text-pink-highlight">We Have Answers.</span>
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400 font-medium text-base mt-3">
-            Everything you need to know about exam vouchers, code validity, instant delivery, and booking.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Frequently Asked Questions"
+          title="Got Questions? We Have Answers."
+          subtitle="Everything you need to know about exam vouchers, code validity, instant delivery, and booking."
+        />
 
         {/* Live Filter Search Bar */}
         <div className="relative mb-8 max-w-lg mx-auto">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--color-ink-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search FAQ questions (e.g. refund, validity, PTE)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200 dark:border-[#292929] text-slate-900 dark:text-white text-xs font-bold placeholder-slate-400 focus:outline-none focus:border-brand-pink transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-line)] text-[var(--color-ink)] text-xs font-normal placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-all shadow-sm"
           />
         </div>
 
@@ -51,21 +46,21 @@ export const FAQSection = () => {
             return (
               <div
                 key={idx}
-                className="bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#292929] overflow-hidden transition-all duration-200"
+                className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-line)] overflow-hidden transition-all duration-200"
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? -1 : idx)}
-                  className="w-full p-5 text-left font-heading font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center justify-between gap-4 hover:text-brand-pink transition-colors"
+                  className="w-full p-5 text-left font-heading font-medium text-sm sm:text-base text-[var(--color-ink)] flex items-center justify-between gap-4 hover:text-[var(--color-accent)] transition-colors"
                 >
                   <span className="flex items-center gap-3">
-                    <HelpCircle className="w-4 h-4 text-brand-pink shrink-0" />
+                    <HelpCircle className="w-4 h-4 text-[var(--color-accent)] shrink-0" />
                     <span>{qStr}</span>
                   </span>
-                  <ChevronDown className={`w-4 h-4 text-brand-pink shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-[var(--color-accent)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-medium leading-relaxed border-t border-slate-100 dark:border-neutral-800 animate-in fade-in slide-in-from-top-1">
+                  <div className="px-5 pb-5 pt-1 text-[var(--color-ink-muted)] text-xs sm:text-sm font-normal leading-relaxed border-t border-[var(--color-line)] animate-in fade-in slide-in-from-top-1">
                     {aStr}
                   </div>
                 )}
