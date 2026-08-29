@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
@@ -17,24 +16,45 @@ import {
 import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
+import {
+  isRazorpayConfigured,
+  createRazorpayOrder,
+  fetchRazorpayPayment,
+  verifyCheckoutSignature,
+  verifyWebhookSignature,
+} from '../services/razorpay.js';
 
 const MAX_LINE_ITEMS = 20;
 const MAX_LINE_ITEM_QUANTITY = 50;
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Trusted, server-side pricing. The frontend sends only { productId, quantity }.
+ * Every price, discount and total is (re)computed here from the database.
+ * ──────────────────────────────────────────────────────────────────────────── */
 const getProductsWithPrices = async (lineItems) => {
   const ids = lineItems.map((it) => it.productId);
   if (ids.some((id) => !isValidObjectId(id))) {
     throw new AppError('Invalid product id in order items', 400, 'INVALID_PRODUCT_ID');
   }
-  const found = await Product.find({ _id: { $in: ids }, active: true });
+  const found = await Product.find({ _id: { $in: ids }, active: true, archived: { $ne: true } });
   const map = Object.fromEntries(found.map((p) => [p._id.toString(), p]));
   const items = [];
   for (const it of lineItems) {
-    const product = map[it.productId.toString ? it.productId.toString() : String(it.productId)];
-    if (!product) throw new AppError(`Product not found or inactive`, 400, 'PRODUCT_MISSING');
-    const qty = Math.max(1, parseInt(it.quantity, 10) || 1);
-    if (qty > MAX_LINE_ITEM_QUANTITY) {
+    const product = map[String(it.productId)];
+    if (!product) throw new AppError('Product not found or inactive', 400, 'PRODUCT_MISSING');
+    if (product.comingSoon) throw new AppError(`${product.name} is not available for purchase yet`, 400, 'PRODUCT_COMING_SOON');
+
+    const qtyRaw = Number(it.quantity);
+    if (!Number.isFinite(qtyRaw) || !Number.isInteger(qtyRaw) || qtyRaw < 1) {
+      throw new AppError('Quantity must be a whole number of at least 1', 400, 'INVALID_QUANTITY');
+    }
+    if (qtyRaw > MAX_LINE_ITEM_QUANTITY) {
       throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
+    }
+    const unitPrice = Number(product.sellingPrice);
+    const originalPrice = Number(product.originalPrice);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      throw new AppError(`${product.name} is not priced correctly. Please contact support.`, 400, 'PRODUCT_PRICE_INVALID');
     }
     const voucherType = normalizeVoucherType(product.voucherType, product);
     items.push({
@@ -42,30 +62,251 @@ const getProductsWithPrices = async (lineItems) => {
       productName: product.name,
       voucherType,
       brand: product.brand || '',
-      unitPrice: product.sellingPrice,
-      originalPrice: product.originalPrice,
-      quantity: qty,
+      unitPrice,
+      originalPrice: Number.isFinite(originalPrice) && originalPrice > 0 ? originalPrice : unitPrice,
+      quantity: qtyRaw,
     });
   }
   return items;
 };
 
 /**
- * Helper to clean phone number to 10 digits
+ * Recompute discounts (promo + active campaign) from trusted data.
+ * Returns { subtotal, promoDiscount, campaignDiscount, discountAmount, total, promoResult }.
  */
-const sanitizePhone = (phone) => {
-  const cleaned = String(phone || '').replace(/[^0-9]/g, '');
-  if (cleaned.length >= 10) return cleaned.slice(-10);
-  return '9999999999';
+const computeOrderTotals = async ({ lineItems, promoCode, userId }) => {
+  const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+  const productIds = lineItems.map((it) => it.productId);
+
+  const promoResult = await applyPromotion(promoCode, subtotal, userId, productIds);
+  const promoDiscount = Math.max(0, promoResult.discount || 0);
+
+  const now = new Date();
+  const activeCampaigns = await Campaign.find({
+    status: { $in: ['ACTIVE', 'SCHEDULED'] },
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  })
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
+
+  let campaignDiscount = 0;
+  if (activeCampaigns.length > 0) {
+    const camp = activeCampaigns[0];
+    const applicableIds = (camp.applicableProducts || []).map((id) => id.toString());
+    const isApplicable =
+      applicableIds.length === 0 || lineItems.some((it) => applicableIds.includes(it.productId.toString()));
+    if (isApplicable && (camp.minOrderAmount || 0) <= subtotal) {
+      if (camp.discountType === 'PERCENTAGE') {
+        campaignDiscount = Math.round((subtotal * camp.discountValue) / 100);
+      } else {
+        campaignDiscount = camp.discountValue;
+      }
+      if (camp.maxDiscount > 0) campaignDiscount = Math.min(campaignDiscount, camp.maxDiscount);
+    }
+  }
+  campaignDiscount = Math.max(0, campaignDiscount);
+
+  const discountAmount = Math.min(subtotal, promoDiscount + campaignDiscount);
+  const total = Math.max(0, subtotal - discountAmount);
+  return { subtotal, promoDiscount, campaignDiscount, discountAmount, total, promoResult };
 };
 
-/**
- * Create Cashfree Order in Sandbox Mode
- * POST /api/payments/cashfree/create-order
- */
-export const createCashfreeOrder = async (req, res, next) => {
+/* ────────────────────────────────────────────────────────────────────────────
+ * Email delivery — safe & idempotent. Never throws, never flips PAID state.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const deliverOrderEmailSafe = async (user, order, vouchers) => {
+  if (order.emailStatus === 'SENT') return;
+
+  const claimedOrder = await Order.findOneAndUpdate(
+    { _id: order._id, emailStatus: { $in: ['PENDING', 'FAILED'] } },
+    { $set: { emailStatus: 'SENDING', emailError: null } },
+    { new: true }
+  );
+  if (!claimedOrder) return;
+  order.emailStatus = 'SENDING';
+
+  try {
+    const recipient = user?.email || order.customerSnapshot?.email || order.billingDetails?.email;
+    console.log(`[email:attempt] orderNo=${order.orderNo} paymentStatus=${order.paymentStatus}`);
+    const mailRes = await sendOrderConfirmation(user, order, vouchers);
+    if (mailRes && mailRes.sent !== false) {
+      order.emailStatus = 'SENT';
+      order.emailSentAt = new Date();
+      order.emailError = null;
+    } else {
+      order.emailStatus = 'FAILED';
+      order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
+      console.error(`[email:failure] orderNo=${order.orderNo}`);
+    }
+  } catch (err) {
+    order.emailStatus = 'FAILED';
+    order.emailError = err.message;
+    console.error(`[email:error] orderNo=${order.orderNo}: ${err.message}`);
+  }
+
+  await Order.updateOne(
+    { _id: order._id },
+    { $set: { emailStatus: order.emailStatus, emailSentAt: order.emailSentAt || null, emailError: order.emailError || null } }
+  ).catch(() => {});
+
+  try {
+    await sendAdminNewOrderNotification(user, order, vouchers);
+  } catch (adminErr) {
+    console.error(`[email:admin_notification_error] orderNo=${order.orderNo}: ${adminErr.message}`);
+  }
+  if (order.emailStatus === 'FAILED') {
+    try {
+      await sendAdminEmailDeliveryFailureAlert(order, order.emailError);
+    } catch {}
+  }
+};
+
+const enrichVouchers = (order, vouchers) =>
+  vouchers.map((v) => {
+    const match = (order.items || []).find(
+      (it) => it.productId.toString() === (v.productId?._id || v.productId).toString()
+    );
+    return {
+      code: v.code,
+      expiryDate: v.expiryDate,
+      productName: match?.productName || v.productId?.name || '',
+      voucherType: v.voucherType || match?.voucherType || '',
+    };
+  });
+
+const publicVoucherList = async (order) => {
+  const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
+    .populate('productId', 'name brand provider')
+    .lean();
+  return enrichVouchers(order, vouchers);
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE fulfillment gate. Only ever called from a code path that has already
+ * cryptographically verified a captured Razorpay payment for THIS order.
+ *
+ * - Atomically claims the PENDING order (guards against verify/webhook races
+ *   and double clicks — exactly one caller wins the transition to PAID).
+ * - Allocates vouchers via the existing atomic, idempotent allocation service.
+ * - Sends the confirmation email safely (failure never un-pays the order).
+ * ──────────────────────────────────────────────────────────────────────────── */
+const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, eventId }) => {
+  // Idempotency: already fully done.
+  if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
+    return { alreadyFulfilled: true, vouchers: await publicVoucherList(order), order };
+  }
+
+  // Atomic claim: PENDING -> PAID. Only the first caller proceeds to allocate.
+  const claimUpdate = {
+    $set: {
+      paymentStatus: 'PAID',
+      orderStatus: 'PROCESSING',
+      paymentProvider: 'razorpay',
+      paidAt: order.paidAt || new Date(),
+    },
+  };
+  if (razorpayPaymentId) {
+    claimUpdate.$set.razorpayPaymentId = razorpayPaymentId;
+    claimUpdate.$set.paymentReference = razorpayPaymentId;
+  }
+  if (eventId) claimUpdate.$addToSet = { processedEventIds: eventId };
+
+  const claimed = await Order.findOneAndUpdate(
+    { _id: order._id, paymentStatus: { $in: ['PENDING'] } },
+    claimUpdate,
+    { new: true }
+  );
+
+  const working = claimed || (await Order.findById(order._id));
+  if (!working) throw new AppError('Order not found during fulfillment', 404, 'ORDER_MISSING');
+
+  // If we didn't win the claim, another path is (or already finished) fulfilling.
+  if (!claimed) {
+    return { alreadyFulfilled: true, vouchers: await publicVoucherList(working), order: working };
+  }
+
+  await AuditLog.create({
+    adminEmail: user?.email || working.customerSnapshot?.email || 'system@apexvouchers.in',
+    action: 'PAYMENT_VERIFIED',
+    resourceType: 'Order',
+    resourceId: working._id.toString(),
+    details: {
+      orderNo: working.orderNo,
+      source,
+      razorpayOrderId: working.razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId || working.razorpayPaymentId || null,
+      total: working.total,
+      currency: working.currency,
+    },
+  }).catch(() => {});
+
+  // Allocate vouchers atomically.
+  let vouchers = [];
+  try {
+    const session = await Order.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const allocRes = await allocateVouchersForOrder({ order: working, user, session });
+        vouchers = allocRes.vouchers;
+      });
+    } finally {
+      await session.endSession();
+    }
+  } catch (allocErr) {
+    working.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
+    working.fulfillmentStatus =
+      allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
+    working.fulfillmentError = allocErr.message;
+    await working.save().catch(() => {});
+
+    await AuditLog.create({
+      adminEmail: `${source}@apexvouchers.in`,
+      action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
+      resourceType: 'Order',
+      resourceId: working._id.toString(),
+      details: { orderNo: working.orderNo, error: allocErr.message, code: allocErr.code },
+    }).catch(() => {});
+
+    try {
+      await sendAdminVoucherAssignmentFailureAlert(working, allocErr.message);
+    } catch {}
+
+    return { alreadyFulfilled: false, needsAllocation: true, vouchers: [], order: working, error: allocErr.message };
+  }
+
+  const enriched = enrichVouchers(working, vouchers);
+  await deliverOrderEmailSafe(user, working, enriched);
+  return { alreadyFulfilled: false, vouchers: enriched, order: working };
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * PUBLIC — checkout key id only. The secret is never exposed.
+ * GET /api/payments/config
+ * ══════════════════════════════════════════════════════════════════════════ */
+export const getPublicPaymentConfig = (_req, res) => {
+  res.json({
+    success: true,
+    provider: 'razorpay',
+    configured: isRazorpayConfigured(),
+    keyId: config.razorpay.keyId || null, // publishable key — safe for the browser
+    currency: 'INR',
+    env: config.razorpay.env,
+  });
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * POST /api/payments/order   (auth required)
+ * Creates the internal order (PENDING) + a Razorpay order for the exact,
+ * server-calculated amount. Nothing is fulfilled here.
+ * ══════════════════════════════════════════════════════════════════════════ */
+export const createPaymentOrder = async (req, res, next) => {
   let session;
   try {
+    if (!isRazorpayConfigured()) {
+      return next(new AppError('Online payment is temporarily unavailable. Please try again later.', 503, 'PAYMENT_GATEWAY_UNCONFIGURED'));
+    }
+
     const { items, promoCode, billing, paymentMethod } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       return next(new AppError('Items required', 400, 'ITEMS_REQUIRED'));
@@ -74,7 +315,7 @@ export const createCashfreeOrder = async (req, res, next) => {
       return next(new AppError(`Maximum ${MAX_LINE_ITEMS} line items per order`, 400, 'TOO_MANY_ITEMS'));
     }
 
-    // 1. Strict Server-Side Price Calculation & Product-Specific Stock Check
+    // 1. Trusted server-side pricing + product-specific stock check.
     const lineItems = await getProductsWithPrices(items);
     for (const it of lineItems) {
       const availableStock = await VoucherCode.countDocuments({
@@ -86,61 +327,32 @@ export const createCashfreeOrder = async (req, res, next) => {
       if (availableStock < it.quantity) {
         return next(
           new AppError(
-            `Voucher code out of stock for ${it.productName} (${it.voucherType}). Please try again later or contact support.`,
-            400,
+            `Voucher code out of stock for ${it.productName}. Please try again later or contact support.`,
+            409,
             'VOUCHER_OUT_OF_STOCK'
           )
         );
       }
     }
 
-    const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
-    const productIds = lineItems.map((it) => it.productId);
+    const { subtotal, discountAmount, total, promoResult } = await computeOrderTotals({
+      lineItems,
+      promoCode,
+      userId: req.user.id,
+    });
 
-    // 2. Server-side Promo / Coupon Calculation
-    const promoResult = await applyPromotion(promoCode, subtotal, req.user.id, productIds);
-    const promoDiscount = promoResult.discount || 0;
-
-    // Evaluate active Campaign discount server-side
-    const now = new Date();
-    const activeCampaigns = await Campaign.find({
-      status: { $in: ['ACTIVE', 'SCHEDULED'] },
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-    })
-      .sort({ priority: -1, createdAt: -1 })
-      .lean();
-
-    let campaignDiscount = 0;
-    if (activeCampaigns.length > 0) {
-      const camp = activeCampaigns[0];
-      const applicableIds = (camp.applicableProducts || []).map((id) => id.toString());
-      const isApplicable =
-        applicableIds.length === 0 || lineItems.some((it) => applicableIds.includes(it.productId.toString()));
-
-      if (isApplicable && (camp.minOrderAmount || 0) <= subtotal) {
-        if (camp.discountType === 'PERCENTAGE') {
-          campaignDiscount = Math.round((subtotal * camp.discountValue) / 100);
-        } else {
-          campaignDiscount = camp.discountValue;
-        }
-        if (camp.maxDiscount > 0) {
-          campaignDiscount = Math.min(campaignDiscount, camp.maxDiscount);
-        }
-      }
+    if (!(total > 0)) {
+      // A ₹0 order can't be paid via Razorpay and must not silently fulfil.
+      return next(new AppError('Order total must be greater than zero', 400, 'ZERO_TOTAL_ORDER'));
     }
 
-    const discountAmount = Math.max(0, promoDiscount + campaignDiscount);
-    const total = Math.max(0, subtotal - discountAmount);
-
-    // 3. Create Internal MongoDB Order Record
-    const orderNo = generateOrderNo();
+    // 2. Persist the internal order in PENDING state.
     const order = new Order({
-      orderNo,
+      orderNo: generateOrderNo(),
       userId: req.user.id,
       items: lineItems,
       subtotal,
-      discountAmount: discountAmount,
+      discountAmount,
       tax: 0,
       total,
       currency: 'INR',
@@ -149,9 +361,15 @@ export const createCashfreeOrder = async (req, res, next) => {
       paymentStatus: 'PENDING',
       orderStatus: 'PAYMENT_PENDING',
       fulfillmentStatus: 'PENDING',
-      paymentProvider: 'cashfree',
+      paymentProvider: 'razorpay',
       paymentMethod: paymentMethod || 'upi',
-      billingDetails: billing || {},
+      billingDetails: {
+        name: billing?.name || req.user.name || '',
+        email: billing?.email || req.user.email || '',
+        phone: billing?.phone || req.user.phone || '',
+        address: billing?.address || '',
+        gstin: billing?.gstin || '',
+      },
       customerSnapshot: {
         email: billing?.email || req.user.email,
         name: billing?.name || req.user.name,
@@ -171,72 +389,41 @@ export const createCashfreeOrder = async (req, res, next) => {
       }
     });
 
-    // 4. Create Order on Cashfree Sandbox API
-    const cashfreeAppId = config.cashfree.appId;
-    const cashfreeSecret = config.cashfree.secretKey;
-    const cashfreeBaseUrl = config.cashfree.baseUrl;
-    const cashfreeApiVersion = config.cashfree.apiVersion;
-
-    let paymentSessionId = null;
-    let cfOrderId = orderNo;
-
-    if (cashfreeAppId && cashfreeSecret && !cashfreeAppId.includes('your_sandbox')) {
-      try {
-        const cfResponse = await fetch(`${cashfreeBaseUrl}/orders`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-client-id': cashfreeAppId,
-            'x-client-secret': cashfreeSecret,
-            'x-api-version': cashfreeApiVersion,
-          },
-          body: JSON.stringify({
-            order_id: orderNo,
-            order_amount: total,
-            order_currency: 'INR',
-            customer_details: {
-              customer_id: req.user.id.toString(),
-              customer_name: billing?.name || req.user.name || 'Apex Candidate',
-              customer_email: billing?.email || req.user.email || 'candidate@apexvouchers.in',
-              customer_phone: sanitizePhone(billing?.phone || req.user.phone),
-            },
-            order_meta: {
-              return_url: `${config.clientUrl}/payment/cashfree/return?order_id={order_id}`,
-              notify_url: `${config.serverUrl}/api/payments/cashfree/webhook`,
-            },
-          }),
-        });
-
-        const cfData = await cfResponse.json();
-        if (cfResponse.ok && cfData.payment_session_id) {
-          paymentSessionId = cfData.payment_session_id;
-          cfOrderId = cfData.cf_order_id || cfData.order_id || orderNo;
-        } else {
-          console.error('[Cashfree API Error]:', cfData);
-        }
-      } catch (cfErr) {
-        console.error('[Cashfree Connection Error]:', cfErr.message);
-      }
+    // 3. Create the Razorpay order for the EXACT server total (in paise).
+    let rzpOrder;
+    try {
+      rzpOrder = await createRazorpayOrder({
+        amountPaise: Math.round(total * 100),
+        currency: 'INR',
+        receipt: order.orderNo,
+        notes: { internalOrderId: order._id.toString(), userId: req.user.id.toString() },
+      });
+    } catch (gwErr) {
+      // Roll the internal order into a clean failed state — it can never be paid.
+      order.paymentStatus = 'FAILED';
+      order.orderStatus = 'FAILED';
+      order.fulfillmentStatus = 'FAILED';
+      order.fulfillmentError = gwErr.message;
+      await order.save().catch(() => {});
+      return next(gwErr);
     }
 
-    // Fallback for Sandbox mode testing if API credentials are mock or offline
-    if (!paymentSessionId) {
-      paymentSessionId = `session_sandbox_${orderNo}_${Date.now()}`;
-    }
-
-    // Save Cashfree details on order
-    order.cashfreeOrderId = cfOrderId;
-    order.paymentSessionId = paymentSessionId;
+    order.razorpayOrderId = rzpOrder.id;
     await order.save();
 
     res.status(201).json({
       success: true,
-      paymentSessionId,
-      orderNo: order.orderNo,
       orderId: order._id,
-      total: order.total,
-      currency: 'INR',
-      data: order.toObject(),
+      orderNo: order.orderNo,
+      amount: rzpOrder.amount, // paise
+      currency: rzpOrder.currency,
+      razorpayOrderId: rzpOrder.id,
+      keyId: config.razorpay.keyId, // publishable
+      prefill: {
+        name: order.customerSnapshot?.name || '',
+        email: order.customerSnapshot?.email || '',
+        contact: order.customerSnapshot?.phone || '',
+      },
     });
   } catch (err) {
     next(err);
@@ -245,339 +432,272 @@ export const createCashfreeOrder = async (req, res, next) => {
   }
 };
 
-const deliverOrderEmailSafe = async (user, order, vouchers) => {
-  if (order.emailStatus === 'SENT') {
-    console.log(`[email:idempotent] Email already SENT for order #${order.orderNo}`);
-    return;
-  }
-
-  const claimedOrder = await Order.findOneAndUpdate(
-    { _id: order._id, emailStatus: { $in: ['PENDING', 'FAILED'] } },
-    { $set: { emailStatus: 'SENDING', emailError: null } },
-    { new: true }
-  );
-  if (!claimedOrder) {
-    console.log(`[email:idempotent] Email send already in progress for order #${order.orderNo}`);
-    return;
-  }
-  order.emailStatus = 'SENDING';
-
+/* ══════════════════════════════════════════════════════════════════════════
+ * POST /api/payments/verify   (auth required)
+ * Called by the browser after Razorpay Checkout succeeds. The browser CANNOT
+ * be trusted, so every claim is re-verified:
+ *   - order ownership + razorpay_order_id binding
+ *   - checkout HMAC signature (key secret)
+ *   - independent payment fetch from Razorpay: captured, correct order,
+ *     correct amount, correct currency
+ * Only then are vouchers allocated.
+ * ══════════════════════════════════════════════════════════════════════════ */
+export const verifyPayment = async (req, res, next) => {
   try {
-    const recipient = user?.email || order.customerSnapshot?.email || order.billingDetails?.email;
-    console.log(
-      `[email:attempt] orderId=${order.orderNo} recipient=${recipient ? `${recipient[0]}***${recipient.slice(recipient.indexOf('@') - 1)}` : '[missing]'} paymentStatus=${order.paymentStatus}`
-    );
-    const mailRes = await sendOrderConfirmation(user, order, vouchers);
-    if (mailRes && mailRes.sent !== false) {
-      order.emailStatus = 'SENT';
-      order.emailSentAt = new Date();
-      order.emailError = null;
-    } else {
-      order.emailStatus = 'FAILED';
-      order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
-      console.error(`[email:failure] orderId=${order.orderNo} providerResponse=${order.emailError}`);
+    const {
+      orderId,
+      razorpay_order_id: razorpayOrderId,
+      razorpay_payment_id: razorpayPaymentId,
+      razorpay_signature: razorpaySignature,
+    } = req.body || {};
+
+    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return next(new AppError('Missing payment verification fields', 400, 'VERIFY_FIELDS_MISSING'));
     }
-  } catch (err) {
-    order.emailStatus = 'FAILED';
-    order.emailError = err.message;
-    console.error(`[email:error] Failed to send email for order #${order.orderNo}:`, err.message);
-  }
 
-  await order.save().catch(() => {});
-
-  // Internal admin purchase notification
-  try {
-    await sendAdminNewOrderNotification(user, order, vouchers);
-  } catch (adminErr) {
-    console.error(`[email:admin_notification_error] Failed to notify admin for order #${order.orderNo}:`, adminErr.message);
-  }
-
-  // Admin failure alert if customer email delivery failed
-  if (order.emailStatus === 'FAILED') {
-    try {
-      await sendAdminEmailDeliveryFailureAlert(order, order.emailError);
-    } catch {}
-  }
-};
-
-/**
- * Verify Order Status from Cashfree / Complete Order Verification
- * GET /api/payments/cashfree/status/:orderId
- */
-export const getCashfreeOrderStatus = async (req, res, next) => {
-  try {
-    const { orderId } = req.params;
-    const { simulateSuccess } = req.query;
     const q = isValidObjectId(orderId) ? { _id: orderId } : { orderNo: orderId };
     const order = await Order.findOne(q);
+    if (!order) return next(new AppError('Order not found', 404, 'ORDER_NOT_FOUND'));
 
-    if (!order) return next(new AppError('Order not found', 404));
-
-    if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
-      return next(new AppError('Not authorized to access this order', 403));
+    // Ownership.
+    if (String(order.userId) !== String(req.user.id)) {
+      return next(new AppError('Not authorized to access this order', 403, 'ORDER_FORBIDDEN'));
     }
 
-    // Idempotency check: If order is already paid & fulfilled, return existing order & vouchers
+    // Idempotent short-circuit.
     if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
-      const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-        .populate('productId', 'name brand provider')
-        .lean();
       return res.json({
         success: true,
         paymentStatus: 'PAID',
         orderStatus: 'FULFILLED',
         data: order.toObject(),
-        vouchers,
+        vouchers: await publicVoucherList(order),
       });
     }
 
-    let isPaid = false;
-    let paymentRef = order.paymentReference || `CF-TXN-${Date.now()}`;
-
-    // Query Cashfree API directly for verification
-    const cashfreeAppId = config.cashfree.appId;
-    const cashfreeSecret = config.cashfree.secretKey;
-    const cashfreeBaseUrl = config.cashfree.baseUrl;
-    const cashfreeApiVersion = config.cashfree.apiVersion;
-
-    if (cashfreeAppId && cashfreeSecret && !cashfreeAppId.includes('your_sandbox')) {
-      try {
-        const cfResponse = await fetch(`${cashfreeBaseUrl}/orders/${order.orderNo}`, {
-          method: 'GET',
-          headers: {
-            'x-client-id': cashfreeAppId,
-            'x-client-secret': cashfreeSecret,
-            'x-api-version': cashfreeApiVersion,
-          },
-        });
-        if (cfResponse.ok) {
-          const cfData = await cfResponse.json();
-          if (cfData.order_status === 'PAID') {
-            isPaid = true;
-            paymentRef = cfData.cf_order_id || cfData.order_id || paymentRef;
-          }
-        }
-      } catch (err) {
-        console.error('[Cashfree Status Check Error]:', err.message);
-      }
+    // Order-binding: the gateway order id must be the one we created for THIS order.
+    if (!order.razorpayOrderId || order.razorpayOrderId !== razorpayOrderId) {
+      await AuditLog.create({
+        adminEmail: req.user.email || 'system@apexvouchers.in',
+        action: 'PAYMENT_VERIFY_REJECTED',
+        resourceType: 'Order',
+        resourceId: order._id.toString(),
+        details: { orderNo: order.orderNo, reason: 'ORDER_ID_MISMATCH' },
+      }).catch(() => {});
+      return next(new AppError('Payment does not belong to this order', 400, 'ORDER_ID_MISMATCH'));
     }
 
-    // In sandbox test mode, allow verification or simulation flag
-    if (simulateSuccess === 'true' || config.cashfree.env === 'sandbox') {
-      isPaid = true;
+    // Signature (key secret).
+    if (!verifyCheckoutSignature({ razorpayOrderId, razorpayPaymentId, signature: razorpaySignature })) {
+      await AuditLog.create({
+        adminEmail: req.user.email || 'system@apexvouchers.in',
+        action: 'PAYMENT_VERIFY_REJECTED',
+        resourceType: 'Order',
+        resourceId: order._id.toString(),
+        details: { orderNo: order.orderNo, reason: 'SIGNATURE_INVALID' },
+      }).catch(() => {});
+      return next(new AppError('Payment signature verification failed', 400, 'SIGNATURE_INVALID'));
     }
 
-    if (!isPaid) {
+    // Independent re-verification against Razorpay.
+    const payment = await fetchRazorpayPayment(razorpayPaymentId);
+    const okStatus = ['captured', 'authorized'].includes(payment.status);
+    const okOrder = payment.order_id === razorpayOrderId;
+    const okAmount = Number(payment.amount) === Math.round(order.total * 100);
+    const okCurrency = String(payment.currency).toUpperCase() === String(order.currency || 'INR').toUpperCase();
+
+    if (!okStatus || !okOrder || !okAmount || !okCurrency) {
+      await AuditLog.create({
+        adminEmail: req.user.email || 'system@apexvouchers.in',
+        action: 'PAYMENT_VERIFY_REJECTED',
+        resourceType: 'Order',
+        resourceId: order._id.toString(),
+        details: {
+          orderNo: order.orderNo,
+          reason: 'GATEWAY_MISMATCH',
+          paymentStatus: payment.status,
+          okStatus, okOrder, okAmount, okCurrency,
+        },
+      }).catch(() => {});
+      return next(new AppError('Payment could not be verified with the gateway', 400, 'PAYMENT_NOT_VERIFIED'));
+    }
+    if (payment.status === 'authorized') {
+      // Auto-capture is on, but if we ever see "authorized" just wait for the
+      // webhook / capture rather than fulfilling on an uncaptured payment.
       return res.json({
         success: true,
-        paymentStatus: order.paymentStatus,
+        paymentStatus: 'PENDING',
         orderStatus: order.orderStatus,
+        message: 'Payment authorized — finalizing. Your voucher will appear shortly.',
         data: order.toObject(),
         vouchers: [],
       });
     }
 
-    // Atomic update: Mark order PAID & assign vouchers with strict validation
-    order.paymentStatus = 'PAID';
-    order.orderStatus = 'PROCESSING';
-    order.paymentReference = paymentRef;
-    order.paidAt = new Date();
-    await order.save();
+    const result = await fulfillVerifiedOrder({
+      order,
+      user: req.user,
+      razorpayPaymentId,
+      source: 'verify',
+    });
 
-    let vouchers = [];
-    let allocationFailed = false;
-    let allocationError = null;
-
-    try {
-      const session = await Order.startSession();
-      try {
-        await session.withTransaction(async () => {
-          const allocRes = await allocateVouchersForOrder({
-            order,
-            user: req.user,
-            session,
-          });
-          vouchers = allocRes.vouchers;
-        });
-      } finally {
-        await session.endSession();
-      }
-    } catch (allocErr) {
-      allocationFailed = true;
-      allocationError = allocErr.message;
-      order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
-      order.fulfillmentStatus = allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
-      order.fulfillmentError = allocErr.message;
-      await order.save();
-
-      await AuditLog.create({
-        adminEmail: req.user.email || 'system@apexvouchers.in',
-        action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
-        resourceType: 'Order',
-        resourceId: order._id.toString(),
-        details: {
-          orderNo: order.orderNo,
-          error: allocErr.message,
-          code: allocErr.code,
-        },
-      }).catch(() => {});
-
-      try {
-        await sendAdminVoucherAssignmentFailureAlert(order, allocErr.message);
-      } catch {}
-    }
-
-    if (!allocationFailed) {
-      const enriched = vouchers.map((v) => {
-        const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
-        return {
-          code: v.code,
-          expiryDate: v.expiryDate,
-          productName: match?.productName || v.productId?.name || '',
-          voucherType: v.voucherType || match?.voucherType || '',
-        };
-      });
-
-      // Deliver purchase confirmation email safely without throwing or changing PAID status
-      await deliverOrderEmailSafe(req.user, order, enriched);
-
+    if (result.needsAllocation) {
       return res.json({
         success: true,
         paymentStatus: 'PAID',
-        orderStatus: 'FULFILLED',
-        data: order.toObject(),
-        vouchers: enriched,
+        orderStatus: 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
+        needsAllocation: true,
+        fulfillmentStatus: result.order.fulfillmentStatus,
+        message: 'Payment received. Voucher allocation is pending a restock — support has been notified.',
+        data: result.order.toObject(),
+        vouchers: [],
       });
     }
 
     return res.json({
       success: true,
       paymentStatus: 'PAID',
-      orderStatus: 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
-      needsAllocation: true,
-      fulfillmentStatus: order.fulfillmentStatus,
-      message: 'Payment received successfully. Voucher allocation is pending manual restock or verification.',
-      error: allocationError,
-      data: order.toObject(),
-      vouchers: [],
+      orderStatus: 'FULFILLED',
+      data: result.order.toObject(),
+      vouchers: result.vouchers,
     });
   } catch (err) {
     next(err);
   }
 };
 
-/**
- * Handle Cashfree Webhook
- * POST /api/payments/cashfree/webhook
- */
-export const handleCashfreeWebhook = async (req, res, next) => {
+/* ══════════════════════════════════════════════════════════════════════════
+ * GET /api/payments/order/:orderId   (auth required)
+ * READ-ONLY. Returns the server's truth about an order. Never mutates state,
+ * never fulfils. Safe to poll / refresh / open directly.
+ * ══════════════════════════════════════════════════════════════════════════ */
+export const getPaymentStatus = async (req, res, next) => {
   try {
-    const signature = req.headers['x-webhook-signature'];
-    const timestamp = req.headers['x-webhook-timestamp'];
-    const rawBody = req.rawBody;
-    if (!signature || !timestamp || !rawBody || !config.cashfree.secretKey) {
-      console.error('[Cashfree Webhook Rejected]: missing signature configuration');
-      return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+    const { orderId } = req.params;
+    const q = isValidObjectId(orderId) ? { _id: orderId } : { orderNo: orderId };
+    const order = await Order.findOne(q).lean();
+    if (!order) return next(new AppError('Order not found', 404, 'ORDER_NOT_FOUND'));
+    if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
+      return next(new AppError('Not authorized to access this order', 403, 'ORDER_FORBIDDEN'));
     }
 
-    const expectedSignature = crypto
-      .createHmac('sha256', config.cashfree.secretKey)
-      .update(`${timestamp}${rawBody}`)
-      .digest('base64');
-    const received = Buffer.from(String(signature));
-    const expected = Buffer.from(expectedSignature);
-    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) {
-      console.error('[Cashfree Webhook Rejected]: signature verification failed');
-      return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
-    }
+    const isFulfilled =
+      order.paymentStatus === 'PAID' &&
+      (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED');
 
-    const payload = req.body || {};
-    const eventType = payload.type || payload.event || '';
-    const orderData = payload.data?.order || payload.order || {};
-    const orderNo = orderData.order_id || payload.order_id;
+    const vouchers = isFulfilled ? await publicVoucherList(order) : [];
 
-    console.log(`[Cashfree Webhook Received]: event=${eventType}, orderNo=${orderNo}`);
+    res.json({
+      success: true,
+      paymentStatus: order.paymentStatus,
+      orderStatus: order.orderStatus,
+      fulfillmentStatus: order.fulfillmentStatus,
+      data: {
+        orderNo: order.orderNo,
+        total: order.total,
+        currency: order.currency,
+        paymentStatus: order.paymentStatus,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        paidAt: order.paidAt,
+      },
+      vouchers,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    if (!orderNo) {
-      return res.status(200).json({ success: true, message: 'No order_id in webhook' });
-    }
+/* ══════════════════════════════════════════════════════════════════════════
+ * POST /api/payments/webhook   (NO auth — verified by HMAC signature)
+ * The authoritative, out-of-band confirmation. Also the safety net if the
+ * browser closes before /verify runs.
+ * ══════════════════════════════════════════════════════════════════════════ */
+export const handleRazorpayWebhook = async (req, res) => {
+  const signature = req.headers['x-razorpay-signature'];
+  const rawBody = req.rawBody;
 
-    const order = await Order.findOne({ orderNo }).populate('userId');
+  if (!signature || !rawBody || !config.razorpay.webhookSecret) {
+    console.error('[razorpay:webhook] rejected — missing signature / secret / body');
+    return res.status(400).json({ success: false, message: 'Invalid webhook' });
+  }
+  if (!verifyWebhookSignature(rawBody, signature)) {
+    console.error('[razorpay:webhook] rejected — signature verification failed');
+    return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+  }
+
+  // From here the payload is authentic (signed with our webhook secret).
+  const payload = req.body || {};
+  const event = payload.event || '';
+  const eventId = req.headers['x-razorpay-event-id'] || `${event}:${payload?.payload?.payment?.entity?.id || ''}`;
+  const paymentEntity = payload?.payload?.payment?.entity || null;
+  const orderEntity = payload?.payload?.order?.entity || null;
+  const rzpOrderId = paymentEntity?.order_id || orderEntity?.id || null;
+
+  console.log(`[razorpay:webhook] event=${event} rzpOrderId=${rzpOrderId || 'n/a'}`);
+
+  // We only fulfil on capture / order.paid. Everything else is acknowledged.
+  const isPaidEvent = event === 'payment.captured' || event === 'order.paid';
+  const isFailEvent = event === 'payment.failed';
+
+  if (!rzpOrderId || (!isPaidEvent && !isFailEvent)) {
+    return res.status(200).json({ success: true, message: 'Acknowledged' });
+  }
+
+  try {
+    const order = await Order.findOne({ razorpayOrderId: rzpOrderId }).populate('userId');
     if (!order) {
-      return res.status(200).json({ success: true, message: 'Order not found for webhook' });
+      console.warn(`[razorpay:webhook] no internal order for rzpOrderId=${rzpOrderId}`);
+      return res.status(200).json({ success: true, message: 'No matching order' });
     }
 
-    // Idempotency check: if order is already paid & fulfilled, acknowledge immediately
-    if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
-      return res.status(200).json({ success: true, message: 'Webhook already processed (Idempotent)' });
+    if (order.processedEventIds?.includes(eventId)) {
+      return res.status(200).json({ success: true, message: 'Duplicate event ignored' });
     }
 
-    order.webhookStatus = eventType;
-    await order.save();
-
-    if (['PAYMENT_SUCCESS', 'ORDER_PAID'].includes(eventType) || orderData.order_status === 'PAID') {
-      order.paymentStatus = 'PAID';
-      order.orderStatus = 'PROCESSING';
-      order.paidAt = new Date();
-      await order.save();
-
-      let vouchers = [];
-      try {
-        const session = await Order.startSession();
-        try {
-          await session.withTransaction(async () => {
-            const allocRes = await allocateVouchersForOrder({
-              order,
-              user: order.userId,
-              session,
-            });
-            vouchers = allocRes.vouchers;
-          });
-        } finally {
-          await session.endSession();
+    if (isFailEvent) {
+      await Order.updateOne(
+        { _id: order._id, paymentStatus: 'PENDING' },
+        {
+          $set: { paymentStatus: 'FAILED', orderStatus: 'FAILED', fulfillmentStatus: 'FAILED' },
+          $addToSet: { processedEventIds: eventId },
         }
+      );
+      return res.status(200).json({ success: true, message: 'Failure recorded' });
+    }
 
-        const enriched = vouchers.map((v) => {
-          const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
-          return {
-            code: v.code,
-            expiryDate: v.expiryDate,
-            productName: match?.productName || v.productId?.name || '',
-            voucherType: v.voucherType || match?.voucherType || '',
-          };
-        });
-
-        if (order.userId) {
-          await deliverOrderEmailSafe(order.userId, order, enriched);
-        }
-      } catch (err) {
-        order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
-        order.fulfillmentStatus = err.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
-        order.fulfillmentError = err.message;
-        await order.save();
-
+    // Paid event — re-verify amount/currency from the SIGNED payload.
+    if (paymentEntity) {
+      const okOrder = paymentEntity.order_id === rzpOrderId;
+      const okAmount = Number(paymentEntity.amount) === Math.round(order.total * 100);
+      const okCurrency = String(paymentEntity.currency || 'INR').toUpperCase() === String(order.currency || 'INR').toUpperCase();
+      const okStatus = paymentEntity.status === 'captured';
+      if (!okOrder || !okAmount || !okCurrency || !okStatus) {
+        console.error(`[razorpay:webhook] payload mismatch for order ${order.orderNo}`);
         await AuditLog.create({
           adminEmail: 'webhook@apexvouchers.in',
-          action: err.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
+          action: 'PAYMENT_VERIFY_REJECTED',
           resourceType: 'Order',
           resourceId: order._id.toString(),
-          details: {
-            orderNo: order.orderNo,
-            error: err.message,
-            code: err.code,
-          },
+          details: { orderNo: order.orderNo, reason: 'WEBHOOK_PAYLOAD_MISMATCH', okOrder, okAmount, okCurrency, okStatus },
         }).catch(() => {});
+        return res.status(200).json({ success: true, message: 'Payload mismatch ignored' });
       }
-    } else if (['PAYMENT_FAILED', 'ORDER_FAILED'].includes(eventType)) {
-      order.paymentStatus = 'FAILED';
-      order.orderStatus = 'FAILED';
-      order.fulfillmentStatus = 'FAILED';
-      await order.save();
     }
 
-    res.status(200).json({ success: true, message: 'Webhook processed successfully' });
+    await fulfillVerifiedOrder({
+      order,
+      user: order.userId,
+      razorpayPaymentId: paymentEntity?.id || null,
+      source: 'webhook',
+      eventId,
+    });
+
+    return res.status(200).json({ success: true, message: 'Processed' });
   } catch (err) {
-    console.error('[Webhook Error]:', err.message);
-    res.status(200).json({ success: true, message: 'Webhook error handled safely' });
+    // Signature already passed — log and 200 so Razorpay doesn't hammer retries,
+    // the order simply stays PENDING and recoverable / the next event re-tries.
+    console.error(`[razorpay:webhook] processing error: ${err.message}`);
+    return res.status(200).json({ success: true, message: 'Acknowledged (deferred)' });
   }
 };

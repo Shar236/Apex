@@ -2,12 +2,10 @@ import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
 import { Promotion } from '../models/Promotion.js';
-import { AuditLog } from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateOrderNo } from '../utils/index.js';
 import { applyPromotion } from '../services/promotions.js';
-import { sendOrderConfirmation, sendAdminVoucherAssignmentFailureAlert } from '../services/email.js';
-import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
+import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import { isValidObjectId } from '../config/db.js';
 
 const MAX_LINE_ITEMS = 20;
@@ -118,125 +116,6 @@ export const getOrder = async (req, res, next) => {
       .populate('productId', 'name brand provider')
       .lean();
     res.json({ success: true, data: order, vouchers });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const simulatePaymentSuccess = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { paymentReference, provider } = req.body || {};
-    const q = isValidObjectId(id) ? { _id: id } : { orderNo: id };
-    const order = await Order.findOne(q);
-    if (!order) return next(new AppError('Order not found', 404));
-    if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
-      return next(new AppError('Not allowed', 403));
-    }
-
-    // Idempotency check: if order is already paid & fulfilled, return existing vouchers
-    if (order.paymentStatus === 'PAID' && order.orderStatus === 'FULFILLED') {
-      const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-        .populate('productId', 'name brand provider')
-        .lean();
-      return res.json({ success: true, data: order.toObject(), vouchers });
-    }
-
-    order.paymentStatus = 'PAID';
-    order.orderStatus = 'PROCESSING';
-    order.paymentReference = paymentReference || order.paymentReference || `SIM-${Date.now()}`;
-    order.paymentProvider = provider || 'simulated';
-    order.paidAt = new Date();
-    await order.save();
-
-    let vouchers = [];
-    let allocationFailed = false;
-    let allocationError = null;
-
-    try {
-      const session = await Order.startSession();
-      try {
-        await session.withTransaction(async () => {
-          const allocRes = await allocateVouchersForOrder({
-            order,
-            user: req.user,
-            session,
-          });
-          vouchers = allocRes.vouchers;
-        });
-      } finally {
-        await session.endSession();
-      }
-    } catch (allocErr) {
-      allocationFailed = true;
-      allocationError = allocErr.message;
-      order.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
-      order.fulfillmentStatus = allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
-      order.fulfillmentError = allocErr.message;
-      await order.save();
-
-      // Log audit entry for allocation failure
-      await AuditLog.create({
-        adminEmail: req.user.email || 'system@apexvouchers.in',
-        action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
-        resourceType: 'Order',
-        resourceId: order._id.toString(),
-        details: {
-          orderNo: order.orderNo,
-          error: allocErr.message,
-          code: allocErr.code,
-        },
-      }).catch(() => {});
-
-      try {
-        await sendAdminVoucherAssignmentFailureAlert(order, allocErr.message);
-      } catch {}
-    }
-
-    if (!allocationFailed) {
-      const enriched = vouchers.map((v) => {
-        const match = (order.items || []).find((it) => it.productId.toString() === (v.productId?._id || v.productId).toString());
-        return {
-          code: v.code,
-          expiryDate: v.expiryDate,
-          productName: match?.productName || v.productId?.name || '',
-          voucherType: v.voucherType || match?.voucherType || '',
-        };
-      });
-
-      try {
-        const mailRes = await sendOrderConfirmation(req.user, order, enriched);
-        if (mailRes && mailRes.sent !== false) {
-          order.emailStatus = 'SENT';
-          order.emailSentAt = new Date();
-          order.emailError = null;
-        } else {
-          order.emailStatus = 'FAILED';
-          order.emailError = mailRes?.error || 'Email delivery stubbed or failed';
-        }
-        await order.save();
-      } catch (mErr) {
-        order.emailStatus = 'FAILED';
-        order.emailError = mErr.message;
-        await order.save().catch(() => {});
-      }
-
-      return res.json({
-        success: true,
-        data: order.toObject(),
-        vouchers: enriched,
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: order.toObject(),
-      needsAllocation: true,
-      fulfillmentStatus: order.fulfillmentStatus,
-      message: 'Payment received successfully. Voucher allocation is pending manual restock or verification.',
-      error: allocationError,
-      vouchers: [],
-    });
   } catch (err) {
     next(err);
   }

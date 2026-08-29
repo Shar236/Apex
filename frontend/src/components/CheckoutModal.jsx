@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useVoucher } from '../context/VoucherContext';
 import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
@@ -6,19 +6,24 @@ import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, Arrow
 import { ApexLogo } from './ApexLogo';
 import { orderApi, accountApi, paymentApi, formatPrice as fmt } from '../lib/api';
 
-const loadCashfreeSdk = () => {
-  return new Promise((resolve) => {
-    if (window.Cashfree) {
-      resolve(window.Cashfree);
+const RAZORPAY_SDK_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+
+const loadRazorpaySdk = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) return resolve(window.Razorpay);
+    const existing = document.querySelector(`script[src="${RAZORPAY_SDK_URL}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.Razorpay || null));
+      existing.addEventListener('error', () => resolve(null));
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-    script.onload = () => resolve(window.Cashfree);
+    script.src = RAZORPAY_SDK_URL;
+    script.async = true;
+    script.onload = () => resolve(window.Razorpay || null);
     script.onerror = () => resolve(null);
     document.body.appendChild(script);
   });
-};
 
 export const CheckoutModal = () => {
   const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, clearCart, setActiveTab } = useVoucher();
@@ -50,6 +55,10 @@ export const CheckoutModal = () => {
     email: '',
     phone: '',
   });
+
+  // True once the Razorpay handler has fired — stops the (sometimes late)
+  // modal `ondismiss` from overwriting a success/verifying state.
+  const paymentHandledRef = useRef(false);
 
   const checkoutItems = React.useMemo(() => {
     if (!checkoutProduct) return [];
@@ -127,9 +136,42 @@ export const CheckoutModal = () => {
     }
   };
 
+  // Handle the verified-payment result coming back from our own server.
+  // NOTE: the browser NEVER decides that a payment succeeded — the backend does,
+  // after verifying the Razorpay signature and re-checking the payment with the
+  // gateway. We only render what the server tells us.
+  const applyVerifiedResult = (verifyRes, order) => {
+    setIsProcessing(false);
+    setProcessingState('idle');
+
+    if (verifyRes?.success && verifyRes.paymentStatus === 'PAID' && !verifyRes.needsAllocation) {
+      setIsCompleted(true);
+      setCompletedOrder(verifyRes.data || order || null);
+      setCompletedVouchers(verifyRes.vouchers || []);
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      clearCart();
+      handlePurchaseSuccess({ orderId: order?.orderNo });
+      return;
+    }
+    if (verifyRes?.needsAllocation) {
+      setIsCompleted(true);
+      setCompletedOrder(verifyRes.data || order || null);
+      setCompletedVouchers([]);
+      clearCart();
+      handlePurchaseSuccess({ orderId: order?.orderNo });
+      return;
+    }
+    if (verifyRes?.paymentStatus === 'PENDING') {
+      setError(verifyRes.message || 'Payment is being finalized. Please check your Candidate Vault in a minute.');
+      return;
+    }
+    setError(verifyRes?.message || 'We could not verify your payment. If money was deducted it will be auto-refunded.');
+  };
+
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (isProcessing) return;
     if (!isAuthenticated) {
       setGuestLoginTab('login');
       setError('Please log in or create an account to complete your purchase.');
@@ -139,8 +181,10 @@ export const CheckoutModal = () => {
       setError('Please fill in your name and email/WhatsApp number for voucher delivery.');
       return;
     }
+
     setIsProcessing(true);
     setProcessingState('creating');
+    paymentHandledRef.current = false;
 
     const orderPayload = {
       items: checkoutItems.map((it) => ({
@@ -149,61 +193,93 @@ export const CheckoutModal = () => {
       })),
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
       paymentMethod,
-      billing: {
-        ...formData,
-        email: formData.email || user?.email,
-      },
+      billing: { ...formData, email: formData.email || user?.email },
     };
 
-    // 1. Create Cashfree Sandbox Order via Server API
-    const createRes = await paymentApi.createCashfreeOrder(orderPayload);
-    if (!createRes.success) {
+    // 1. Server creates the internal order (PENDING) + a Razorpay order for the
+    //    exact server-calculated amount. Frontend totals are never trusted.
+    let createRes;
+    try {
+      createRes = await paymentApi.createOrder(orderPayload);
+    } catch (err) {
       setIsProcessing(false);
       setProcessingState('idle');
-      setError(createRes.message || 'Failed to create payment order');
+      setError(err?.message || 'Could not start checkout. Please try again.');
+      return;
+    }
+    if (!createRes?.success || !createRes.razorpayOrderId || !createRes.keyId) {
+      setIsProcessing(false);
+      setProcessingState('idle');
+      setError(createRes?.message || 'Online payment is temporarily unavailable. Please try again later.');
       return;
     }
 
-    const { paymentSessionId, orderNo, orderId } = createRes;
+    const { orderId, orderNo, amount, currency, razorpayOrderId, keyId, prefill } = createRes;
+    const orderRef = { orderNo, _id: orderId };
 
-    // 2. Open Cashfree Web SDK Checkout Modal
+    // 2. Load the Razorpay Checkout SDK.
     setProcessingState('opening');
-    const CashfreeSDK = await loadCashfreeSdk();
-
-    if (CashfreeSDK && paymentSessionId && !paymentSessionId.startsWith('session_sandbox_')) {
-      try {
-        const cashfree = CashfreeSDK({ mode: 'sandbox' });
-        await cashfree.checkout({
-          paymentSessionId,
-          redirectTarget: '_modal',
-        });
-      } catch (sdkErr) {
-        console.warn('[Cashfree Checkout SDK]: Modal closed or redirected:', sdkErr);
-      }
+    const Razorpay = await loadRazorpaySdk();
+    if (!Razorpay) {
+      setIsProcessing(false);
+      setProcessingState('idle');
+      setError('Could not load the secure payment window. Check your connection and try again — your order is saved.');
+      return;
     }
 
-    // 3. Verify Payment Status & Deliver Voucher Atomically from Backend
-    setProcessingState('verifying');
-    const statusRes = await paymentApi.getCashfreeStatus(orderId || orderNo);
+    // 3. Open Razorpay Checkout. Success/failure is decided by our server in step 4.
+    const rzp = new Razorpay({
+      key: keyId,
+      order_id: razorpayOrderId,
+      amount,
+      currency: currency || 'INR',
+      name: 'Apex Vouchers',
+      description: `Order ${orderNo}`,
+      prefill: {
+        name: prefill?.name || formData.name || '',
+        email: prefill?.email || formData.email || user?.email || '',
+        contact: prefill?.contact || formData.phone || '',
+      },
+      theme: { color: '#FF005C' },
+      modal: {
+        escape: true,
+        ondismiss: () => {
+          if (paymentHandledRef.current) return; // payment already captured — ignore late dismiss
+          setIsProcessing(false);
+          setProcessingState('idle');
+          setError('Payment was cancelled. Your order is saved — you can retry any time. No voucher has been issued.');
+        },
+      },
+      handler: async (resp) => {
+        paymentHandledRef.current = true;
+        setProcessingState('verifying');
+        try {
+          const verifyRes = await paymentApi.verify({
+            orderId,
+            razorpay_order_id: resp.razorpay_order_id,
+            razorpay_payment_id: resp.razorpay_payment_id,
+            razorpay_signature: resp.razorpay_signature,
+          });
+          applyVerifiedResult(verifyRes, orderRef);
+        } catch (err) {
+          setIsProcessing(false);
+          setProcessingState('idle');
+          setError(
+            err?.message ||
+              'Payment received but verification failed on our side. Your Candidate Vault will update automatically once confirmed.'
+          );
+        }
+      },
+    });
 
-    setIsProcessing(false);
-    setProcessingState('idle');
+    rzp.on('payment.failed', (resp) => {
+      setIsProcessing(false);
+      setProcessingState('idle');
+      const reason = resp?.error?.description || 'Your payment could not be completed.';
+      setError(`${reason} No voucher has been issued — you can retry.`);
+    });
 
-    if (
-      statusRes.success &&
-      (statusRes.paymentStatus === 'PAID' ||
-        statusRes.orderStatus === 'FULFILLED' ||
-        statusRes.data?.paymentStatus === 'PAID')
-    ) {
-      setIsCompleted(true);
-      setCompletedOrder(statusRes.data || createRes.data);
-      setCompletedVouchers(statusRes.vouchers || []);
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      clearCart();
-      handlePurchaseSuccess({ orderId: orderNo });
-    } else {
-      setError(statusRes.message || 'Payment was not completed. Please try again.');
-    }
+    rzp.open();
   };
 
   const handleCopy = (idx, code) => {
@@ -222,6 +298,9 @@ export const CheckoutModal = () => {
     setPromoCode('');
     setPromoError('');
     setError('');
+    setIsProcessing(false);
+    setProcessingState('idle');
+    paymentHandledRef.current = false;
     setLoginForm({ email: '', password: '' });
     setRegisterForm({ name: '', email: '', phone: '', password: '' });
   };
@@ -447,7 +526,7 @@ export const CheckoutModal = () => {
                   {isProcessing ? (
                     <span>
                       {processingState === 'creating' && 'Creating Secure Payment…'}
-                      {processingState === 'opening' && 'Opening Cashfree Checkout…'}
+                      {processingState === 'opening' && 'Opening Secure Checkout…'}
                       {processingState === 'verifying' && 'Verifying Payment & Issuing Voucher…'}
                       {processingState === 'idle' && 'Processing Payment…'}
                     </span>

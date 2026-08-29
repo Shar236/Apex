@@ -237,15 +237,19 @@ export const accountApi = {
 export const orderApi = {
   create: (payload) => request('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
   get: (id) => request(`/api/orders/${id}`),
-  simulatePay: (id, payload = {}) =>
-    request(`/api/orders/${id}/pay`, { method: 'POST', body: JSON.stringify(payload) }),
 };
 
 export const paymentApi = {
-  createCashfreeOrder: (payload) =>
-    request('/api/payments/cashfree/create-order', { method: 'POST', body: JSON.stringify(payload) }),
-  getCashfreeStatus: (orderId, simulateSuccess = false) =>
-    request(`/api/payments/cashfree/status/${orderId}${simulateSuccess ? '?simulateSuccess=true' : ''}`),
+  // Publishable Razorpay config for the browser (key id only — no secret).
+  getConfig: () => request('/api/payments/config'),
+  // Create the internal order + a Razorpay order for the server-calculated total.
+  createOrder: (payload) =>
+    request('/api/payments/order', { method: 'POST', body: JSON.stringify(payload) }),
+  // Verify the Razorpay Checkout result on the server (signature + gateway re-check).
+  verify: (payload) =>
+    request('/api/payments/verify', { method: 'POST', body: JSON.stringify(payload) }),
+  // Read-only server truth about an order. Never mutates anything.
+  getStatus: (orderId) => request(`/api/payments/order/${orderId}`),
 };
 
 export const seoApi = {

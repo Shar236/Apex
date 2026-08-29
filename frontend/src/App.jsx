@@ -420,6 +420,7 @@ function RouterContent() {
       <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPasswordPage /></AuthLayout>} />
       <Route path="/reset-password" element={<AuthLayout><ResetPasswordPage /></AuthLayout>} />
+      <Route path="/payment/return" element={<PaymentReturnPage />} />
       <Route path="/payment/cashfree/return" element={<PaymentReturnPage />} />
       <Route
         path="/account"

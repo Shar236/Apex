@@ -27,21 +27,19 @@ export const config = {
     name: process.env.ADMIN_NAME || 'System Admin',
   },
 
-  payment: {
-    key: process.env.PAYMENT_KEY || '',
-    secret: process.env.PAYMENT_SECRET || '',
-    provider: process.env.PAYMENT_PROVIDER || 'cashfree',
-  },
+  // Which provider the checkout flow uses. Only "razorpay" is implemented.
+  paymentProvider: (process.env.PAYMENT_PROVIDER || 'razorpay').toLowerCase(),
 
-  cashfree: {
-    appId: process.env.CASHFREE_APP_ID || '',
-    secretKey: process.env.CASHFREE_SECRET_KEY || '',
-    env: process.env.CASHFREE_ENV || 'sandbox',
-    apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01',
-    baseUrl:
-      (process.env.CASHFREE_ENV || 'sandbox') === 'production'
-        ? 'https://api.cashfree.com/pg'
-        : 'https://sandbox.cashfree.com/pg',
+  razorpay: {
+    // Publishable — safe to send to the browser.
+    keyId: process.env.RAZORPAY_KEY_ID || '',
+    // SECRET — server only. Never sent to the client, never logged.
+    keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+    // Separate secret configured in the Razorpay dashboard for webhook signing.
+    // Falls back to keySecret only so a mis-config fails closed, not open.
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || '',
+    env: (process.env.RAZORPAY_ENV || 'test').toLowerCase(),
+    apiBase: 'https://api.razorpay.com/v1',
   },
 
   smtp: {

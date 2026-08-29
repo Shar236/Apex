@@ -30,17 +30,22 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
+const allowedOrigins = new Set(
+  [config.clientUrl, ...(process.env.CORS_EXTRA_ORIGINS || '').split(',')]
+    .map((o) => o && o.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+);
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Non-browser clients (curl, server-to-server, health checks) send no Origin.
       if (!origin) return callback(null, true);
-      if (
-        origin === config.clientUrl ||
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-      ) {
+      const o = origin.replace(/\/$/, '');
+      if (allowedOrigins.has(o) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) {
         return callback(null, true);
       }
-      callback(null, true);
+      console.warn(`[cors] blocked origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -65,7 +70,9 @@ app.use(
   express.json({
     limit: '50mb',
     verify: (req, _res, buffer) => {
-      if (req.path === '/api/payments/cashfree/webhook') {
+      // Capture the exact bytes for endpoints whose signature is computed over
+      // the raw request body (payment gateway webhooks).
+      if (req.path === '/api/payments/webhook') {
         req.rawBody = buffer.toString('utf8');
       }
     },

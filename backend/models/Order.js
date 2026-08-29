@@ -86,6 +86,12 @@ const orderSchema = new mongoose.Schema(
     ],
     paymentProvider: { type: String, default: null },
     paymentReference: { type: String, default: null, index: true },
+    // Razorpay binding — the gateway order id we created for this internal order.
+    razorpayOrderId: { type: String, default: null, index: true },
+    // The captured Razorpay payment id (set only after verified capture).
+    razorpayPaymentId: { type: String, default: null, index: true },
+    // Razorpay webhook event ids already applied to this order (idempotency).
+    processedEventIds: { type: [String], default: [] },
     billingDetails: {
       name: String,
       email: String,
