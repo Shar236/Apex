@@ -648,12 +648,25 @@ export default function AccountHome({ initialTab = 'overview' }) {
                             </span>
                             {v.transferredTo && <span className="text-[11px] font-bold text-amber-700">Transferred to {v.transferredTo}</span>}
                           </div>
-                          <h4 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-1">{v.productName}</h4>
+                          <h4 className="font-heading font-black text-lg text-neutral-900 dark:text-white mb-1">
+                            {v.productName}
+                            {v.voucherType ? <span className="text-neutral-400 font-bold text-sm"> · {v.voucherType}</span> : null}
+                          </h4>
+                          {v.paymentStatus && (
+                            <div className="mb-1.5">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
+                                {v.paymentStatus === 'PAID' ? 'Paid' : v.paymentStatus}
+                                {' • '}
+                                {v.emailStatus === 'SENT' ? 'Delivered' : v.emailStatus === 'FAILED' ? 'Email pending' : (v.fulfillmentStatus === 'FULFILLED' ? 'In account' : 'Processing')}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
                             <span>Brand: {v.brand || '—'}</span>
-                            <span>Assigned: {new Date(v.assignedAt || v.createdAt).toLocaleDateString()}</span>
+                            <span>Purchased: {new Date(v.purchaseDate || v.assignedAt || v.createdAt).toLocaleDateString()}</span>
                             <span>Expiry: {new Date(v.expiryDate).toLocaleDateString()}</span>
                             {v.orderNo && <span>Order: #{v.orderNo}</span>}
+                            {v.amountPaid != null && <span>Paid: {formatPrice(v.amountPaid)}</span>}
                           </div>
 
                           <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">

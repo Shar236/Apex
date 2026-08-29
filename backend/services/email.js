@@ -10,6 +10,16 @@ const maskEmail = (email) => {
   return `${value[0]}***${value.slice(at - 1)}`;
 };
 
+/**
+ * Mask a voucher code for logs / admin notifications: keep first 4 + last 4.
+ * The FULL code only ever goes to the customer who owns it.
+ */
+export const maskVoucherCode = (code) => {
+  const c = String(code || '');
+  if (c.length <= 8) return c ? `${c[0]}••••` : '••••';
+  return `${c.slice(0, 4)}••••${c.slice(-4)}`;
+};
+
 const getTransport = () => {
   if (transporter) return transporter;
   if (!config.smtp.host || !config.smtp.user || !config.smtp.password || !config.smtp.from) {
@@ -23,6 +33,12 @@ const getTransport = () => {
     auth: config.smtp.user
       ? { user: config.smtp.user, pass: config.smtp.password }
       : undefined,
+    // Hard caps so a hung SMTP server can never stall a payment-verification
+    // request. sendEmail() is always awaited off the critical path, but these
+    // guarantee it resolves.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
   return transporter;
 };
@@ -151,11 +167,13 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
   const customerName = user.name || order.customerSnapshot?.name || order.billingDetails?.name || 'Valued Customer';
   const targetEmail = user.email || order.customerSnapshot?.email || order.billingDetails?.email;
   const firstProductName = order.items?.[0]?.productName || 'Exam Voucher';
-  const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN', {
+  const dateStr = new Date(order.paidAt || order.createdAt || Date.now()).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
+  const paymentRef = order.razorpayPaymentId || order.paymentReference || null;
+  const totalQty = (order.items || []).reduce((s, i) => s + (i.quantity || 1), 0) || vouchers.length || 1;
 
   const subject = `🎉 Congratulations! Your ${firstProductName} Order is Confirmed (#${order.orderNo})`;
 
@@ -172,20 +190,34 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
 
   const voucherCards = vouchers.length
     ? vouchers
-        .map(
-          (v) => `
+        .map((v, idx) => {
+          const steps = Array.isArray(v.redemptionSteps) ? v.redemptionSteps.filter(Boolean) : [];
+          const instructionsHtml = steps.length
+            ? `<div style="margin-top: 12px; font-size: 12px; color: #bbbbbb; line-height: 1.6;">
+                 <strong style="color:#ffffff;">How to use this voucher:</strong>
+                 <ol style="margin: 6px 0 0 0; padding-left: 18px;">
+                   ${steps.map((s) => `<li style="margin-bottom: 3px;">${s}</li>`).join('')}
+                 </ol>
+                 ${v.officialWebsiteUrl ? `<div style="margin-top:8px;">Redeem at: <a href="${v.officialWebsiteUrl}" style="color:#FF005C;">${v.officialWebsiteUrl}</a></div>` : ''}
+               </div>`
+            : v.officialWebsiteUrl
+              ? `<div style="margin-top:10px; font-size:12px; color:#bbbbbb;">Redeem at: <a href="${v.officialWebsiteUrl}" style="color:#FF005C;">${v.officialWebsiteUrl}</a></div>`
+              : '';
+          return `
       <div style="background-color: #240514; border: 2px dashed #FF005C; border-radius: 16px; padding: 20px; margin-top: 16px;">
-        <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #FF005C; margin-bottom: 6px;">
-          ${v.productName || firstProductName}
+        <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #FF005C; margin-bottom: 4px;">
+          ${v.productName || firstProductName}${vouchers.length > 1 ? ` — Voucher ${idx + 1} of ${vouchers.length}` : ''}
         </div>
+        <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Voucher Type: ${v.voucherType || order.items?.[0]?.voucherType || 'EXAM'}</div>
         <div style="font-family: 'Courier New', Courier, monospace; font-size: 26px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 10px; word-break: break-all;">
           ${v.code}
         </div>
         <div style="font-size: 12px; color: #aaaaaa;">
           Valid Until: <strong style="color: #ffffff;">${new Date(v.expiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
         </div>
-      </div>`
-        )
+        ${instructionsHtml}
+      </div>`;
+        })
         .join('')
     : `
       <div style="background-color: #261f0a; border: 1px solid #7c5e10; border-radius: 14px; padding: 16px; margin-top: 16px; font-size: 13px; color: #f5c045; text-align: center;">
@@ -218,6 +250,14 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
           <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Purchase Date:</td>
           <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${dateStr}</td>
         </tr>
+        <tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Total Vouchers:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${totalQty}</td>
+        </tr>
+        ${paymentRef ? `<tr>
+          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Reference:</td>
+          <td align="right" style="font-size: 12px; font-weight: 600; color: #cccccc; padding-bottom: 6px; font-family:'Courier New',monospace;">${paymentRef}</td>
+        </tr>` : ''}
         <tr>
           <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
           <td align="right" style="font-size: 16px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${order.total?.toLocaleString('en-IN')}</td>
@@ -261,66 +301,51 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
 };
 
 /**
- * Internal Admin New Order Notification Email
+ * Internal Admin Notification: a voucher has been SOLD & FULFILLED.
+ * Sent exactly once, only after a verified payment + successful allocation.
+ * Voucher codes are MASKED here — the full code only goes to the customer.
  */
-export const sendAdminNewOrderNotification = (user, order, vouchers = []) => {
+export const sendAdminVoucherSaleNotification = (user, order, vouchers = []) => {
   const clientUrl = config.clientUrl || 'http://localhost:5173';
-  const customerName = user.name || order.customerSnapshot?.name || order.billingDetails?.name || 'Customer';
-  const customerEmail = user.email || order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
-  const customerPhone = user.phone || order.customerSnapshot?.phone || order.billingDetails?.phone || 'N/A';
+  const customerName = user?.name || order.customerSnapshot?.name || order.billingDetails?.name || 'Customer';
+  const customerEmail = user?.email || order.customerSnapshot?.email || order.billingDetails?.email || 'N/A';
+  const customerPhone = user?.phone || order.customerSnapshot?.phone || order.billingDetails?.phone || 'N/A';
 
   const firstProductName = order.items?.[0]?.productName || 'Exam Voucher';
-  const quantity = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 1;
+  const voucherType = vouchers?.[0]?.voucherType || order.items?.[0]?.voucherType || 'EXAM';
+  const quantity = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || vouchers.length || 1;
+  const paymentRef = order.razorpayPaymentId || order.paymentReference || 'N/A';
+  const ts = new Date(order.paidAt || Date.now()).toLocaleString('en-IN');
+  const maskedCodes = (vouchers || []).map((v) => maskVoucherCode(v.code)).join(', ') || '—';
 
-  const subject = `🛒 New Voucher Purchase — Order #${order.orderNo}`;
+  const subject = `🔔 New Voucher Sale — Order #${order.orderNo}`;
+
+  const row = (label, value, color = '#ffffff') => `
+    <tr>
+      <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">${label}</td>
+      <td align="right" style="font-size: 13px; font-weight: 700; color: ${color}; padding-bottom: 6px;">${value}</td>
+    </tr>`;
 
   const bodyHtml = `
-    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">NEW VOUCHER PURCHASE</h2>
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff;">New Voucher Sale</h2>
+    <p style="font-size: 13px; color: #34d399; margin: 0 0 16px 0;">A voucher has been successfully sold and fulfilled.</p>
     <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
       <table width="100%" border="0" cellspacing="0" cellpadding="0">
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer:</td>
-          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${customerName}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Email:</td>
-          <td align="right" style="font-size: 13px; font-weight: 600; color: #FF005C; padding-bottom: 6px;">${customerEmail}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">WhatsApp / Phone:</td>
-          <td align="right" style="font-size: 13px; font-weight: 600; color: #cccccc; padding-bottom: 6px;">${customerPhone}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
-          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${order.orderNo}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Voucher Product:</td>
-          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${firstProductName}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Quantity:</td>
-          <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${quantity}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
-          <td align="right" style="font-size: 16px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${order.total?.toLocaleString('en-IN')}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Method:</td>
-          <td align="right" style="font-size: 13px; font-weight: 600; color: #ffffff; padding-bottom: 6px;">${(order.paymentMethod || 'UPI/Card').toUpperCase()}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Status:</td>
-          <td align="right" style="font-size: 13px; font-weight: 800; color: #34d399; padding-bottom: 6px;">PAID</td>
-        </tr>
-        <tr>
-          <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Voucher Assignment:</td>
-          <td align="right" style="font-size: 13px; font-weight: 800; color: #34d399; padding-bottom: 6px;">ASSIGNED</td>
-        </tr>
+        ${row('Customer', customerName)}
+        ${row('Email', customerEmail, '#FF005C')}
+        ${row('Phone', customerPhone, '#cccccc')}
+        ${row('Order', order.orderNo)}
+        ${row('Product', firstProductName)}
+        ${row('Voucher Type', voucherType)}
+        ${row('Quantity', quantity)}
+        ${row('Amount', `₹${order.total?.toLocaleString('en-IN')}`, '#FF005C')}
+        ${row('Payment ID', paymentRef, '#cccccc')}
+        ${row('Voucher(s)', maskedCodes, '#cccccc')}
+        ${row('Payment', 'CAPTURED', '#34d399')}
+        ${row('Status', `${order.paymentStatus || 'PAID'} • ${order.fulfillmentStatus || 'FULFILLED'}`, '#34d399')}
+        ${row('Time', ts, '#cccccc')}
       </table>
     </div>
-
     <div style="text-align: center; margin-top: 24px;">
       <a href="${clientUrl}/admin" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
         Open Order in Admin Dashboard →
@@ -334,6 +359,9 @@ export const sendAdminNewOrderNotification = (user, order, vouchers = []) => {
     html: htmlWrap(subject, bodyHtml),
   });
 };
+
+// Backwards-compatible alias (old name used elsewhere).
+export const sendAdminNewOrderNotification = sendAdminVoucherSaleNotification;
 
 /**
  * Internal Admin Alert: Voucher Assignment Failure

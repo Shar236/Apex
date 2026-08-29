@@ -9,7 +9,7 @@ import { generateOrderNo } from '../utils/index.js';
 import { applyPromotion } from '../services/promotions.js';
 import {
   sendOrderConfirmation,
-  sendAdminNewOrderNotification,
+  sendAdminVoucherSaleNotification,
   sendAdminVoucherAssignmentFailureAlert,
   sendAdminEmailDeliveryFailureAlert,
 } from '../services/email.js';
@@ -150,15 +150,30 @@ const deliverOrderEmailSafe = async (user, order, vouchers) => {
     { $set: { emailStatus: order.emailStatus, emailSentAt: order.emailSentAt || null, emailError: order.emailError || null } }
   ).catch(() => {});
 
-  try {
-    await sendAdminNewOrderNotification(user, order, vouchers);
-  } catch (adminErr) {
-    console.error(`[email:admin_notification_error] orderNo=${order.orderNo}: ${adminErr.message}`);
-  }
   if (order.emailStatus === 'FAILED') {
     try {
       await sendAdminEmailDeliveryFailureAlert(order, order.emailError);
     } catch {}
+  }
+};
+
+/**
+ * Admin "voucher sold" notification — dispatched EXACTLY ONCE per order,
+ * gated by an atomic claim on `adminNotifiedAt`. Independent of the customer
+ * email so email retries / webhook replays never re-notify the sale.
+ */
+const notifyAdminSaleOnce = async (user, order, vouchers) => {
+  const claimed = await Order.findOneAndUpdate(
+    { _id: order._id, adminNotifiedAt: null },
+    { $set: { adminNotifiedAt: new Date() } },
+    { new: true }
+  );
+  if (!claimed) return;
+  try {
+    await sendAdminVoucherSaleNotification(user, claimed, vouchers);
+  } catch (err) {
+    // Never affects the customer's PAID / FULFILLED state.
+    console.error(`[admin:sale_notification_error] orderNo=${order.orderNo}: ${err.message}`);
   }
 };
 
@@ -172,12 +187,14 @@ const enrichVouchers = (order, vouchers) =>
       expiryDate: v.expiryDate,
       productName: match?.productName || v.productId?.name || '',
       voucherType: v.voucherType || match?.voucherType || '',
+      redemptionSteps: Array.isArray(v.productId?.redemptionSteps) ? v.productId.redemptionSteps : [],
+      officialWebsiteUrl: v.productId?.officialWebsiteUrl || '',
     };
   });
 
 const publicVoucherList = async (order) => {
   const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-    .populate('productId', 'name brand provider')
+    .populate('productId', 'name brand provider redemptionSteps officialWebsiteUrl validityMonths')
     .lean();
   return enrichVouchers(order, vouchers);
 };
@@ -276,7 +293,12 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   }
 
   const enriched = enrichVouchers(working, vouchers);
+
+  // One fulfillment event → customer email + admin sale notification.
+  // Both are best-effort and CANNOT change the PAID / FULFILLED state.
+  await notifyAdminSaleOnce(user, working, enriched);
   await deliverOrderEmailSafe(user, working, enriched);
+
   return { alreadyFulfilled: false, vouchers: enriched, order: working };
 };
 
@@ -558,7 +580,19 @@ export const verifyPayment = async (req, res, next) => {
       success: true,
       paymentStatus: 'PAID',
       orderStatus: 'FULFILLED',
-      data: result.order.toObject(),
+      fulfillmentStatus: 'FULFILLED',
+      emailStatus: result.order.emailStatus, // 'SENT' | 'FAILED' | 'SENDING'
+      data: {
+        orderNo: result.order.orderNo,
+        total: result.order.total,
+        currency: result.order.currency,
+        paymentStatus: 'PAID',
+        orderStatus: 'FULFILLED',
+        fulfillmentStatus: 'FULFILLED',
+        emailStatus: result.order.emailStatus,
+        paymentReference: result.order.razorpayPaymentId || result.order.paymentReference || null,
+        paidAt: result.order.paidAt,
+      },
       vouchers: result.vouchers,
     });
   } catch (err) {
@@ -592,12 +626,16 @@ export const getPaymentStatus = async (req, res, next) => {
       paymentStatus: order.paymentStatus,
       orderStatus: order.orderStatus,
       fulfillmentStatus: order.fulfillmentStatus,
+      emailStatus: order.emailStatus,
       data: {
         orderNo: order.orderNo,
         total: order.total,
         currency: order.currency,
         paymentStatus: order.paymentStatus,
         orderStatus: order.orderStatus,
+        fulfillmentStatus: order.fulfillmentStatus,
+        emailStatus: order.emailStatus,
+        paymentReference: order.razorpayPaymentId || order.paymentReference || null,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
       },

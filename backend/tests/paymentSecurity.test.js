@@ -25,6 +25,8 @@ import { Order } from '../models/Order.js';
 import { User } from '../models/User.js';
 import { generateOrderNo } from '../utils/index.js';
 import { verifyPayment, getPaymentStatus, handleRazorpayWebhook, createPaymentOrder } from '../controllers/paymentController.js';
+import { myVouchers, myOrders } from '../controllers/accountController.js';
+import { getOrder } from '../controllers/orderController.js';
 
 const SECRET = config.razorpay.keySecret || 'test_secret_fallback';
 const WEBHOOK_SECRET = config.razorpay.webhookSecret || SECRET;
@@ -98,17 +100,21 @@ const webhookSig = (rawBody) =>
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 const cleanup = async () => {
-  const prods = await Product.find({ name: new RegExp(`^${TAG}`) }).select('_id');
+  const rx = new RegExp(`^${TAG}`, 'i'); // email is lowercased by the User model
+  const prods = await Product.find({ name: new RegExp(`^${TAG}`, 'i') }).select('_id');
   const ids = prods.map((p) => p._id);
   await VoucherCode.deleteMany({ productId: { $in: ids } });
-  await Order.deleteMany({ orderNo: new RegExp('^APX-') , 'customerSnapshot.email': `${TAG}@apexvouchers.in` });
+  await Order.deleteMany({ 'customerSnapshot.email': rx });
   await Product.deleteMany({ _id: { $in: ids } });
-  await User.deleteMany({ email: `${TAG}@apexvouchers.in` });
+  await User.deleteMany({ email: rx });
 };
 
 const makeFixtures = async () => {
   const user = await User.create({
     name: 'Sec Test', email: `${TAG}@apexvouchers.in`, passwordHash: 'x', role: 'user', status: 'active',
+  });
+  const attacker = await User.create({
+    name: 'Attacker', email: `${TAG}-ATTACKER@apexvouchers.in`, passwordHash: 'x', role: 'user', status: 'active',
   });
   const product = await Product.create({
     name: `${TAG} PTE Voucher`, slug: `${TAG.toLowerCase()}-pte-${Date.now()}`,
@@ -122,7 +128,7 @@ const makeFixtures = async () => {
       status: 'AVAILABLE', expiryDate: expiry,
     }))
   );
-  return { user, product };
+  return { user, attacker, product };
 };
 
 const makePendingOrder = async (user, product, qty = 1, rzpOrderId = uniqRzpOrderId()) => {
@@ -146,7 +152,7 @@ const vouchersFor = (orderId) => VoucherCode.countDocuments({ orderId, status: {
 const main = async () => {
   await connectDB();
   await cleanup();
-  const { user, product } = await makeFixtures();
+  const { user, attacker, product } = await makeFixtures();
 
   console.log('\n=== PAYMENT SECURITY SUITE ===\n');
 
@@ -403,6 +409,85 @@ const main = async () => {
     const fresh = await Order.findById(order._id);
     ok(fresh.paymentStatus === 'PENDING' && (res.body?.vouchers || []).length === 0,
       'T10 getPaymentStatus is read-only — cannot be coerced to fulfil');
+  }
+
+  // ── POST-PAYMENT: email failure, admin notification, account, IDOR ─────────
+
+  // T11 — SMTP disabled in this suite: T5's fulfilled order stays PAID/FULFILLED
+  {
+    const o = await Order.findById(paidOrderId).lean();
+    ok(o.paymentStatus === 'PAID' && o.fulfillmentStatus === 'FULFILLED',
+      'T11  email send failed (SMTP off) → order still PAID + FULFILLED');
+    ok(o.emailStatus === 'FAILED', 'T11b emailStatus recorded as FAILED');
+    ok((await vouchersFor(paidOrderId)) === 1, 'T11c email failure did NOT allocate another voucher');
+  }
+
+  // T12 — admin "voucher sold" notification fires exactly once
+  {
+    const o = await Order.findById(paidOrderId).lean();
+    ok(o.adminNotifiedAt instanceof Date, 'T12  adminNotifiedAt set after fulfillment');
+    // Re-run fulfillment path via a duplicate webhook for the SAME order.
+    const bodyObj = {
+      event: 'payment.captured',
+      payload: { payment: { entity: { id: 'pay_DUP12', order_id: paidRzpOrderId, amount: o.total * 100, currency: 'INR', status: 'captured' } } },
+    };
+    const raw = JSON.stringify(bodyObj);
+    await run(handleRazorpayWebhook, {
+      body: bodyObj, rawBody: raw,
+      headers: { 'x-razorpay-signature': webhookSig(raw), 'x-razorpay-event-id': 'evt_dup_notif' },
+    });
+    const o2 = await Order.findById(paidOrderId).lean();
+    ok(o2.adminNotifiedAt.getTime() === o.adminNotifiedAt.getTime(),
+      'T12b duplicate fulfillment does NOT re-send the admin sale notification');
+    ok((await vouchersFor(paidOrderId)) === 1, 'T12c still exactly 1 voucher');
+  }
+
+  // T13 — the customer's account shows the voucher + statuses
+  {
+    const { res } = await run(myVouchers, { user });
+    const list = res.body?.data || [];
+    const mine = list.filter((v) => String(v.orderId) === String(paidOrderId));
+    ok(mine.length === 1, 'T13  myVouchers returns exactly the 1 purchased voucher');
+    const v = mine[0];
+    ok(v.code && v.voucherType === 'PTE' && v.orderNo && v.paymentStatus === 'PAID' &&
+       v.fulfillmentStatus === 'FULFILLED' && v.emailStatus === 'FAILED' && v.amountPaid > 0,
+      'T13b voucher row carries code + type + orderNo + paid/fulfilled/email/amount');
+  }
+
+  // T14 — IDOR: another customer can never see this voucher/order
+  {
+    const order = await Order.findById(paidOrderId);
+    const r1 = await run(getPaymentStatus, { user: attacker, params: { orderId: order._id.toString() } });
+    ok(!!r1.err && (r1.err.statusCode === 403 || r1.err.statusCode === 404),
+      'T14  getPaymentStatus for another user → 403/404');
+
+    const r2 = await run(getOrder, { user: attacker, params: { id: order._id.toString() } });
+    ok(!!r2.err && r2.err.statusCode === 404, 'T14b GET /api/orders/:id for another user → 404 (no disclosure)');
+
+    const r3 = await run(verifyPayment, {
+      user: attacker,
+      body: {
+        orderId: order._id.toString(), razorpay_order_id: order.razorpayOrderId,
+        razorpay_payment_id: 'pay_X', razorpay_signature: checkoutSig(order.razorpayOrderId, 'pay_X'),
+      },
+    });
+    ok(!!r3.err && r3.err.code === 'ORDER_FORBIDDEN', 'T14c verifyPayment for another user → ORDER_FORBIDDEN');
+
+    const r4 = await run(myVouchers, { user: attacker });
+    const leaked = (r4.res.body?.data || []).some((v) => String(v.orderId) === String(paidOrderId));
+    ok(!leaked, 'T14d attacker myVouchers does NOT contain the victim voucher');
+
+    const r5 = await run(myOrders, { user: attacker });
+    const leakedOrder = (r5.res.body?.data || []).some((o) => String(o._id) === String(paidOrderId));
+    ok(!leakedOrder, 'T14e attacker myOrders does NOT contain the victim order');
+  }
+
+  // T15 — voucher/order responses never leak the Razorpay secret
+  {
+    const { res } = await run(getPaymentStatus, { user, params: { orderId: paidOrderId.toString() } });
+    ok(!JSON.stringify(res.body || {}).includes(SECRET), 'T15  payment status response has no key secret');
+    const { res: vr } = await run(myVouchers, { user });
+    ok(!JSON.stringify(vr.body || {}).includes(SECRET), 'T15b myVouchers response has no key secret');
   }
 
   await cleanup();

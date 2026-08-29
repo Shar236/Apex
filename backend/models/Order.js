@@ -119,6 +119,9 @@ const orderSchema = new mongoose.Schema(
     },
     emailSentAt: { type: Date, default: null },
     emailError: { type: String, default: null },
+    // Set once, when the "voucher sold" admin notification has been dispatched.
+    // Independent of customer email so email retries never re-notify the sale.
+    adminNotifiedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

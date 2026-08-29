@@ -97,6 +97,7 @@ export const PaymentReturnPage = () => {
   const isPending = statusData?.paymentStatus === 'PENDING';
   const order = statusData?.data;
   const vouchers = statusData?.vouchers || [];
+  const emailSent = (statusData?.emailStatus || order?.emailStatus) === 'SENT';
 
   return (
     <div className="min-h-screen bg-surface-sunken text-ink flex items-center justify-center p-4 transition-colors duration-300">
@@ -122,9 +123,11 @@ export const PaymentReturnPage = () => {
               <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">
                 ORDER # {order?.orderNo || orderId}
               </span>
-              <h2 className="font-heading font-medium text-3xl">Payment Confirmed!</h2>
+              <h2 className="font-heading font-medium text-3xl">Payment Successful</h2>
               <p className="text-xs text-ink-muted font-normal mt-1">
-                Your exam voucher code has been issued and sent to your email.
+                {emailSent
+                  ? 'Your voucher code has been issued and sent to your email.'
+                  : 'Your voucher is safely stored in your account. Email delivery is temporarily unavailable.'}
               </p>
             </div>
 

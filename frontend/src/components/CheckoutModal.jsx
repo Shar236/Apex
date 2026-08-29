@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useVoucher } from '../context/VoucherContext';
 import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
-import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, ArrowRight, Copy, Check, AlertCircle, ExternalLink, LogIn } from 'lucide-react';
+import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, ArrowRight, Copy, Check, AlertCircle, ExternalLink, LogIn, Mail } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
-import { orderApi, accountApi, paymentApi, formatPrice as fmt } from '../lib/api';
+import { accountApi, paymentApi, formatPrice as fmt } from '../lib/api';
 
 const RAZORPAY_SDK_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -26,6 +27,7 @@ const loadRazorpaySdk = () =>
   });
 
 export const CheckoutModal = () => {
+  const navigate = useNavigate();
   const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, clearCart, setActiveTab } = useVoucher();
   const { isAuthenticated, user, login, register } = useAuth();
 
@@ -546,6 +548,17 @@ export const CheckoutModal = () => {
             </form>
           </div>
         ) : (
+          (() => {
+            const emailSent = completedOrder?.emailStatus === 'SENT';
+            const needsAllocation =
+              completedOrder?.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION' ||
+              (completedVouchers.length === 0 && completedOrder?.paymentStatus === 'PAID');
+            const goAccount = (tab) => {
+              handleClose();
+              if (tab) setActiveTab(tab);
+              navigate('/account');
+            };
+            return (
           <div className="text-center space-y-6 py-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-success flex items-center justify-center mx-auto shadow-md">
               <CheckCircle2 className="w-10 h-10" />
@@ -554,12 +567,24 @@ export const CheckoutModal = () => {
               <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">
                 ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
               </span>
-              <h2 className="font-heading font-medium text-3xl">Voucher Code Issued!</h2>
+              <h2 className="font-heading font-medium text-3xl">Payment Successful</h2>
+              <p className="text-sm text-ink font-medium mt-1">Voucher purchased successfully.</p>
               <p className="text-xs text-ink-muted font-normal mt-1">
-                Your voucher is now in your Apex account dashboard and email.
+                Your voucher has been securely assigned to your account.
               </p>
-              <div className="mt-3 text-xs font-normal text-success bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-xl py-2 px-3 inline-block">
-                📧 Confirmation email sent to <span className="underline">{formData.email || user?.email}</span>
+              <div
+                className={`mt-3 text-xs font-normal rounded-xl py-2 px-3 inline-flex items-center gap-1.5 ${
+                  emailSent
+                    ? 'text-success bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40'
+                    : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                {emailSent ? (
+                  <span>We&apos;ve sent your voucher to <span className="underline">{formData.email || user?.email}</span></span>
+                ) : (
+                  <span>Your voucher is safely stored in your account. Email delivery is temporarily unavailable.</span>
+                )}
               </div>
             </div>
 
@@ -568,7 +593,9 @@ export const CheckoutModal = () => {
                 {completedVouchers.map((v, i) => (
                   <div key={i} className="p-5 rounded-2xl bg-accent/8 border-2 border-dashed border-accent/40 text-left space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-accent uppercase tracking-wider">{v.productName || 'Your Voucher Code'}</span>
+                      <span className="text-[11px] font-medium text-accent uppercase tracking-wider">
+                        {v.productName || 'Your Voucher Code'}{v.voucherType ? ` • ${v.voucherType}` : ''}
+                      </span>
                       <span className="text-[10px] font-medium text-ink-muted">
                         Exp {new Date(v.expiryDate).toLocaleDateString()}
                       </span>
@@ -584,32 +611,48 @@ export const CheckoutModal = () => {
                         {copiedIdx === i ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         <span>{copiedIdx === i ? 'Copied!' : 'Copy Code'}</span>
                       </button>
-                      <a href="https://pearsonpte.com" target="_blank" rel="noreferrer" className="text-[11px] font-medium text-accent inline-flex items-center gap-1">
-                        Redeem on Pearson <ExternalLink className="w-3 h-3" />
-                      </a>
+                      {v.officialWebsiteUrl && (
+                        <a href={v.officialWebsiteUrl} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-accent inline-flex items-center gap-1">
+                          Redeem now <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-xs font-normal text-amber-700 dark:text-amber-300">
-                Voucher codes are available in your Account dashboard → My Vouchers.
+                {needsAllocation
+                  ? 'Payment received. Your voucher is being finalized — it will appear in your Candidate Vault shortly and our team has been notified.'
+                  : 'Your voucher codes are available in your Account → My Vouchers.'}
               </div>
             )}
 
-            <div className="pt-2 flex flex-wrap gap-3">
+            <div className="pt-2 flex flex-col gap-2">
               <button
-                onClick={() => {
-                  handleClose();
-                  setActiveTab('dashboard');
-                  window.location.hash = '#/account';
-                }}
+                onClick={() => goAccount('vouchers')}
                 className="w-full bg-accent hover:bg-accent-hover text-white py-3.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
               >
-                Open My Voucher Dashboard
+                View My Vouchers
               </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => goAccount('orders')}
+                  className="flex-1 bg-surface-raised text-ink py-3 rounded-xl text-xs font-medium border border-line hover:border-accent transition-colors cursor-pointer"
+                >
+                  View My Orders
+                </button>
+                <button
+                  onClick={() => { handleClose(); setActiveTab('shop'); navigate('/'); }}
+                  className="flex-1 bg-surface-raised text-ink py-3 rounded-xl text-xs font-medium border border-line hover:border-accent transition-colors cursor-pointer"
+                >
+                  Continue Shopping
+                </button>
+              </div>
             </div>
           </div>
+            );
+          })()
         )}
       </div>
     </div>

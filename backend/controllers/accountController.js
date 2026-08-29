@@ -483,7 +483,10 @@ export const dashboardStats = async (req, res, next) => {
 
 export const myOrders = async (req, res, next) => {
   try {
+    // Scoped to the authenticated user. Internal gateway plumbing
+    // (processedEventIds, webhookStatus, paymentSessionId) is projected out.
     const orders = await Order.find({ userId: req.user.id })
+      .select('-processedEventIds -webhookStatus -paymentSessionId -cashfreeOrderId -__v')
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, data: orders });
@@ -496,38 +499,59 @@ export const myOrders = async (req, res, next) => {
 
 export const myVouchers = async (req, res, next) => {
   try {
+    // Ownership is enforced here — a customer only ever sees vouchers whose
+    // userId is their own authenticated id. Order/product ids in the request
+    // are irrelevant; this query is not parameterised by anything the client sends.
     const vouchers = await VoucherCode.find({ userId: req.user.id })
-      .populate('productId', 'name brand category validityMonths')
-      .populate('orderId', 'orderNo total orderStatus')
-      .sort({ assignedAt: -1 })
+      .populate('productId', 'name brand category validityMonths voucherType officialWebsiteUrl redemptionSteps')
+      .populate(
+        'orderId',
+        'orderNo total paymentStatus orderStatus fulfillmentStatus emailStatus paidAt createdAt razorpayPaymentId paymentReference items'
+      )
+      .sort({ assignedAt: -1, createdAt: -1 })
       .lean();
 
     const sanitized = vouchers.map((v) => {
+      const o = v.orderId || {};
       const productName = v.productId?.name || '';
       const brand = v.productId?.brand || '';
       const validity = v.productId?.validityMonths || 6;
-      const orderNo = v.orderId?.orderNo || null;
-      const orderStatus = v.orderId?.orderStatus || null;
       const daysLeft = Math.max(
         0,
         Math.ceil((new Date(v.expiryDate) - Date.now()) / (1000 * 60 * 60 * 24))
       );
       let status = v.status;
-      if (status === 'ASSIGNED' && daysLeft <= 0) status = 'EXPIRED';
+      if ((status === 'ASSIGNED' || status === 'SOLD') && daysLeft <= 0) status = 'EXPIRED';
+
+      // Per-voucher share of the order total (for display).
+      const orderQty = (o.items || []).reduce((s, it) => s + (it.quantity || 1), 0) || 1;
+      const amountPaid = o.total != null ? Math.round(o.total / orderQty) : null;
+
       return {
         id: v._id,
         code: v.code,
         status,
+        voucherType: v.voucherType || v.productId?.voucherType || '',
         expiryDate: v.expiryDate,
-        assignedAt: v.assignedAt,
+        assignedAt: v.assignedAt || v.soldAt || null,
+        purchaseDate: o.paidAt || v.soldAt || v.assignedAt || o.createdAt || null,
         usedAt: v.usedAt || null,
         transferredTo: v.transferredTo || null,
         productName,
         brand,
         validity,
         daysRemaining: daysLeft,
-        orderNo,
-        orderStatus,
+        officialWebsiteUrl: v.productId?.officialWebsiteUrl || '',
+        // Order context — so the account can render "Paid • Delivered" etc.
+        orderId: o._id || null,
+        orderNo: o.orderNo || null,
+        orderStatus: o.orderStatus || null,
+        paymentStatus: o.paymentStatus || null,
+        fulfillmentStatus: o.fulfillmentStatus || null,
+        emailStatus: o.emailStatus || null,
+        amountPaid,
+        orderTotal: o.total ?? null,
+        paymentReference: o.razorpayPaymentId || o.paymentReference || null,
       };
     });
     res.json({ success: true, data: sanitized });
