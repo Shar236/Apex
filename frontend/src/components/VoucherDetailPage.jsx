@@ -22,6 +22,11 @@ import { productApi, applyPageMetadata, setStructuredData } from '../lib/api';
 import { getRedemptionGuide, getRedemptionSteps } from '../lib/redemptionGuides';
 import { BrandLogoContainer } from './OfficialBrandLogos';
 import { imageUrl } from '../lib/imageUrl.js';
+import {
+  Button, StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar,
+  SectionHeading,
+} from './ui';
+import VoucherCard from './VoucherCard.jsx';
 
 /* ───────────────────────────── Screenshot / Lightbox ───────────────────────────── */
 
@@ -83,20 +88,6 @@ const Lightbox = ({ item, onClose }) => {
 };
 
 /* ───────────────────────────── Small building blocks ───────────────────────────── */
-
-const SectionHeading = ({ eyebrow, title, subtitle }) => (
-  <div className="text-center max-w-2xl mx-auto mb-10 space-y-2.5">
-    {eyebrow && (
-      <span className="inline-block text-[11px] font-extrabold uppercase tracking-widest text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-3.5 py-1.5 rounded-full border border-brand-pink/20">
-        {eyebrow}
-      </span>
-    )}
-    <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-black text-neutral-900 dark:text-white tracking-tight">
-      {title}
-    </h2>
-    {subtitle && <p className="text-neutral-500 dark:text-[#B5B5B5] font-medium text-sm sm:text-base">{subtitle}</p>}
-  </div>
-);
 
 const OfficialWebsiteButton = ({ url, providerLabel }) => {
   if (!url) return null;
@@ -192,20 +183,18 @@ export const VoucherDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
-        <div className="animate-pulse text-sm font-bold text-neutral-500 dark:text-neutral-400">Loading voucher guide…</div>
+      <div className="min-h-[60vh] flex items-center justify-center bg-[var(--color-surface)]">
+        <div className="animate-pulse text-sm font-normal text-[var(--color-ink-muted)]">Loading voucher guide…</div>
       </div>
     );
   }
 
   if (notFound || !product) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-white dark:bg-[#0A0A0A] text-center px-4">
-        <p className="font-heading text-2xl font-black text-neutral-900 dark:text-white">Voucher not found</p>
-        <p className="text-sm text-neutral-500 dark:text-[#B5B5B5] max-w-sm">This voucher may have been removed or is no longer available.</p>
-        <button onClick={goBackToVouchers} className="btn-pink py-3! px-6! text-sm!">
-          Browse All Exam Vouchers
-        </button>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-[var(--color-surface)] text-center px-4">
+        <p className="font-heading text-2xl font-normal text-[var(--color-ink)]">Voucher not found</p>
+        <p className="text-sm font-normal text-[var(--color-ink-muted)] max-w-sm">This voucher may have been removed or is no longer available.</p>
+        <Button variant="primary" size="md" onClick={goBackToVouchers}>Browse All Exam Vouchers</Button>
       </div>
     );
   }
@@ -287,88 +276,55 @@ export const VoucherDetailPage = () => {
       </div>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="py-8 sm:py-12 bg-white dark:bg-[#0A0A0A] transition-colors duration-300">
+      <section className="py-8 sm:py-12 bg-[var(--color-surface)] transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-[#0B0F19] rounded-3xl border border-[#1E293B] shadow-2xl p-6 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          <div className="rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[0_1px_3px_rgba(15,20,35,0.04),0_20px_50px_-24px_rgba(15,20,35,0.15)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_20px_50px_-24px_rgba(0,0,0,0.7)] p-6 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
 
             <div className="md:col-span-4 flex justify-center">
-              <div className="w-full max-w-55">
+              <div className="w-full max-w-55 aspect-square rounded-2xl border border-[var(--color-line)] bg-white flex items-center justify-center p-6">
                 {product.logo ? (
-                  <div className="w-full aspect-square rounded-2xl bg-[#090D16] border border-[#1E293B] flex items-center justify-center p-6">
-                    <img src={imageUrl(product.logo, { width: 440 })} alt={`${product.name} logo`} className="max-h-full max-w-full object-contain" />
-                  </div>
+                  <img src={imageUrl(product.logo, { width: 440 })} alt={`${product.name} logo`} className="max-h-full max-w-full object-contain" />
                 ) : (
-                  <div className="w-full aspect-square rounded-2xl bg-[#090D16] border border-[#1E293B] flex items-center justify-center p-6">
-                    <BrandLogoContainer brand={product.brand || product.provider} name={product.name} inverted={true} />
-                  </div>
+                  <BrandLogoContainer brand={product.brand || product.provider} name={product.name} inverted={false} />
                 )}
               </div>
             </div>
 
             <div className="md:col-span-8 space-y-5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">{(product.provider || product.brand || '').toUpperCase()}</span>
-                {isOutOfStock && !isComingSoon && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#E53E3E] text-white text-[10px] font-black uppercase">Out of Stock</span>
-                )}
-                {isComingSoon && (
-                  <span className="px-2.5 py-1 rounded-full bg-slate-700 text-white text-[10px] font-black uppercase">Coming Soon</span>
-                )}
+                <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">{product.provider || product.brand}</span>
+                <StockBadge product={product} />
               </div>
 
-              <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
+              <h1 className="font-heading font-normal text-2xl sm:text-3xl lg:text-4xl text-[var(--color-ink)] leading-tight">
                 {product.name} Voucher
               </h1>
 
-              <p className="text-sm text-slate-400 font-medium leading-relaxed">
+              <p className="text-sm text-[var(--color-ink-muted)] font-normal leading-relaxed">
                 {product.shortDescription || product.description || 'Official genuine exam voucher with instant digital delivery from Apex Vouchers.'}
               </p>
 
-              <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
-                <span className="font-heading font-black text-3xl sm:text-4xl text-white tracking-tight">{formatPrice(product.discountedPrice)}</span>
-                {product.originalPrice > product.discountedPrice && (
-                  <span className="text-base font-bold text-slate-500 line-through">{formatPrice(product.originalPrice)}</span>
-                )}
-                {product.discountPercent > 0 && (
-                  <span className="px-2.5 py-1 rounded-lg bg-[#2A0A17] text-brand-pink border border-brand-pink/30 text-xs font-black">{product.discountPercent}% OFF</span>
-                )}
-                {product.savings > 0 && (
-                  <span className="px-2.5 py-1 rounded-lg bg-[#052E16] text-[#10B981] border border-[#10B981]/30 text-xs font-black">SAVE {formatPrice(product.savings)}</span>
-                )}
+              <div className="flex items-end gap-4">
+                <PriceDisplay original={product.originalPrice || 0} current={product.discountedPrice ?? product.sellingPrice ?? 0} formatPrice={formatPrice} size="lg" emphasis="accent" showSaved />
+                <DiscountBadge percent={product.discountPercent || 0} savings={product.savings || 0} formatPrice={formatPrice} />
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs font-bold text-slate-300">
-                <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-[#F59E0B]" />{product.deliveryType || 'Instant Delivery'}</span>
-                {product.validityMonths ? <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#F59E0B]" />Valid {product.validityMonths} Months</span> : null}
-                <span className={`flex items-center gap-1.5 ${isOutOfStock ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  <CheckCircle2 className="w-3.5 h-3.5" />{isComingSoon ? 'Coming Soon' : product.stockStatus || (isOutOfStock ? 'Out of Stock' : 'In Stock')}
-                </span>
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#F59E0B]" />Genuine Voucher</span>
-              </div>
+              <DeliveryValidityBar product={product} className="max-w-xs" />
 
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-3 pt-1">
                 {!isOutOfStock ? (
-                  <button
-                    onClick={() => startCheckout(product)}
-                    className="inline-flex items-center gap-2 bg-brand-pink hover:bg-[#D9004C] text-white rounded-full py-3.5 px-7 text-sm font-black shadow-lg shadow-brand-pink/20 hover:scale-[1.02] transition-all cursor-pointer"
-                  >
-                    <span>Buy Now</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  <Button variant="primary" size="lg" onClick={() => startCheckout(product)}>
+                    Buy Now <ArrowRight className="w-4 h-4" />
+                  </Button>
                 ) : (
-                  <button disabled className="inline-flex items-center gap-2 bg-[#111625] text-slate-500 rounded-full py-3.5 px-7 text-sm font-black cursor-not-allowed border border-[#1E293B]">
-                    <Clock className="w-4 h-4" />
-                    <span>{isComingSoon ? 'Coming Soon' : 'Out of Stock'}</span>
-                  </button>
+                  <Button variant="disabled" size="lg" disabled>
+                    <Clock className="w-4 h-4" /> {isComingSoon ? 'Coming Soon' : 'Out of Stock'}
+                  </Button>
                 )}
                 {!isOutOfStock && (
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="inline-flex items-center gap-2 bg-transparent hover:bg-[#161D2F] text-slate-300 hover:text-white rounded-full py-3.5 px-6 text-sm font-bold border border-[#1E293B] transition-colors cursor-pointer"
-                  >
-                    <ShoppingCart className="w-4 h-4 text-brand-pink" />
-                    <span>Add to Cart</span>
-                  </button>
+                  <Button variant="secondary" size="lg" onClick={() => addToCart(product)}>
+                    <ShoppingCart className="w-4 h-4" /> Add to Cart
+                  </Button>
                 )}
               </div>
 
@@ -377,10 +333,9 @@ export const VoucherDetailPage = () => {
                   href={product.officialWebsiteUrl || product.officialProductUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
                 >
-                  <span>Official Website</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  Official Website <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
             </div>
@@ -537,20 +492,12 @@ export const VoucherDetailPage = () => {
 
       {/* ── Related Vouchers ──────────────────────────────────── */}
       {related.length > 0 && (
-        <section className="py-16 sm:py-20 bg-white dark:bg-[#0A0A0A] transition-colors duration-300">
+        <section className="py-16 sm:py-20 bg-[var(--color-surface)] transition-colors duration-300">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeading eyebrow="Explore More" title="Related Vouchers" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-stretch">
               {related.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => navigate(`/exam-vouchers/${r.slug || r.id}`)}
-                  className="text-left bg-neutral-50 dark:bg-[#161616] rounded-2xl border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/50 p-4 space-y-2 transition-colors cursor-pointer"
-                >
-                  <span className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">{r.provider || r.brand}</span>
-                  <p className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug line-clamp-2">{r.name}</p>
-                  <span className="font-heading font-black text-base text-brand-pink">{formatPrice(r.discountedPrice)}</span>
-                </button>
+                <VoucherCard key={r.id || r._id} product={r} />
               ))}
             </div>
           </div>
@@ -564,18 +511,14 @@ export const VoucherDetailPage = () => {
 
       {/* ── Sticky mobile Buy Now bar ─────────────────────────── */}
       {!isOutOfStock && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-md border-t border-[#EAEAEA] dark:border-[#1E293B] px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-line)] px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
           <div className="min-w-0">
-            <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider truncate">{product.name}</span>
-            <span className="font-heading font-black text-lg text-neutral-900 dark:text-white">{formatPrice(product.discountedPrice)}</span>
+            <span className="block text-[10px] font-normal text-[var(--color-ink-muted)] uppercase tracking-wider truncate">{product.name}</span>
+            <span className="font-heading font-semibold text-lg text-[var(--color-ink)]">{formatPrice(product.discountedPrice)}</span>
           </div>
-          <button
-            onClick={() => startCheckout(product)}
-            className="shrink-0 inline-flex items-center gap-2 bg-brand-pink hover:bg-[#D9004C] text-white rounded-full py-3 px-6 text-xs font-black shadow-lg cursor-pointer"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>Buy This Voucher</span>
-          </button>
+          <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(product)}>
+            <Lock className="w-3.5 h-3.5" /> Buy This Voucher
+          </Button>
         </div>
       )}
     </>

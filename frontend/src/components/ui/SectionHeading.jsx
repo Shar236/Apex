@@ -7,7 +7,7 @@ import React from 'react';
 export default function SectionHeading({ eyebrow, title, subtitle, align = 'center', className = '' }) {
   const alignCls = align === 'center' ? 'text-center items-center mx-auto' : 'text-left items-start';
   return (
-    <div className={`flex flex-col ${alignCls} max-w-2xl ${className}`}>
+    <div className={`flex flex-col ${alignCls} max-w-2xl mb-10 ${className}`}>
       {eyebrow && (
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
           {eyebrow}
