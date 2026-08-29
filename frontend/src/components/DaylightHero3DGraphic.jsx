@@ -1,6 +1,23 @@
 import React, { useState, useRef } from 'react';
 import { imageUrl, cldSrcSet } from '../lib/imageUrl.js';
 
+const FloatingVoucherCard = ({ position, animation, tile, initial, name, save }) => (
+  <div className={`absolute ${position} z-30 pointer-events-auto ${animation} hero-floating-card-wrapper cursor-pointer`}>
+    <div className="hero-floating-card-inner bg-[var(--color-surface)]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-[var(--color-line)] shadow-xl flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-2xl ${tile} font-medium text-lg flex items-center justify-center shrink-0 shadow-md`}>
+        {initial}
+      </div>
+      <div className="flex flex-col text-left">
+        <span className="text-xs font-medium text-[var(--color-ink)] leading-tight">{name}</span>
+        <span className="text-[10px] font-normal text-[var(--color-ink-muted)] uppercase tracking-wider">VOUCHER</span>
+        <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[var(--color-success)] text-white font-medium text-[10px] shadow-sm">
+          SAVE {save}
+        </span>
+      </div>
+    </div>
+  </div>
+);
+
 export const DaylightHero3DGraphic = () => {
   const containerRef = useRef(null);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -16,6 +33,13 @@ export const DaylightHero3DGraphic = () => {
   const handleMouseLeave = () => {
     setMouseOffset({ x: 0, y: 0 });
   };
+
+  const cards = [
+    { position: 'top-2 left-0 sm:-left-2', animation: 'animate-float-pte', tile: 'bg-linear-to-br from-[#005A9C] to-[#003B66] text-white', initial: 'P', name: 'PTE Academic', save: '₹3,101' },
+    { position: 'top-4 right-0 sm:-right-2', animation: 'animate-float-ielts', tile: 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/30', initial: 'I', name: 'IELTS Test', save: '₹2,751' },
+    { position: 'bottom-14 left-1 sm:-left-3', animation: 'animate-float-toefl', tile: 'bg-linear-to-br from-[#F59E0B] to-[#D97706] text-white', initial: 'T', name: 'TOEFL iBT', save: '₹2,401' },
+    { position: 'bottom-10 right-1 sm:-right-3', animation: 'animate-float-duolingo', tile: 'bg-linear-to-br from-[#58CC02] to-[#10B981] text-white', initial: '🦉', name: 'Duolingo Test', save: '₹1,901' },
+  ];
 
   return (
     <div
@@ -33,7 +57,7 @@ export const DaylightHero3DGraphic = () => {
           transform: `translate3d(${mouseOffset.x * 6}px, ${mouseOffset.y * 6}px, 0)`,
         }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] rounded-full bg-linear-to-tr from-[#FF005C]/15 via-rose-200/20 to-purple-200/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] rounded-full bg-linear-to-tr from-[var(--color-accent)]/15 via-[var(--color-accent)]/5 to-transparent blur-3xl" />
       </div>
 
       {/* ========================================================================= */}
@@ -84,8 +108,8 @@ export const DaylightHero3DGraphic = () => {
             <g transform="translate(250, 155) rotate(-28)">
               <path
                 d="M16 2L19 12L29 14L19 17L16 28L13 17L3 14L13 12L16 2Z"
-                fill="#6C3CE0"
-                opacity="0.85"
+                fill="#FF005C"
+                opacity="0.8"
               />
             </g>
           </svg>
@@ -116,69 +140,9 @@ export const DaylightHero3DGraphic = () => {
           transform: `translate3d(${mouseOffset.x * 18}px, ${mouseOffset.y * 18}px, 0)`,
         }}
       >
-        {/* CARD 1: PTE Academic VOUCHER - SAVE ₹3,101 */}
-        <div className="absolute top-2 left-0 sm:-left-2 z-30 pointer-events-auto animate-float-pte hero-floating-card-wrapper cursor-pointer">
-          <div className="hero-floating-card-inner bg-white/95 dark:bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-slate-200/90 dark:border-[#292929] shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#005A9C] to-[#003B66] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
-              P
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">PTE Academic</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VOUCHER</span>
-              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#0284C7] text-white font-black text-[10px] shadow-sm">
-                SAVE ₹3,101
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 2: IELTS Test VOUCHER - SAVE ₹2,751 */}
-        <div className="absolute top-4 right-0 sm:-right-2 z-30 pointer-events-auto animate-float-ielts hero-floating-card-wrapper cursor-pointer">
-          <div className="hero-floating-card-inner bg-white/95 dark:bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-slate-200/90 dark:border-[#292929] shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink border border-brand-pink/30 font-black text-lg flex items-center justify-center shrink-0 shadow-md">
-              I
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">IELTS Test</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VOUCHER</span>
-              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-pink text-white font-black text-[10px] shadow-sm">
-                SAVE ₹2,751
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 3: TOEFL iBT VOUCHER - SAVE ₹2,401 */}
-        <div className="absolute bottom-14 left-1 sm:-left-3 z-30 pointer-events-auto animate-float-toefl hero-floating-card-wrapper cursor-pointer">
-          <div className="hero-floating-card-inner bg-white/95 dark:bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-slate-200/90 dark:border-[#292929] shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#F59E0B] to-[#D97706] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
-              T
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">TOEFL iBT</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VOUCHER</span>
-              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#F59E0B] text-white font-black text-[10px] shadow-sm">
-                SAVE ₹2,401
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 4: Duolingo Test VOUCHER - SAVE ₹1,901 */}
-        <div className="absolute bottom-10 right-1 sm:-right-3 z-30 pointer-events-auto animate-float-duolingo hero-floating-card-wrapper cursor-pointer">
-          <div className="hero-floating-card-inner bg-white/95 dark:bg-[#161616]/95 backdrop-blur-md p-3 sm:p-3.5 px-4 rounded-2xl border border-slate-200/90 dark:border-[#292929] shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#58CC02] to-[#10B981] text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md">
-              🦉
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Duolingo Test</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VOUCHER</span>
-              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#10B981] text-white font-black text-[10px] shadow-sm">
-                SAVE ₹1,901
-              </span>
-            </div>
-          </div>
-        </div>
+        {cards.map((c) => (
+          <FloatingVoucherCard key={c.name} {...c} />
+        ))}
       </div>
 
     </div>

@@ -13,7 +13,6 @@ import {
   Calculator,
   HelpCircle,
   CalendarCheck,
-  ArrowRight,
   Trophy,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -21,6 +20,7 @@ import { useVoucher } from '../context/VoucherContext';
 import { useAuth } from '../context/AuthContext';
 import { ApexLogo } from './ApexLogo';
 import { ThemeToggle } from './ThemeToggle';
+import { Button } from './ui';
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -90,30 +90,37 @@ export const Navbar = () => {
       ? `${activeCampaign.badgeText || '🔥 Special Offer'} — ${activeCampaign.title || 'Up to 50% OFF Exam Vouchers'}`
       : announcementSettings?.text || '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers';
 
+  const navLinkClass = (active) =>
+    `px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
+      active
+        ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
+        : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
+    }`;
+
   return (
     <header className="sticky top-0 z-40 w-full transition-colors duration-300">
       {/* ── Top Support Bar ─────────────────────────────────────────────────── */}
-      <div className="bg-[#111111] dark:bg-[#0A0A0A] text-neutral-300 dark:text-neutral-400 text-xs py-1.5 px-4 sm:px-6 lg:px-8 border-b border-neutral-800 dark:border-[#262626]">
+      <div className="bg-[#0B0D12] text-neutral-400 text-xs py-1.5 px-4 sm:px-6 lg:px-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
-          
+
           {/* Contact Support Links */}
           <div className="flex items-center gap-5 whitespace-nowrap text-[11px] sm:text-xs">
             <a
               href={`tel:${supportPhone.replace(/\s+/g, '')}`}
-              className="flex items-center gap-1.5 hover:text-brand-pink transition-colors"
+              className="flex items-center gap-1.5 hover:text-white transition-colors"
             >
-              <Phone className="w-3.5 h-3.5 text-brand-pink" />
+              <Phone className="w-3.5 h-3.5 text-[var(--color-accent)]" />
               <span>
-                Support: <strong className="text-white font-semibold">{supportPhone}</strong>
+                Support: <strong className="text-white font-medium">{supportPhone}</strong>
               </span>
             </a>
             <a
               href={`mailto:${supportEmail}`}
-              className="hidden md:flex items-center gap-1.5 hover:text-brand-pink transition-colors"
+              className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors"
             >
-              <Mail className="w-3.5 h-3.5 text-brand-pink" />
+              <Mail className="w-3.5 h-3.5 text-[var(--color-accent)]" />
               <span>
-                Email: <strong className="text-white font-semibold">{supportEmail}</strong>
+                Email: <strong className="text-white font-medium">{supportEmail}</strong>
               </span>
             </a>
           </div>
@@ -121,24 +128,24 @@ export const Navbar = () => {
           {/* Right Utility: Announcement Pill + Auth */}
           <div className="flex items-center gap-3 ml-auto sm:ml-0 whitespace-nowrap text-[11px] sm:text-xs">
             {announcementSettings?.enabled !== false && (
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-pink/15 text-brand-pink font-black text-[10.5px] border border-brand-pink/30 shadow-sm animate-pulse-subtle">
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium text-[10.5px] border border-[var(--color-accent)]/30">
                 {announcementText}
               </span>
             )}
             {isAuthenticated ? (
               <button
                 onClick={() => navigate('/account')}
-                className="flex items-center gap-1 hover:text-white font-semibold text-xs transition-colors"
+                className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors"
               >
-                <User className="w-3.5 h-3.5 text-brand-pink" />
+                <User className="w-3.5 h-3.5 text-[var(--color-accent)]" />
                 <span>My Account ({user?.name?.split(' ')[0] || 'Dashboard'})</span>
               </button>
             ) : (
               <button
                 onClick={() => navigate('/login')}
-                className="flex items-center gap-1 hover:text-white font-semibold text-xs transition-colors"
+                className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors"
               >
-                <User className="w-3.5 h-3.5 text-brand-pink" />
+                <User className="w-3.5 h-3.5 text-[var(--color-accent)]" />
                 <span>Login / Register</span>
               </button>
             )}
@@ -151,13 +158,13 @@ export const Navbar = () => {
       <nav
         className={`w-full transition-all duration-300 ${
           scrolled
-            ? 'bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md py-2.5 border-b border-[#EAEAEA] dark:border-[#262626]'
-            : 'bg-white dark:bg-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#262626] py-3.5'
+            ? 'bg-[var(--color-surface)]/95 backdrop-blur-md shadow-sm py-2.5 border-b border-[var(--color-line)]'
+            : 'bg-[var(--color-surface)] border-b border-[var(--color-line)] py-3.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            
+
             {/* 1. Brand Logo */}
             <button
               onClick={() => handleNav('home')}
@@ -168,17 +175,10 @@ export const Navbar = () => {
             </button>
 
             {/* 2. Compact Single-Line Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-semibold text-[13px] xl:text-[14px] text-neutral-700 dark:text-neutral-300 whitespace-nowrap">
-              
+            <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-[var(--color-ink-muted)] whitespace-nowrap">
+
               {/* Home */}
-              <button
-                onClick={() => handleNav('home')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isHomeActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
-              >
+              <button onClick={() => handleNav('home')} className={navLinkClass(isHomeActive)}>
                 Home
               </button>
 
@@ -192,21 +192,21 @@ export const Navbar = () => {
                   onClick={() => handleNav('shop')}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
                     isShopActive
-                      ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                      : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
+                      ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
+                      : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
                   }`}
                 >
                   <span>Vouchers</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      vouchersDropdownOpen ? 'rotate-180 text-brand-pink' : 'text-neutral-400'
+                      vouchersDropdownOpen ? 'rotate-180 text-[var(--color-accent)]' : 'text-[var(--color-ink-muted)]'
                     }`}
                   />
                 </button>
 
                 {vouchersDropdownOpen && (
-                  <div className="absolute top-full left-0 w-100 bg-white dark:bg-[#161616] rounded-2xl shadow-2xl border border-[#EAEAEA] dark:border-[#292929] p-3 mt-1 animate-in fade-in slide-in-from-top-2 z-50">
-                    <div className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider px-3 py-1.5">
+                  <div className="absolute top-full left-0 w-100 bg-[var(--color-surface)] rounded-2xl shadow-xl border border-[var(--color-line)] p-3 mt-1 animate-in fade-in slide-in-from-top-2 z-50">
+                    <div className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-wider px-3 py-1.5">
                       Supported Exams
                     </div>
                     <div className="space-y-1">
@@ -217,17 +217,17 @@ export const Navbar = () => {
                             handleNav(exam.tab);
                             setVouchersDropdownOpen(false);
                           }}
-                          className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] transition-all group flex items-center justify-between gap-3 cursor-pointer"
+                          className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-[var(--color-accent)]/[0.06] transition-all group flex items-center justify-between gap-3 cursor-pointer"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm text-neutral-900 dark:text-white group-hover:text-brand-pink transition-colors leading-tight">
+                            <div className="font-medium text-sm text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
                               {exam.name}
                             </div>
-                            <div className="text-xs text-neutral-500 dark:text-[#B5B5B5] font-medium mt-0.5 leading-snug">
+                            <div className="text-xs text-[var(--color-ink-muted)] font-normal mt-0.5 leading-snug">
                               {exam.desc}
                             </div>
                           </div>
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink border border-brand-pink/25 whitespace-nowrap shrink-0">
+                          <span className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/25 whitespace-nowrap shrink-0">
                             {exam.tag}
                           </span>
                         </button>
@@ -242,25 +242,18 @@ export const Navbar = () => {
                 onClick={handleExamBookingNav}
                 className={`px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${
                   isExamBookingActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
+                    ? 'text-[var(--color-accent)] font-medium bg-[var(--color-accent)]/[0.08]'
+                    : 'hover:bg-[var(--color-accent)]/[0.06] hover:text-[var(--color-accent)]'
                 }`}
               >
                 <span>Exam Booking</span>
-                <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-brand-pink/10 text-brand-pink border border-brand-pink/20 leading-tight">
+                <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 leading-tight">
                   PTE
                 </span>
               </button>
 
               {/* How It Works */}
-              <button
-                onClick={() => handleNav('how-it-works')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isHowItWorksActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
-              >
+              <button onClick={() => handleNav('how-it-works')} className={navLinkClass(isHowItWorksActive)}>
                 How It Works
               </button>
 
@@ -268,94 +261,76 @@ export const Navbar = () => {
               <button
                 onClick={() => handleNav('calculator')}
                 title="Savings Calculator"
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isCalculatorActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
+                className={navLinkClass(isCalculatorActive)}
               >
                 Savings
               </button>
 
               {/* Blog */}
-              <button
-                onClick={handleBlogNav}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isGuidesActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
-              >
+              <button onClick={handleBlogNav} className={navLinkClass(isGuidesActive)}>
                 Blog
               </button>
 
               {/* Awards & Achievements */}
               <button
                 onClick={() => handleNav('awards')}
-                className={`hidden xl:inline-block px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isAwardsActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
+                className={`hidden xl:inline-block ${navLinkClass(isAwardsActive)}`}
               >
                 Awards
               </button>
 
               {/* FAQ */}
-              <button
-                onClick={() => handleNav('faq')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                  isFaqActive
-                    ? 'text-brand-pink font-black bg-[#FFF0F5] dark:bg-[#2A0A17]'
-                    : 'hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] hover:text-brand-pink'
-                }`}
-              >
+              <button onClick={() => handleNav('faq')} className={navLinkClass(isFaqActive)}>
                 FAQ
               </button>
             </div>
 
             {/* 3. Compact Right Actions */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              
+
               {/* Compact Theme Toggle Icon */}
               <ThemeToggle compact={true} showLabel={false} />
 
               {/* Compact Cart Icon Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#161616] hover:bg-[#FFF0F5] dark:hover:bg-[#2A0A17] text-neutral-800 dark:text-neutral-200 hover:text-brand-pink transition-all border border-[#EAEAEA] dark:border-[#292929]"
+                className="relative p-2 rounded-xl bg-[var(--color-surface-raised)] hover:bg-[var(--color-accent)]/[0.06] text-[var(--color-ink)] hover:text-[var(--color-accent)] transition-all border border-[var(--color-line)]"
                 aria-label="Shopping Cart"
               >
                 <ShoppingCart className="w-4 h-4" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-brand-pink text-white text-[10px] font-black flex items-center justify-center shadow-md animate-pulse-subtle">
+                  <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-medium flex items-center justify-center shadow-md">
                     {cartCount}
                   </span>
                 )}
               </button>
 
               {/* Secondary Outline CTA: Book Exam */}
-              <button
+              <Button
                 onClick={handleExamBookingNav}
-                className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] hover:bg-[#FFE0EB] text-brand-pink font-black text-xs border border-brand-pink/30 transition-colors whitespace-nowrap cursor-pointer"
+                variant="secondary"
+                size="sm"
+                className="hidden lg:inline-flex"
               >
                 <CalendarCheck className="w-3.5 h-3.5" />
                 <span>Book Exam</span>
-              </button>
+              </Button>
 
               {/* Primary Pink CTA: Buy Voucher */}
-              <button
+              <Button
                 onClick={() => handleNav('shop')}
-                className="hidden sm:inline-flex btn-pink py-2! px-4! text-xs! font-black whitespace-nowrap items-center gap-1.5"
+                variant="primary"
+                size="sm"
+                className="hidden sm:inline-flex"
               >
                 <Ticket className="w-3.5 h-3.5" />
                 <span>Buy Voucher</span>
-              </button>
+              </Button>
 
               {/* Mobile Menu Toggle Button */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2 rounded-xl bg-neutral-100 dark:bg-[#161616] text-neutral-800 dark:text-neutral-100 border border-[#EAEAEA] dark:border-[#292929]"
+                className="lg:hidden p-2 rounded-xl bg-[var(--color-surface-raised)] text-[var(--color-ink)] border border-[var(--color-line)]"
                 aria-label="Open navigation menu"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -367,91 +342,85 @@ export const Navbar = () => {
 
         {/* ── Mobile Navigation Drawer ──────────────────────────────────────── */}
         {isMenuOpen && (
-          <div className="lg:hidden bg-white dark:bg-[#161616] border-b border-[#EAEAEA] dark:border-[#292929] px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
-            
+          <div className="lg:hidden bg-[var(--color-surface)] border-b border-[var(--color-line)] px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
+
             {/* Mobile Day/Night Theme Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929]">
-              <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Theme Mode</span>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
+              <span className="text-xs font-medium text-[var(--color-ink)]">Theme Mode</span>
               <ThemeToggle compact={false} showLabel={true} />
             </div>
 
             <button
               onClick={() => handleNav('shop')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-bold text-neutral-900 dark:text-white bg-[#FFF0F5] dark:bg-[#2A0A17] flex items-center justify-between"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-medium text-[var(--color-ink)] bg-[var(--color-accent)]/[0.08] flex items-center justify-between"
             >
               <span>🎟️ Browse All Vouchers</span>
-              <span className="text-xs bg-brand-pink text-white px-2 py-0.5 rounded-md font-bold">Save 22%</span>
+              <span className="text-xs bg-[var(--color-accent)] text-white px-2 py-0.5 rounded-md font-medium">Save 22%</span>
             </button>
 
             <button
               onClick={handleExamBookingNav}
-              className={`w-full text-left px-4 py-2.5 rounded-xl font-bold flex items-center justify-between ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl font-normal flex items-center justify-between ${
                 isExamBookingActive
-                  ? 'bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink'
-                  : 'text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-[#262626]'
+                  ? 'bg-[var(--color-accent)]/[0.08] text-[var(--color-accent)]'
+                  : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)]'
               }`}
             >
               <div className="flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4 text-brand-pink" />
+                <CalendarCheck className="w-4 h-4 text-[var(--color-accent)]" />
                 <span>PTE Exam Booking Assistance</span>
               </div>
-              <span className="text-[10px] bg-brand-pink/15 text-brand-pink px-2 py-0.5 rounded-md font-black">NEW</span>
+              <span className="text-[10px] bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-2 py-0.5 rounded-md font-medium">NEW</span>
             </button>
 
             <button
               onClick={() => handleNav('how-it-works')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-brand-pink" />
+              <Sparkles className="w-4 h-4 text-[var(--color-accent)]" />
               <span>How It Works</span>
             </button>
 
             <button
               onClick={() => handleNav('calculator')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
             >
-              <Calculator className="w-4 h-4 text-brand-pink" />
+              <Calculator className="w-4 h-4 text-[var(--color-accent)]" />
               <span>Savings Calculator</span>
             </button>
 
             <button
               onClick={handleBlogNav}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
             >
-              <BookOpen className="w-4 h-4 text-brand-pink" />
+              <BookOpen className="w-4 h-4 text-[var(--color-accent)]" />
               <span>Students Diary & Blog</span>
             </button>
 
             <button
               onClick={() => handleNav('awards')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
             >
-              <Trophy className="w-4 h-4 text-brand-pink" />
+              <Trophy className="w-4 h-4 text-[var(--color-accent)]" />
               <span>Awards & Achievements</span>
             </button>
 
             <button
               onClick={() => handleNav('faq')}
-              className="w-full text-left px-4 py-2.5 rounded-xl font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#262626] flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-ink)] flex items-center gap-2"
             >
-              <HelpCircle className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+              <HelpCircle className="w-4 h-4 text-[var(--color-ink-muted)]" />
               <span>FAQ & Help</span>
             </button>
 
             <div className="pt-2 flex flex-col gap-2">
-              <button
-                onClick={handleExamBookingNav}
-                className="w-full py-2.5 rounded-xl bg-[#FFF0F5] dark:bg-[#2A0A17] text-brand-pink font-black text-xs border border-brand-pink/30 flex items-center justify-center gap-1.5"
-              >
+              <Button onClick={handleExamBookingNav} variant="secondary" size="md" fullWidth>
                 <CalendarCheck className="w-4 h-4" />
                 <span>Book PTE Exam</span>
-              </button>
-              <button
-                onClick={() => handleNav('shop')}
-                className="w-full btn-pink py-2.5! text-xs! font-black"
-              >
+              </Button>
+              <Button onClick={() => handleNav('shop')} variant="primary" size="md" fullWidth>
                 Buy Voucher Now
-              </button>
+              </Button>
             </div>
           </div>
         )}
