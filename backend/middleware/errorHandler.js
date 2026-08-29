@@ -52,11 +52,21 @@ export const errorHandler = (err, req, res, next) => {
     console.error('[error]', err);
   }
 
+  const isDev = (process.env.NODE_ENV || '').toLowerCase() === 'development';
+
+  // In production, never leak an unexpected internal error's raw message
+  // (stack traces, DB errors, gateway internals). Operational AppErrors carry
+  // safe, user-facing messages and are passed through.
+  if (!isDev && statusCode >= 500 && !err.isOperational) {
+    message = 'Something went wrong on our side. Please try again.';
+    code = 'INTERNAL_ERROR';
+  }
+
   res.status(statusCode).json({
     success: false,
     message,
     code,
-    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {}),
+    ...(isDev ? { stack: err.stack } : {}),
   });
 };
 

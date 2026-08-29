@@ -101,9 +101,9 @@ export function BlogIndexPage() {
   const gridPosts = featured ? posts.filter((p) => p._id !== featured._id) : posts;
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white transition-colors duration-300">
+    <div className="bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white transition-colors duration-300">
       {/* ── Hero Header ──────────────────────────────────────────────────── */}
-      <div className="relative bg-[#0A0A0A] overflow-hidden">
+      <div className="relative bg-[#06070B] overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-brand-pink/8 blur-3xl" />
           <div className="absolute top-1/2 -left-40 w-96 h-96 rounded-full bg-[#6C3CE0]/8 blur-3xl" />

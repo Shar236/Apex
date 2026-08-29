@@ -16,8 +16,9 @@ import {
   X,
   Headphones,
   Lock,
+  Ticket,
 } from 'lucide-react';
-import { useVoucher, adaptProduct } from '../context/VoucherContext';
+import { useVoucher, adaptProduct, isRequestOnly } from '../context/VoucherContext';
 import { productApi, applyPageMetadata, setStructuredData } from '../lib/api';
 import { getRedemptionGuide, getRedemptionSteps } from '../lib/redemptionGuides';
 import { BrandLogoContainer } from './OfficialBrandLogos';
@@ -109,7 +110,7 @@ const OfficialWebsiteButton = ({ url, providerLabel }) => {
 export const VoucherDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { formatPrice, startCheckout, addToCart, setActiveTab, globalSEO, footerSettings } = useVoucher();
+  const { formatPrice, startCheckout, addToCart, startVoucherRequest, setActiveTab, globalSEO, footerSettings } = useVoucher();
 
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
@@ -199,8 +200,9 @@ export const VoucherDetailPage = () => {
     );
   }
 
-  const isOutOfStock = product.inStock === false;
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
+  const requestOnly = isRequestOnly(product);
+  const canBuyNow = !isComingSoon && !requestOnly;
   const inclusions = Array.isArray(product.inclusions) && product.inclusions.length > 0
     ? product.inclusions
     : ['Genuine Digital Voucher', 'Fast Delivery to Email', 'Clear Redemption Instructions', 'Official Provider Redemption', 'Customer Support', 'Transparent Pricing'];
@@ -312,21 +314,31 @@ export const VoucherDetailPage = () => {
               <DeliveryValidityBar product={product} className="max-w-xs" />
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                {!isOutOfStock ? (
+                {isComingSoon ? (
+                  <Button variant="disabled" size="lg" disabled>
+                    <Clock className="w-4 h-4" /> Coming Soon
+                  </Button>
+                ) : requestOnly ? (
+                  <Button variant="primary" size="lg" onClick={() => startVoucherRequest(product)}>
+                    <Ticket className="w-4 h-4" /> Request Voucher <ArrowRight className="w-4 h-4" />
+                  </Button>
+                ) : (
                   <Button variant="primary" size="lg" onClick={() => startCheckout(product)}>
                     Buy Now <ArrowRight className="w-4 h-4" />
                   </Button>
-                ) : (
-                  <Button variant="disabled" size="lg" disabled>
-                    <Clock className="w-4 h-4" /> {isComingSoon ? 'Coming Soon' : 'Out of Stock'}
-                  </Button>
                 )}
-                {!isOutOfStock && (
+                {canBuyNow && (
                   <Button variant="secondary" size="lg" onClick={() => addToCart(product)}>
                     <ShoppingCart className="w-4 h-4" /> Add to Cart
                   </Button>
                 )}
               </div>
+              {requestOnly && (
+                <p className="text-xs font-normal text-ink-muted flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-accent" />
+                  Temporarily unavailable — request it and receive your voucher within 1–2 hours.
+                </p>
+              )}
 
               {(product.officialWebsiteUrl || product.officialProductUrl) && (
                 <a
@@ -509,16 +521,22 @@ export const VoucherDetailPage = () => {
         All trademarks and logos belong to their respective owners. Apex Vouchers is an independent voucher/service provider unless otherwise stated.
       </p>
 
-      {/* ── Sticky mobile Buy Now bar ─────────────────────────── */}
-      {!isOutOfStock && (
+      {/* ── Sticky mobile action bar ──────────────────────────── */}
+      {!isComingSoon && (
         <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
           <div className="min-w-0">
             <span className="block text-[10px] font-normal text-ink-muted uppercase tracking-wider truncate">{product.name}</span>
             <span className="font-heading font-semibold text-lg text-ink">{formatPrice(product.discountedPrice)}</span>
           </div>
-          <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(product)}>
-            <Lock className="w-3.5 h-3.5" /> Buy This Voucher
-          </Button>
+          {requestOnly ? (
+            <Button variant="primary" size="md" className="shrink-0" onClick={() => startVoucherRequest(product)}>
+              <Ticket className="w-3.5 h-3.5" /> Request Voucher
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(product)}>
+              <Lock className="w-3.5 h-3.5" /> Buy This Voucher
+            </Button>
+          )}
         </div>
       )}
     </>

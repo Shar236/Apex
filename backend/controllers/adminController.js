@@ -1,11 +1,17 @@
 import fs from 'fs';
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES } from '../models/index.js';
 import { normalizeVoucherType } from '../services/voucherAllocation.js';
+import {
+  listVoucherRequests,
+  getVoucherRequestById,
+  updateVoucherRequest as updateVoucherRequestService,
+  getVoucherRequestStats,
+} from '../services/voucherRequestService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { hashPassword } from '../middleware/auth.js';
 import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
-import { sendOrderConfirmation } from '../services/email.js';
+import { sendOrderConfirmation, sendEmail, emailConfigStatus } from '../services/email.js';
 import {
   buildDirectVideoUrl,
   buildVideoThumbnailUrl,
@@ -358,6 +364,14 @@ export const dashboardOverview = async (req, res, next) => {
       .limit(5)
       .lean();
 
+    const openVoucherRequestsCount = await VoucherRequest.countDocuments({
+      status: { $in: ['PENDING', 'PROCESSING'] },
+    });
+    const recentVoucherRequests = await VoucherRequest.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
     res.json({
       success: true,
       data: {
@@ -380,6 +394,7 @@ export const dashboardOverview = async (req, res, next) => {
           refunds: refundsCount,
           failedPayments: failedPaymentsCount,
           newPTEBookingRequests: newPTEBookingRequestsCount,
+          newVoucherRequests: openVoucherRequestsCount,
         },
         charts: {
           dailyRevenue: timeSeriesAgg,
@@ -392,6 +407,7 @@ export const dashboardOverview = async (req, res, next) => {
           recentOrders,
           activePromotions: activePromotionsList,
           recentPTEBookingRequests,
+          recentVoucherRequests,
         },
         alerts: {
           lowStockCount: lowStockProducts.length,
@@ -399,6 +415,7 @@ export const dashboardOverview = async (req, res, next) => {
           pendingOrdersCount,
           expiringPromosCount: expiringSoonPromos.length,
           newPTEBookingRequestsCount,
+          openVoucherRequestsCount,
         },
       },
     });
@@ -1147,10 +1164,16 @@ export const getAdminNotifications = async (req, res, next) => {
 
     // 2. Mismatch Alerts / Failures from AuditLog
     const mismatchLogs = await AuditLog.find({
-      action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED'] },
+      action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED', 'PAID_ORDER_NOT_COLLECTABLE'] },
     })
       .sort({ createdAt: -1 })
       .limit(10)
+      .lean();
+
+    // 2b. Open voucher requests (customer asked for an out-of-stock voucher)
+    const openVoucherRequests = await VoucherRequest.find({ status: { $in: ['PENDING', 'PROCESSING'] } })
+      .sort({ createdAt: -1 })
+      .limit(15)
       .lean();
 
     // 3. Low stock and out-of-stock products
@@ -1188,16 +1211,56 @@ export const getAdminNotifications = async (req, res, next) => {
     }
 
     const notifications = [
-      ...mismatchLogs.map((log) => ({
-        id: log._id,
-        type: 'MISMATCH_BLOCKED',
-        severity: 'critical',
-        title: '🚨 Voucher Product Mismatch Blocked',
-        message: `Order #${log.details?.orderNo || 'Unknown'}: Expected ${log.details?.expectedVoucherType || 'N/A'}, Received ${log.details?.actualVoucherType || 'N/A'}. Delivery blocked.`,
-        timestamp: log.createdAt,
-        details: log.details,
-      })),
+      ...mismatchLogs.map((log) => {
+        if (log.action === 'PAID_ORDER_NOT_COLLECTABLE') {
+          return {
+            id: log._id,
+            type: 'PAID_ORDER_NOT_COLLECTABLE',
+            severity: 'critical',
+            title: '🚨 Paid order not fulfilled',
+            message: `Order #${log.details?.orderNo}: a captured Razorpay payment exists but the order is ${log.details?.orderPaymentStatus}/${log.details?.orderStatus}. Refund the customer or re-open + fulfil.`,
+            timestamp: log.createdAt,
+            details: log.details,
+          };
+        }
+        if (log.action === 'ORDER_ALLOCATION_FAILED') {
+          return {
+            id: log._id,
+            type: 'ALLOCATION_FAILED',
+            severity: 'error',
+            title: '⚠️ Voucher allocation failed',
+            message: `Order #${log.details?.orderNo || 'Unknown'}: ${log.details?.error || 'no available voucher'}. Payment is held — add stock, then re-fulfil.`,
+            timestamp: log.createdAt,
+            details: log.details,
+          };
+        }
+        return {
+          id: log._id,
+          type: 'MISMATCH_BLOCKED',
+          severity: 'critical',
+          title: '🚨 Voucher Product Mismatch Blocked',
+          message: `Order #${log.details?.orderNo || 'Unknown'}: Expected ${log.details?.expectedVoucherType || 'N/A'}, Received ${log.details?.actualVoucherType || 'N/A'}. Delivery blocked.`,
+          timestamp: log.createdAt,
+          details: log.details,
+        };
+      }),
       ...stockAlerts,
+      ...openVoucherRequests.map((r) => ({
+        id: `vr_${r._id}`,
+        type: 'VOUCHER_REQUEST',
+        severity: 'warning',
+        title: '🎟️ Voucher Request',
+        message: `${r.customerName} requested ${r.productName} (${r.voucherType}) — currently out of stock. Source a code and mark it ready for payment.`,
+        product: { _id: r.productId, name: r.productName, voucherType: r.voucherType },
+        timestamp: r.createdAt,
+        data: {
+          requestId: r.requestId,
+          productName: r.productName,
+          voucherType: r.voucherType,
+          customerEmail: r.customerEmail,
+          status: r.status,
+        },
+      })),
       ...recentlySold.map((v) => ({
         id: v._id,
         type: 'VOUCHER_SOLD',
@@ -1225,6 +1288,7 @@ export const getAdminNotifications = async (req, res, next) => {
         critical: notifications.filter((n) => n.severity === 'critical' || n.severity === 'error').length,
         sales: recentlySold.length,
         stockAlerts: stockAlerts.length,
+        voucherRequests: openVoucherRequests.length,
       },
     });
   } catch (err) {
@@ -1547,6 +1611,39 @@ export const exportCSV = async (req, res, next) => {
         new Date(b.createdAt).toISOString(),
       ]);
       csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    } else if (resource === 'voucher-requests') {
+      const { status, search, dateFrom, dateTo } = req.query;
+      const filter = {};
+      if (status && status !== 'All') filter.status = status;
+      if (search) {
+        const s = searchRegex(search);
+        filter.$or = [{ requestId: s }, { customerName: s }, { customerEmail: s }, { productName: s }];
+      }
+      if (dateFrom || dateTo) {
+        filter.createdAt = {};
+        if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+      }
+      const requests = await VoucherRequest.find(filter).sort({ createdAt: -1 }).lean();
+      const headers = [
+        'Request ID', 'Customer Name', 'Email', 'Voucher', 'Voucher Type', 'Category',
+        'Status', 'Admin Notes', 'Order No', 'Requested At', 'Ready At', 'Fulfilled At',
+      ];
+      const rows = requests.map((r) => [
+        r.requestId,
+        `"${(r.customerName || '').replace(/"/g, '""')}"`,
+        `"${(r.customerEmail || '').replace(/"/g, '""')}"`,
+        `"${(r.productName || '').replace(/"/g, '""')}"`,
+        `"${(r.voucherType || '').replace(/"/g, '""')}"`,
+        `"${(r.category || '').replace(/"/g, '""')}"`,
+        r.status,
+        `"${(r.adminNotes || '').replace(/"/g, '""')}"`,
+        r.orderId ? String(r.orderId) : '',
+        new Date(r.createdAt).toISOString(),
+        r.readyForPaymentAt ? new Date(r.readyForPaymentAt).toISOString() : '',
+        r.fulfilledAt ? new Date(r.fulfilledAt).toISOString() : '',
+      ]);
+      csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     } else {
       return next(new AppError('Invalid export resource type', 400));
     }
@@ -1554,6 +1651,57 @@ export const exportCSV = async (req, res, next) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).send(csvContent);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * VOUCHER REQUESTS (out-of-stock "Request Voucher" flow)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+export const listVoucherRequestsAdmin = async (req, res, next) => {
+  try {
+    const [{ rows, total, page, pages }, stats] = await Promise.all([
+      listVoucherRequests(req.query),
+      getVoucherRequestStats(),
+    ]);
+    res.json({ success: true, count: rows.length, total, page, pages, stats, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getVoucherRequestAdmin = async (req, res, next) => {
+  try {
+    const request = await getVoucherRequestById(req.params.id);
+    if (!request) return next(new AppError('Voucher request not found', 404, 'NOT_FOUND'));
+    res.json({ success: true, data: request });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateVoucherRequestAdmin = async (req, res, next) => {
+  try {
+    const { status, adminNotes } = req.body || {};
+    if (status && !VOUCHER_REQUEST_STATUSES.includes(status)) {
+      return next(new AppError('Invalid status value', 400, 'VALIDATION_ERROR'));
+    }
+    const { request, oldStatus } = await updateVoucherRequestService(req.params.id, {
+      status,
+      adminNotes,
+      adminUser: req.user,
+    });
+
+    await recordAudit(req, 'VOUCHER_REQUEST_UPDATED', 'VoucherRequest', request._id, {
+      requestId: request.requestId,
+      oldStatus,
+      newStatus: request.status,
+      productName: request.productName,
+    });
+
+    res.json({ success: true, data: request });
   } catch (err) {
     next(err);
   }
@@ -2103,6 +2251,45 @@ export const quickUpdateOrderReel = quickUpdateOrderVideo;
 export const bulkReorderReels = bulkReorderVideos;
 export const updateReelSettings = updateVideoSettings;
 
+
+/**
+ * Admin email-delivery test. Sends a real diagnostic message and returns the
+ * provider's response — the actual send path (same transporter as OTP + voucher
+ * emails), not a fake success. Never sends or reveals an OTP.
+ * POST /api/admin/email/test  { to?: string }
+ */
+export const sendTestEmail = async (req, res, next) => {
+  try {
+    const status = emailConfigStatus();
+    const to = String(req.body?.to || '').trim() || req.user?.email;
+    if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+      return next(new AppError('A valid recipient email is required', 400, 'INVALID_RECIPIENT'));
+    }
+    const stamp = new Date().toISOString();
+    const result = await sendEmail({
+      to,
+      tag: 'admin-test',
+      subject: `Apex Vouchers — email delivery test (${stamp})`,
+      text: `This is a diagnostic email from the Apex Vouchers admin console.\nIf you received it, transactional email delivery is working.\nSent: ${stamp}`,
+      html: `<p>This is a diagnostic email from the <b>Apex Vouchers</b> admin console.</p><p>If you received it, transactional email delivery is working.</p><p style="color:#888">Sent: ${stamp}</p>`,
+    });
+    return res.json({
+      success: result.sent,
+      providerConfigured: status.providerReady,
+      senderConfigured: status.senderReady,
+      gmailFromMismatch: status.gmailMismatch,
+      accepted: result.sent,
+      messageId: result.messageId || null,
+      providerResponse: result.info?.response || null,
+      error: result.sent ? null : result.error || 'Send failed',
+      note: result.sent
+        ? 'Accepted by the mail provider. This is NOT proof of inbox delivery — check the recipient inbox and spam folder.'
+        : 'The mail provider did not accept the message. See `error`.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const resendOrderEmail = async (req, res, next) => {
   try {

@@ -5,6 +5,7 @@ import {
   productApi,
   orderApi,
   accountApi,
+  voucherRequestApi,
   formatPrice as fmtPrice,
   applyPageMetadata,
   setStructuredData,
@@ -105,6 +106,21 @@ export const adaptProduct = (p) => {
   };
 };
 
+/**
+ * A product is "request only" when the backend reports zero available voucher
+ * codes for it — it is a real, purchasable product with temporarily empty
+ * inventory. Such products show a "Request Voucher" button instead of "Buy Now"
+ * (and never an "Out of Stock" label). `comingSoon` and `UNLIMITED` stock are
+ * separate states and are NOT request-only.
+ */
+export const isRequestOnly = (p) => {
+  if (!p) return false;
+  if (p.comingSoon) return false;
+  if (p.stockType === 'UNLIMITED') return false;
+  const avail = p.availableStock ?? p.availability ?? (p.inStock === false ? 0 : 1);
+  return Number(avail) <= 0;
+};
+
 const DEFAULT_GLOBAL_SEO = {
   websiteName: 'Apex Vouchers',
   defaultSeoTitle: 'Exam Vouchers at Best Prices | PTE, IELTS, TOEFL & Duolingo | Apex Vouchers',
@@ -199,6 +215,7 @@ export const VoucherProvider = ({ children }) => {
   const [userVouchers, setUserVouchers] = useState([]);
   const [accountOrders, setAccountOrders] = useState([]);
   const [accountStats, setAccountStats] = useState({});
+  const [userVoucherRequests, setUserVoucherRequests] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
 
   const [websiteConfig, setWebsiteConfig] = useState(null);
@@ -215,7 +232,10 @@ export const VoucherProvider = ({ children }) => {
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [selectedProductRelated, setSelectedProductRelated] = useState([]);
   const [checkoutProduct, setCheckoutProduct] = useState(null);
+  const [checkoutMeta, setCheckoutMeta] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [voucherRequestProduct, setVoucherRequestProduct] = useState(null);
+  const [isVoucherRequestOpen, setIsVoucherRequestOpen] = useState(false);
   const [isPTEBookingOpen, setIsPTEBookingOpen] = useState(false);
   const [pteBookingExamType, setPteBookingExamType] = useState('PTE Academic');
   const [activeTab, setActiveTab] = useState('home');
@@ -341,21 +361,25 @@ export const VoucherProvider = ({ children }) => {
       setUserVouchers([]);
       setAccountOrders([]);
       setAccountStats({});
+      setUserVoucherRequests([]);
       return;
     }
     try {
-      const [vRes, oRes, sRes] = await Promise.all([
+      const [vRes, oRes, sRes, rRes] = await Promise.all([
         accountApi.vouchers(),
         accountApi.orders(),
         accountApi.stats(),
+        voucherRequestApi.mine(),
       ]);
       if (vRes.success) setUserVouchers(Array.isArray(vRes.data) ? vRes.data : []);
       if (oRes.success) setAccountOrders(Array.isArray(oRes.data) ? oRes.data : []);
       if (sRes.success) setAccountStats(sRes.data || {});
+      if (rRes.success) setUserVoucherRequests(Array.isArray(rRes.data) ? rRes.data : []);
     } catch {
       setUserVouchers([]);
       setAccountOrders([]);
       setAccountStats({});
+      setUserVoucherRequests([]);
     }
   }, [isAuthenticated]);
 
@@ -432,9 +456,20 @@ export const VoucherProvider = ({ children }) => {
       })
     ), []);
 
-  const startCheckout = useCallback((product) => {
+  const startCheckout = useCallback((product, meta = null) => {
     setCheckoutProduct(product);
+    setCheckoutMeta(meta);
     setIsCheckoutOpen(true);
+  }, []);
+
+  const startVoucherRequest = useCallback((product) => {
+    setVoucherRequestProduct(product);
+    setIsVoucherRequestOpen(true);
+  }, []);
+
+  const closeVoucherRequest = useCallback(() => {
+    setIsVoucherRequestOpen(false);
+    setVoucherRequestProduct(null);
   }, []);
 
   const startPTEBooking = useCallback((examType) => {
@@ -573,6 +608,7 @@ export const VoucherProvider = ({ children }) => {
       userVouchers,
       accountOrders,
       accountStats,
+      userVoucherRequests,
       loadAccountData,
       cart,
       addToCart,
@@ -587,12 +623,17 @@ export const VoucherProvider = ({ children }) => {
       selectedProductRelated,
       checkoutProduct,
       setCheckoutProduct,
+      checkoutMeta,
       isCheckoutOpen,
       setIsCheckoutOpen,
       isPTEBookingOpen,
       setIsPTEBookingOpen,
       pteBookingExamType,
       startPTEBooking,
+      voucherRequestProduct,
+      isVoucherRequestOpen,
+      startVoucherRequest,
+      closeVoucherRequest,
       activeTab,
       setActiveTab,
       activeBrandFilter,
@@ -640,6 +681,7 @@ export const VoucherProvider = ({ children }) => {
       userVouchers,
       accountOrders,
       accountStats,
+      userVoucherRequests,
       loadAccountData,
       cart,
       addToCart,
@@ -650,10 +692,15 @@ export const VoucherProvider = ({ children }) => {
       selectedProductDetail,
       selectedProductRelated,
       checkoutProduct,
+      checkoutMeta,
       isCheckoutOpen,
       isPTEBookingOpen,
       pteBookingExamType,
       startPTEBooking,
+      voucherRequestProduct,
+      isVoucherRequestOpen,
+      startVoucherRequest,
+      closeVoucherRequest,
       activeTab,
       activeBrandFilter,
       currency,

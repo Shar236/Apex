@@ -46,6 +46,8 @@ export default function ContentTab({ draft, id, status, setField, fieldRefs, onE
         <ArticleEditor
           value={draft.content}
           onChange={(html) => setField('content', html)}
+          css={draft.css}
+          onCssChange={(css) => setField('css', css)}
           onEditorReady={onEditorReady}
           images={draft.images}
           onImagesChange={(imgs) => setField('images', imgs)}

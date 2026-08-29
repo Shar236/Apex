@@ -298,18 +298,9 @@ function BlogEditor({ post, onClose, onSaved }) {
   const editLink = (link) => {
     setActiveTab('content');
     setTimeout(() => {
-      if (!editorInstance) return;
-      const { doc } = editorInstance.state;
-      let range = null;
-      doc.descendants((node, pos) => {
-        if (range) return false;
-        const mark = node.marks?.find((mk) => mk.type.name === 'link' && mk.attrs.href === link.href);
-        if (mark) range = { from: pos, to: pos + node.nodeSize };
-        return true;
-      });
-      if (range) editorInstance.chain().focus().setTextSelection(range).run();
+      editorApi?.selectLink?.(link.href);
       editorApi?.openLinkDialog?.();
-    }, 80);
+    }, 60);
   };
 
   // ── keyboard: Ctrl/Cmd+K → link ─────────────────────────────────────────
@@ -488,19 +479,22 @@ function BlogEditor({ post, onClose, onSaved }) {
           </div>
 
           <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm p-5 min-w-0">
-            {activeTab === 'content' && (
+            {/* Content stays MOUNTED across tab switches (just hidden) so the
+                visual editor — and any text selection in it — survives the user
+                going to the Links / Images tab to insert or manage something. */}
+            <div className={activeTab === 'content' ? 'block' : 'hidden'}>
               <ContentTab
                 draft={draft} id={id} status={status} setField={setField} fieldRefs={refs}
                 onEditorReady={(editor, api) => { setEditorInstance(editor); if (api) setEditorApi(api); }}
                 onRequestImageUpload={handleImageUploadRequest}
               />
-            )}
+            </div>
             {activeTab === 'images' && (
               <ImagesTab draft={draft} setField={setField} onFeaturedUploadRequest={handleFeaturedUpload} onUploadRequest={handleImageUploadRequest} onReplaceRequest={pickAndUpload} />
             )}
             {activeTab === 'seo' && <SeoTab draft={draft} setSeoField={setSeoField} slug={draft.slug} fieldRefs={refs} />}
             {activeTab === 'faq' && <FaqTab faqs={draft.faqs} onChange={(faqs) => setField('faqs', faqs)} />}
-            {activeTab === 'links' && <LinksTab draft={draft} id={id} editorInstance={editorInstance} onEditLink={editLink} />}
+            {activeTab === 'links' && <LinksTab draft={draft} id={id} editorApi={editorApi} onEditLink={editLink} />}
             {activeTab === 'related' && <RelatedTab draft={draft} setField={setField} excludeId={id} />}
             {activeTab === 'history' && <HistoryTab id={id} onRestored={(data) => { setDraft(toDraft(data)); toast('Revision loaded — review and Save.', 'info'); }} />}
           </div>

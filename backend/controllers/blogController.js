@@ -11,6 +11,13 @@ import { uploadBlogImage, deleteBlogImage } from '../services/blogImageService.j
 import { getBlogStructuredData } from '../utils/blogStructuredData.js';
 import { config } from '../config/index.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import {
+  prepareIncomingArticle,
+  normalizeArticleTables,
+  stripDocumentChrome,
+  scopeCss,
+  blogArticleScope,
+} from '../utils/articleContent.js';
 
 const baseUrl = () => (config.siteUrl || config.clientUrl || 'http://localhost:5173').replace(/\/$/, '');
 
@@ -27,6 +34,10 @@ const serializePublicPost = (post) => {
   if (Array.isArray(obj.images)) {
     obj.images = obj.images.map((img) => ({ ...img, url: resolveImageUrl(img.url) }));
   }
+  // Article CSS is stored unscoped (author selectors as written); scope it to
+  // this article's root here so it can never touch the navbar, footer, admin UI
+  // or another article. `''` for every article that has no CSS.
+  obj.css = obj.css ? scopeCss(obj.css, blogArticleScope(obj._id)) : '';
   return obj;
 };
 
@@ -65,43 +76,90 @@ const promoteTableHead = (html) =>
 
 const sanitizeBlogContent = (html) => {
   if (!html) return '';
-  return promoteTableHead(sanitizeHtml(html, {
+  // Collapse any pasted full document to its body first; extract <style> upstream
+  // (prepareIncomingArticle). normalizeArticleTables strips colgroup / redundant
+  // colspan="1" so the article stylesheet can lay tables out responsively.
+  const fragment = stripDocumentChrome(html);
+  return normalizeArticleTables(promoteTableHead(sanitizeHtml(fragment, {
     allowedTags: [
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'strong', 'b', 'em', 'i', 'u', 's',
-      'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'figure', 'figcaption', 'span', 'div', 'iframe',
+      'sub', 'sup', 'mark', 'small', 'del', 'ins', 'abbr', 'code', 'pre', 'kbd',
+      'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'picture', 'source',
+      'table', 'caption', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
+      'figure', 'figcaption', 'span', 'div', 'section', 'article', 'header', 'footer', 'aside', 'iframe',
     ],
+    // `class` / `id` are inert (no script surface) and are exactly what pasted
+    // article CSS targets — allowing them broadly is what makes
+    // "Article = HTML + CSS" actually work. `style` is allowed but filtered to a
+    // safe property allowlist by `allowedStyles` below.
     allowedAttributes: {
-      a: ['href', 'title', 'target', 'rel'],
-      img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
-      td: ['colspan', 'rowspan'],
-      th: ['colspan', 'rowspan'],
+      a: ['href', 'title', 'target', 'rel', 'id', 'class', 'style', 'name'],
+      img: ['src', 'srcset', 'sizes', 'alt', 'title', 'width', 'height', 'loading', 'id', 'class', 'style'],
+      source: ['src', 'srcset', 'sizes', 'type', 'media'],
+      td: ['colspan', 'rowspan', 'id', 'class', 'style', 'scope'],
+      th: ['colspan', 'rowspan', 'id', 'class', 'style', 'scope'],
       iframe: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title'],
-      div: ['class', 'data-callout'],
-      figure: ['class'],
-      span: ['class'],
-      '*': [],
+      div: ['id', 'class', 'style', 'data-callout'],
+      '*': ['id', 'class', 'style'],
+    },
+    allowedStyles: {
+      '*': {
+        color: [/.*/],
+        'background-color': [/.*/],
+        background: [/^(?!.*(?:url\(\s*['"]?\s*(?:javascript|vbscript|data:text\/html))).*$/i],
+        'text-align': [/^(?:left|right|center|justify)$/],
+        'text-decoration': [/.*/],
+        'font-weight': [/.*/],
+        'font-style': [/.*/],
+        'font-size': [/.*/],
+        'font-family': [/^(?!.*(?:expression|javascript:|url\()).*$/i],
+        'line-height': [/.*/],
+        'letter-spacing': [/.*/],
+        'text-transform': [/.*/],
+        margin: [/.*/], 'margin-top': [/.*/], 'margin-right': [/.*/], 'margin-bottom': [/.*/], 'margin-left': [/.*/],
+        padding: [/.*/], 'padding-top': [/.*/], 'padding-right': [/.*/], 'padding-bottom': [/.*/], 'padding-left': [/.*/],
+        border: [/.*/], 'border-top': [/.*/], 'border-right': [/.*/], 'border-bottom': [/.*/], 'border-left': [/.*/],
+        'border-color': [/.*/], 'border-width': [/.*/], 'border-style': [/.*/], 'border-radius': [/.*/],
+        'border-collapse': [/.*/], 'border-spacing': [/.*/],
+        width: [/.*/], height: [/.*/], 'max-width': [/.*/], 'min-height': [/.*/],
+        display: [/^(?:block|inline|inline-block|flex|inline-flex|grid|table|none|list-item)$/],
+        'vertical-align': [/.*/],
+        float: [/^(?:left|right|none)$/],
+        'box-shadow': [/^(?!.*(?:expression|javascript:)).*$/i],
+        opacity: [/.*/],
+      },
     },
     allowedSchemes: ['https', 'http', 'mailto'],
+    allowedSchemesByTag: { a: ['https', 'http', 'mailto', 'tel'] },
     allowedIframeHostnames: ['www.youtube.com', 'youtube.com', 'player.vimeo.com'],
     exclusiveFilter: (frame) => frame.tag === 'iframe' && frame.attribs?.src && !YOUTUBE_VIMEO_SRC.test(frame.attribs.src),
     disallowedTagsMode: 'discard',
-  }));
+  })));
 };
 
 const WRITABLE_FIELDS = [
-  'title', 'slug', 'excerpt', 'content', 'coverImage', 'coverImagePublicId',
+  'title', 'slug', 'excerpt', 'content', 'css', 'coverImage', 'coverImagePublicId',
   'coverImageAlt', 'coverImageTitle', 'coverImageCaption', 'coverImageDescription',
   'images', 'author', 'authorBio', 'authorImage', 'reviewer', 'reviewedAt',
   'category', 'tags', 'featured', 'faqs', 'relatedPosts', 'seo', 'contentSource',
 ];
 
-const pickWritable = (body) => {
+// Article = HTML + CSS + structured metadata. Whenever the body OR the css is
+// written, the pair is re-derived together: pasted <style> blocks and full
+// `<!DOCTYPE html>` documents are split into { html, css } so CSS is never
+// silently dropped, and HTML+CSS can never end up in an inconsistent state
+// (section 32). `existing` supplies the current css when only `content` is sent.
+const pickWritable = (body, existing = {}) => {
   const out = {};
   for (const key of WRITABLE_FIELDS) {
     if (body[key] !== undefined) out[key] = body[key];
   }
-  if (out.content !== undefined) out.content = sanitizeBlogContent(out.content);
+  if (out.content !== undefined || out.css !== undefined) {
+    const baseCss = out.css !== undefined ? out.css : (existing.css || '');
+    const prepared = prepareIncomingArticle(out.content ?? existing.content ?? '', baseCss);
+    if (out.content !== undefined) out.content = sanitizeBlogContent(prepared.html);
+    out.css = prepared.css;
+  }
   if (out.slug !== undefined) out.slug = slugify(out.slug);
   return out;
 };
@@ -185,7 +243,7 @@ export const updateBlog = async (req, res, next) => {
     const post = await findPostOr404(req.params.id);
     if (!post) return next(new AppError('Blog post not found', 404));
 
-    const patch = pickWritable(req.body);
+    const patch = pickWritable(req.body, post.toObject());
     const oldSlug = post.slug;
     const oldDoc = post.toObject();
     // Autosaves must not spam revision history or touch slug redirects — they
@@ -426,7 +484,9 @@ export const previewBlog = async (req, res, next) => {
       relatedPosts = await BlogPost.find({ _id: { $in: post.relatedPosts } }).select('title slug excerpt coverImage category').lean();
     }
     const structuredData = await getBlogStructuredData(post);
-    res.json({ success: true, data: post, relatedPosts, structuredData });
+    // Preview renders through the exact same path as the public page — scoped
+    // CSS, Cloudinary-resolved images — so "Preview" is faithful (section 28).
+    res.json({ success: true, data: serializePublicPost(post), relatedPosts, structuredData });
   } catch (err) {
     next(err);
   }

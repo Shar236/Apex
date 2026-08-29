@@ -14,3 +14,8 @@ export { BlogPost, BLOG_STATUSES } from './BlogPost.js';
 export { BlogPostRevision } from './BlogPostRevision.js';
 export { Award } from './Award.js';
 export { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES } from './PTEBookingRequest.js';
+export {
+  VoucherRequest,
+  VOUCHER_REQUEST_STATUSES,
+  OPEN_VOUCHER_REQUEST_STATUSES,
+} from './VoucherRequest.js';

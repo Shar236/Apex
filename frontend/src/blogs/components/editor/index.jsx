@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { AlertTriangle, PenSquare, Eye, Code2, FileText, Clock } from 'lucide-react';
 import { useArticleEditor } from './useArticleEditor.js';
@@ -11,6 +11,8 @@ import InsertMenu from './InsertMenu.jsx';
 import LinkDialog from './LinkDialog.jsx';
 import HtmlView from './HtmlView.jsx';
 import PreviewView from './PreviewView.jsx';
+import { splitPastedArticle } from '../../lib/articleContent.js';
+import { applyLink as applyLinkCmd, selectLinkByHref, removeLinkByHref } from './linkCommands.js';
 import '../../styles/blog.css'; // article typography for Edit + Preview
 import './editor.css';          // editor chrome only
 
@@ -28,29 +30,66 @@ const countWords = (html) => {
 /**
  * Visual article builder — the CMS content editor.
  *
- * Produces clean semantic HTML (`value`). Edit = TipTap block editor,
- * Preview = live prose-blog render, HTML = editable CodeMirror source (kept in
- * two-way sync with the visual editor). Only writes `draft.content`.
+ * Article = HTML + CSS. Edit = TipTap block editor, Preview = live prose-blog
+ * render with the article's scoped CSS, HTML = editable CodeMirror source with
+ * a separate CSS section (kept in two-way sync with the visual editor). Pasted
+ * <style> blocks and full `<!DOCTYPE html>` documents are split so the CSS is
+ * never dropped.
  *
  * Props:
- *   value / onChange(html)         the current HTML
+ *   value / onChange(html)         the current article HTML
+ *   css / onCssChange(css)         the current article CSS (unscoped, authored)
  *   onEditorReady(editor, api)     api = { openLinkDialog } — used by the Links tab
  *   images / onImagesChange        the draft.images[] DAM registry
  *   onRequestImageUpload()         existing upload flow → { url, alt }
  *   title / excludeId              for Preview heading + internal-link search
  */
 export default function ArticleEditor({
-  value, onChange, onEditorReady, images = [], onImagesChange, onRequestImageUpload, title, excludeId,
+  value, onChange, css = '', onCssChange, onEditorReady, images = [], onImagesChange, onRequestImageUpload, title, excludeId,
 }) {
   const [mode, setMode] = useState('edit');
   const [linkOpen, setLinkOpen] = useState(false);
   const lastPushedRef = useRef(value);
 
-  const editor = useArticleEditor({ value, onChange });
+  // Ref-stable bridge for <style> pulled out of pasted HTML — merges onto the
+  // current CSS so multiple pastes accumulate instead of overwriting.
+  const cssRef = useRef({ css, onCssChange });
+  cssRef.current = { css, onCssChange };
+  const mergeExtractedCss = useCallback((extra) => {
+    const { css: current, onCssChange: cb } = cssRef.current;
+    if (!extra || !cb) return;
+    const merged = [String(current || '').trim(), extra.trim()].filter(Boolean).join('\n\n');
+    if (merged !== current) cb(merged);
+  }, []);
 
-  // Expose the editor + a small imperative API once, when it is ready.
+  const editor = useArticleEditor({ value, onChange, onPasteStyles: mergeExtractedCss });
+
+  // Remember the last non-empty selection so a link inserted from the Links tab
+  // (or after the user clicked into a dialog field) still wraps the right text.
+  const savedRangeRef = useRef(null);
   useEffect(() => {
-    if (editor && onEditorReady) onEditorReady(editor, { openLinkDialog: () => setLinkOpen(true) });
+    if (!editor) return undefined;
+    const remember = () => {
+      const { from, to, empty } = editor.state.selection;
+      if (!empty) savedRangeRef.current = { from, to };
+    };
+    editor.on('selectionUpdate', remember);
+    editor.on('blur', remember);
+    return () => { editor.off('selectionUpdate', remember); editor.off('blur', remember); };
+  }, [editor]);
+
+  // Expose the editor + a small imperative API once, when it is ready. The Links
+  // tab drives link insertion/edit/removal through this so the logic lives in
+  // one place next to the editor instance.
+  useEffect(() => {
+    if (!editor || !onEditorReady) return;
+    onEditorReady(editor, {
+      openLinkDialog: () => setLinkOpen(true),
+      applyLink: (opts) => applyLinkCmd(editor, savedRangeRef.current, opts),
+      selectLink: (href) => selectLinkByHref(editor, href),
+      removeLink: (href) => removeLinkByHref(editor, href),
+      hasSelection: () => !editor.state.selection.empty || !!savedRangeRef.current,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
@@ -85,10 +124,13 @@ export default function ArticleEditor({
   };
 
   // HTML source → visual editor. Guarded so it doesn't ping-pong with onUpdate.
+  // Any <style> / full document pasted into the HTML box is split out to CSS.
   const applyHtml = (nextHtml) => {
-    if (nextHtml === editor.getHTML()) return;
-    lastPushedRef.current = nextHtml;
-    editor.commands.setContent(nextHtml || '', { emitUpdate: true });
+    const { html, css: extractedCss } = splitPastedArticle(nextHtml, cssRef.current.css);
+    if (extractedCss !== cssRef.current.css) cssRef.current.onCssChange?.(extractedCss);
+    if (html === editor.getHTML()) return;
+    lastPushedRef.current = html;
+    editor.commands.setContent(html || '', { emitUpdate: true });
   };
 
   return (
@@ -129,10 +171,22 @@ export default function ArticleEditor({
         </div>
       </div>
 
-      {mode === 'preview' && <PreviewView html={html} title={title} />}
-      {mode === 'html' && <div className="p-3"><HtmlView html={html} onChange={applyHtml} /></div>}
+      {mode === 'preview' && <PreviewView html={html} css={css} title={title} />}
+      {mode === 'html' && (
+        <div className="p-3">
+          <HtmlView html={html} css={css} onChange={applyHtml} onCssChange={onCssChange} />
+        </div>
+      )}
 
-      {linkOpen && <LinkDialog editor={editor} excludeId={excludeId} onClose={() => setLinkOpen(false)} />}
+      {linkOpen && (
+        <LinkDialog
+          editor={editor}
+          excludeId={excludeId}
+          savedRange={savedRangeRef.current}
+          onApply={(opts) => applyLinkCmd(editor, savedRangeRef.current, opts)}
+          onClose={() => setLinkOpen(false)}
+        />
+      )}
     </div>
   );
 }

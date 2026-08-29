@@ -56,6 +56,7 @@ const tabs = [
   { id: 'profile', label: 'Personal Information', icon: UserIcon, mobileLabel: 'Profile' },
   { id: 'orders', label: 'My Orders', icon: ClipboardList, mobileLabel: 'Orders' },
   { id: 'vouchers', label: 'My Vouchers', icon: Ticket, mobileLabel: 'Vouchers' },
+  { id: 'voucher-requests', label: 'My Voucher Requests', icon: RotateCcw, mobileLabel: 'Requests' },
   { id: 'pte-bookings', label: 'PTE Booking Requests', icon: CalendarCheck, mobileLabel: 'PTE Requests' },
   { id: 'security', label: 'Security', icon: Shield, mobileLabel: 'Security' },
   { id: 'support', label: 'Support', icon: HelpCircle, mobileLabel: 'Support' },
@@ -74,6 +75,14 @@ const statusColor = (s) => {
   if (['REFUND_REQUESTED', 'TRANSFERRED'].includes(l))
     return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40';
   return 'bg-amber-50 text-amber-700 border-amber-200';
+};
+
+const VR_STATUS_META = {
+  PENDING: { label: 'Request Pending', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40' },
+  PROCESSING: { label: 'Processing', cls: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-900/40' },
+  AWAITING_PAYMENT: { label: 'Ready — Payment Required', cls: 'bg-brand-pink/10 text-brand-pink border-brand-pink/30' },
+  FULFILLED: { label: 'Voucher Ready', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40' },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-400 dark:border-neutral-700' },
 };
 
 const formatDate = (d, includeTime = false) => {
@@ -109,7 +118,9 @@ export default function AccountHome({ initialTab = 'overview' }) {
     accountStats,
     accountOrders,
     userVouchers,
+    userVoucherRequests,
     setActiveTab,
+    startCheckout,
     formatPrice,
     transferVoucher,
     markVoucherUsed,
@@ -194,6 +205,13 @@ export default function AccountHome({ initialTab = 'overview' }) {
     setActiveTab('dashboard');
     return () => setActiveTab('home');
   }, [setActiveTab]);
+
+  // Deep-link support: /account?tab=voucher-requests (etc.)
+  useEffect(() => {
+    const wanted = searchParams.get('tab');
+    if (wanted && tabs.some((t) => t.id === wanted)) setTab(wanted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     if (tab !== 'pte-bookings' || pteBookingsLoaded) return;
@@ -401,7 +419,7 @@ export default function AccountHome({ initialTab = 'overview' }) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <section className="py-8 sm:py-12 bg-white dark:bg-[#0A0A0A] min-h-[80vh] transition-colors duration-300">
+    <section className="py-8 sm:py-12 bg-white dark:bg-[#06070B] min-h-[80vh] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-7">
@@ -575,6 +593,35 @@ export default function AccountHome({ initialTab = 'overview' }) {
                   ))}
                 </div>
 
+                {(() => {
+                  const actionable = (userVoucherRequests || []).filter((r) => r.status === 'AWAITING_PAYMENT');
+                  const pending = (userVoucherRequests || []).filter((r) => r.status === 'PENDING' || r.status === 'PROCESSING');
+                  if (actionable.length === 0 && pending.length === 0) return null;
+                  return (
+                    <button
+                      onClick={() => setTab('voucher-requests')}
+                      className="w-full text-left mb-4 rounded-3xl p-5 bg-brand-pink/5 border border-brand-pink/25 hover:border-brand-pink/50 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
+                          <Ticket className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-black text-sm text-neutral-900 dark:text-white">
+                            {actionable.length > 0
+                              ? `${actionable.length} voucher ${actionable.length === 1 ? 'request is' : 'requests are'} ready for payment`
+                              : `${pending.length} voucher ${pending.length === 1 ? 'request' : 'requests'} in progress`}
+                          </p>
+                          <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
+                            {actionable.length > 0 ? 'Complete payment to receive your voucher' : "We'll notify you within 1–2 hours"}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-brand-pink shrink-0" />
+                    </button>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2 rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -709,6 +756,155 @@ export default function AccountHome({ initialTab = 'overview' }) {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── MY VOUCHER REQUESTS TAB ──────────────────────────────────── */}
+            {tab === 'voucher-requests' && (
+              <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div>
+                    <h3 className="font-black text-xl text-neutral-900 dark:text-white">My Voucher Requests</h3>
+                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      Requests for vouchers that were temporarily unavailable. You'll be notified when each one is ready.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => loadAccountData?.()}
+                    className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Refresh
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {(!userVoucherRequests || userVoucherRequests.length === 0) && (
+                    <EmptyState
+                      icon={<Ticket className="w-7 h-7 text-neutral-400" />}
+                      title="No voucher requests yet"
+                      desc="If a voucher is ever out of stock, use “Request Voucher” and track it here."
+                    />
+                  )}
+
+                  {userVoucherRequests?.map((r) => {
+                    const meta = VR_STATUS_META[r.status] || VR_STATUS_META.PENDING;
+                    const v = r.voucher;
+                    const isRevealed = revealedCodes[r.id];
+                    return (
+                      <div
+                        key={r.id}
+                        className="rounded-2xl p-5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-[#202020] pb-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-brand-pink">
+                              {r.requestId}
+                            </span>
+                            <span className="font-black text-neutral-900 dark:text-white text-sm">{r.productName}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${meta.cls}`}>
+                              {meta.label}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-neutral-400">Requested {formatDate(r.createdAt)}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                          <div>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Voucher Type</span>
+                            <span className="text-neutral-900 dark:text-white">{r.voucherType || '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Price</span>
+                            <span className="text-neutral-900 dark:text-white">{formatPrice(r.sellingPrice ?? r.priceSnapshot)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Fulfilled</span>
+                            <span className="text-neutral-900 dark:text-white">{r.fulfilledAt ? formatDate(r.fulfilledAt) : '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Status</span>
+                            <span className="text-neutral-900 dark:text-white">{meta.label}</span>
+                          </div>
+                        </div>
+
+                        {r.status === 'PENDING' && (
+                          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5" />
+                            Our team is sourcing this voucher. You'll receive it within 1–2 hours.
+                          </div>
+                        )}
+
+                        {r.status === 'AWAITING_PAYMENT' && (
+                          <div className="p-4 rounded-xl bg-brand-pink/5 border border-brand-pink/25 space-y-3">
+                            <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                              Your voucher has been sourced. Complete payment to receive it instantly in your account.
+                            </p>
+                            <button
+                              onClick={() =>
+                                startCheckout(
+                                  {
+                                    _id: r.productId,
+                                    id: r.productId,
+                                    name: r.productName,
+                                    sellingPrice: r.sellingPrice ?? r.priceSnapshot,
+                                    discountedPrice: r.sellingPrice ?? r.priceSnapshot,
+                                    originalPrice: r.originalPrice ?? r.sellingPrice ?? r.priceSnapshot,
+                                    quantity: 1,
+                                  },
+                                  { voucherRequestId: r.id }
+                                )
+                              }
+                              className="btn-pink py-2.5! px-5! text-xs! font-black inline-flex items-center gap-1.5"
+                            >
+                              Pay {formatPrice(r.sellingPrice ?? r.priceSnapshot)} & Get Voucher
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
+                        {r.status === 'FULFILLED' && v && (
+                          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+                            <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Voucher Ready</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
+                              <ShieldCheck className="w-5 h-5 text-[#6C3CE0] shrink-0" />
+                              <span className="font-mono font-black tracking-wider text-neutral-900 dark:text-white truncate text-sm">
+                                {isRevealed ? v.code : `${v.code?.slice(0, 4) || 'XXXX'}-XXXX-XXXX-XXXX`}
+                              </span>
+                              <div className="ml-auto flex items-center gap-2 shrink-0">
+                                <button onClick={() => toggleReveal(r.id)} className="p-1.5 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 text-[10px] font-black cursor-pointer">
+                                  {isRevealed ? 'HIDE' : 'REVEAL'}
+                                </button>
+                                <button onClick={() => copy(r.id, v.code)} className="p-2 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 cursor-pointer">
+                                  {copiedId === r.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
+                              {v.expiryDate && <span>Valid until {new Date(v.expiryDate).toLocaleDateString()}</span>}
+                              {r.officialWebsiteUrl && (
+                                <a href={r.officialWebsiteUrl} target="_blank" rel="noreferrer" className="text-brand-pink hover:underline flex items-center gap-1">
+                                  Redeem on official site <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                              <button onClick={() => setTab('vouchers')} className="text-brand-pink hover:underline cursor-pointer">
+                                View in My Vouchers
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {r.adminNotes && (
+                          <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 border-l-2 border-neutral-300 dark:border-[#333] pl-2.5">
+                            <strong>Note from our team:</strong> {r.adminNotes}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

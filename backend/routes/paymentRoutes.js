@@ -5,6 +5,7 @@ import {
   getPublicPaymentConfig,
   createPaymentOrder,
   verifyPayment,
+  reconcilePayment,
   getPaymentStatus,
   handleRazorpayWebhook,
 } from '../controllers/paymentController.js';
@@ -20,10 +21,20 @@ const paymentLimiter = rateLimit({
   message: { success: false, message: 'Too many payment attempts. Please wait a few minutes and try again.' },
 });
 
+// The reconcile endpoint is polled by the success page, so it gets a roomier
+// limit than the one-shot order/verify calls.
+const reconcileLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  message: { success: false, message: 'Too many status checks. Please wait a moment.' },
+});
+
 router.get('/config', getPublicPaymentConfig);
 router.post('/order', protect, paymentLimiter, createPaymentOrder);
 router.post('/verify', protect, paymentLimiter, verifyPayment);
-router.get('/order/:orderId', protect, getPaymentStatus);
+router.post('/reconcile/:orderId', protect, reconcileLimiter, reconcilePayment);
+router.get('/order/:orderId', protect, reconcileLimiter, getPaymentStatus);
 router.post('/webhook', handleRazorpayWebhook);
 
 export default router;

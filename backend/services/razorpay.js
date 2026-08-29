@@ -97,6 +97,37 @@ export const fetchRazorpayPayment = async (paymentId) => {
 };
 
 /**
+ * List every payment attempt made against a Razorpay order. Used by the
+ * reconciliation path: when the browser callback never ran (UPI redirect, tab
+ * closed) and no webhook is configured, we can still find the captured payment
+ * for an order and fulfil it. Returns [] on any gateway error (caller decides).
+ */
+export const fetchRazorpayOrderPayments = async (razorpayOrderId) => {
+  if (!isRazorpayConfigured()) {
+    throw new AppError('Payment gateway is not configured', 503, 'PAYMENT_GATEWAY_UNCONFIGURED');
+  }
+  // The id comes from our own DB (set from Razorpay's create-order response),
+  // not from user input — this is a sanity guard, not a security boundary.
+  if (!/^order_[A-Za-z0-9_]{6,}$/.test(String(razorpayOrderId || ''))) {
+    throw new AppError('Invalid razorpay order id', 400, 'INVALID_ORDER_ID');
+  }
+  let resp;
+  try {
+    resp = await fetch(`${config.razorpay.apiBase}/orders/${razorpayOrderId}/payments`, {
+      headers: { Authorization: authHeader() },
+    });
+  } catch (err) {
+    throw new AppError('Could not reach the payment gateway. Please try again.', 502, 'PAYMENT_GATEWAY_UNREACHABLE');
+  }
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    console.error(`[razorpay:fetch-order-payments:failed] status=${resp.status} error=${data?.error?.description || 'unknown'}`);
+    throw new AppError('Could not check the payment with the gateway', 502, 'PAYMENT_FETCH_FAILED');
+  }
+  return Array.isArray(data.items) ? data.items : [];
+};
+
+/**
  * Verify the signature returned to the browser by Razorpay Checkout.
  * signature = HMAC_SHA256( razorpay_order_id + "|" + razorpay_payment_id, key_secret )
  */

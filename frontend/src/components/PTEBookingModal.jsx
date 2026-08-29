@@ -293,7 +293,7 @@ export const PTEBookingModal = () => {
               </FieldGroup>
 
               {/* Terms */}
-              <label className="flex items-start gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] cursor-pointer">
+              <label className="flex items-start gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#06070B] border border-[#EAEAEA] dark:border-[#292929] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.termsAccepted}
@@ -415,7 +415,7 @@ function FieldError({ msg }) {
 }
 
 function inputClass(error) {
-  return `w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[#EAEAEA] dark:border-[#292929]'} text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all`;
+  return `w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#06070B] border ${error ? 'border-rose-400 dark:border-rose-500' : 'border-[#EAEAEA] dark:border-[#292929]'} text-sm font-semibold focus:outline-none focus:border-brand-pink transition-all`;
 }
 
 export default PTEBookingModal;

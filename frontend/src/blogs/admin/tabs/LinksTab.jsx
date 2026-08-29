@@ -3,7 +3,28 @@ import { Search, ExternalLink, Trash2, Edit2, AlertTriangle, CheckCircle2, Arrow
 import { blogApi } from '../../lib/blogApi.js';
 import { Label, Empty } from '../ui.jsx';
 
-const STATIC_ROUTES = ['/', '/blog', '/exam-booking', '/about', '/contact', '/faq', '/privacy', '/terms', '/refund-policy'];
+// Real routes from App.jsx (exact) + dynamic sections (prefix). An internal link
+// is only ever flagged "broken" when it matches NONE of these AND is absent from
+// the live server route index — a valid relative path is never a false positive.
+const STATIC_ROUTES = new Set([
+  '/', '/exam-booking', '/blog', '/guides', '/exam-guides',
+  '/refund-policy', '/policies/refund-cancellation', '/voucher-refund-policy',
+  '/how-to-reschedule-cancel-pte-exam', '/pte-rescheduling-guide', '/reschedule-pte-exam',
+  '/terms', '/terms-and-conditions', '/terms-of-service',
+  '/privacy', '/privacy-policy',
+  '/login', '/admin/login', '/register', '/forgot-password', '/reset-password',
+  '/payment/return', '/account', '/about', '/contact', '/faq',
+]);
+const DYNAMIC_PREFIXES = ['/exam-vouchers/', '/blog/', '/admin/'];
+
+const isKnownRoute = (href, routeSet) => {
+  const path = String(href || '').split('#')[0].split('?')[0].replace(/\/$/, '') || '/';
+  if (path === '' || path === '/') return true;
+  if (STATIC_ROUTES.has(path) || STATIC_ROUTES.has(`${path}/`)) return true;
+  if (DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length)) return true;
+  if (routeSet && routeSet.has(path)) return true;
+  return false;
+};
 
 const parseLinks = (html) => {
   const out = [];
@@ -22,10 +43,11 @@ const parseLinks = (html) => {
   return out;
 };
 
-export default function LinksTab({ draft, id, editorInstance, onEditLink }) {
+export default function LinksTab({ draft, id, editorApi, onEditLink }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [routeSet, setRouteSet] = useState(null);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -35,21 +57,30 @@ export default function LinksTab({ draft, id, editorInstance, onEditLink }) {
     return () => clearTimeout(t);
   }, [q, id]);
 
-  // Fetch the full route set once for broken-link detection + suggestions.
+  // Fetch the server route index once — augments the known static/dynamic routes
+  // for broken-link detection and powers the suggestions list.
   useEffect(() => {
     blogApi.internalLinkSuggestions('', id).then((res) => {
       if (res.success) {
-        const s = new Set(STATIC_ROUTES);
-        (res.data || []).forEach((r) => s.add(r.url.split('#')[0]));
+        const s = new Set();
+        (res.data || []).forEach((r) => s.add(r.url.split('#')[0].split('?')[0].replace(/\/$/, '')));
         setRouteSet(s);
       }
     });
   }, [id]);
 
+  useEffect(() => {
+    if (!notice) return undefined;
+    const t = setTimeout(() => setNotice(''), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  // Counts recompute straight from the current article HTML — no save/refresh.
   const links = useMemo(() => parseLinks(draft.content), [draft.content]);
   const internal = links.filter((l) => l.internal);
   const external = links.filter((l) => /^https?:\/\//i.test(l.href));
-  const broken = routeSet ? internal.filter((l) => !routeSet.has(l.href.split('#')[0])) : [];
+  const isBrokenLink = (l) => l.internal && !isKnownRoute(l.href, routeSet);
+  const broken = links.filter(isBrokenLink);
 
   const linkedHrefs = new Set(links.map((l) => l.href));
   const suggestions = (results.length ? results : [])
@@ -57,33 +88,31 @@ export default function LinksTab({ draft, id, editorInstance, onEditLink }) {
     .slice(0, 6);
 
   const insertAtCursor = (item) => {
-    if (!editorInstance) return;
-    const { from, to } = editorInstance.state.selection;
-    if (from === to) {
-      editorInstance.chain().focus().insertContent(`<a href="${item.url}">${item.title}</a>`).run();
-    } else {
-      editorInstance.chain().focus().extendMarkRange('link').setLink({ href: item.url }).run();
-    }
+    if (!editorApi?.applyLink) { setNotice('Open the Content tab once so the editor is ready, then try again.'); return; }
+    // Selected text in the editor → wrap it. No selection → the page title is
+    // inserted as the link text (consistent, documented behaviour — item 12).
+    const res = editorApi.applyLink({ href: item.url, text: item.title });
+    if (res?.ok === false) { setNotice(res.error || 'Could not insert the link.'); return; }
+    setNotice(
+      res?.inserted === 'text'
+        ? `Inserted “${item.title}” as a link at the cursor.`
+        : `Linked the selected text to ${item.url}.`,
+    );
   };
 
   const removeArticleLink = (link) => {
-    if (!editorInstance) { alert('Open the Content tab first.'); return; }
-    // Select the anchor by matching its href, then unset the link mark.
-    const { doc } = editorInstance.state;
-    let found = null;
-    doc.descendants((node, pos) => {
-      if (found) return false;
-      const mark = node.marks?.find((mk) => mk.type.name === 'link' && mk.attrs.href === link.href);
-      if (mark) found = { from: pos, to: pos + node.nodeSize };
-      return true;
-    });
-    if (found) {
-      editorInstance.chain().focus().setTextSelection(found).extendMarkRange('link').unsetLink().run();
-    }
+    if (!editorApi?.removeLink) { setNotice('Open the Content tab once so the editor is ready.'); return; }
+    if (editorApi.removeLink(link.href)) setNotice('Link removed.');
   };
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 text-xs font-black">
+          {notice}
+        </div>
+      )}
+
       {/* ── Analysis ── */}
       <div className="grid grid-cols-3 gap-2">
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-center">
@@ -95,7 +124,7 @@ export default function LinksTab({ draft, id, editorInstance, onEditLink }) {
           <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">External</div>
         </div>
         <div className={`p-3 rounded-xl border text-center ${broken.length ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' : 'bg-neutral-50 dark:bg-[#0E0E0E] border-[#EAEAEA] dark:border-[#292929]'}`}>
-          <div className={`font-black text-lg tabular-nums ${broken.length ? 'text-rose-600' : ''}`}>{routeSet ? broken.length : '—'}</div>
+          <div className={`font-black text-lg tabular-nums ${broken.length ? 'text-rose-600' : ''}`}>{broken.length}</div>
           <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">Broken</div>
         </div>
       </div>
@@ -105,7 +134,7 @@ export default function LinksTab({ draft, id, editorInstance, onEditLink }) {
         {links.length === 0 && <Empty title="No links yet" desc="Select text in the editor and use the link button, or insert one below." />}
         <div className="space-y-1.5">
           {links.map((l, i) => {
-            const isBroken = l.internal && routeSet && !routeSet.has(l.href.split('#')[0]);
+            const isBroken = isBrokenLink(l);
             return (
               <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
                 {l.internal ? <CornerDownRight className="w-3.5 h-3.5 text-brand-pink shrink-0" /> : <ArrowUpRight className="w-3.5 h-3.5 text-sky-500 shrink-0" />}

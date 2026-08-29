@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index.js';
+import { assertPaymentConfig } from './config/validateConfig.js';
+import { emailConfigStatus } from './services/email.js';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { seedAdmin } from './controllers/adminController.js';
@@ -22,6 +24,7 @@ import videoRoutes from './routes/videoRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 import pteBookingRoutes from './routes/pteBookingRoutes.js';
+import voucherRequestRoutes from './routes/voucherRequestRoutes.js';
 import awardRoutes from './routes/awardRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import publicBlogRoutes from './routes/publicBlogRoutes.js';
@@ -126,6 +129,14 @@ const pteBookingLimiter = rateLimit({
 app.use('/api/pte-bookings', pteBookingLimiter);
 app.use('/api/pte-booking-requests', pteBookingLimiter);
 
+const voucherRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  message: { success: false, message: 'Too many voucher requests. Please try again later.' },
+});
+app.use('/api/voucher-requests', voucherRequestLimiter);
+
 app.get('/sitemap.xml', getSitemapXML);
 app.get('/robots.txt', getRobotsTxt);
 
@@ -163,6 +174,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/pte-bookings', pteBookingRoutes);
 app.use('/api/pte-booking-requests', pteBookingRoutes);
+app.use('/api/voucher-requests', voucherRequestRoutes);
 app.use('/api/awards', awardRoutes);
 app.use('/api/admin/blogs', blogRoutes);
 app.use('/api/blog', publicBlogRoutes);
@@ -175,6 +187,8 @@ app.use('/api/*', (req, res) => {
 app.use(errorHandler);
 
 export const startServer = async () => {
+  assertPaymentConfig(); // fail fast on a mis-configured payment gateway (esp. in production)
+  emailConfigStatus();   // safe diagnostic — is transactional email able to send?
   await connectDB();
   await seedAdmin();
   await ensureDefaultPages();

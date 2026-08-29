@@ -9,6 +9,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import { NodeRange } from '@tiptap/extension-node-range';
 import Figure from './extensions/Figure.js';
 import Callout from './extensions/Callout.js';
+import { PreserveAttributes, HtmlBlock } from './extensions/htmlSupport.js';
+import { extractStyleBlocks, stripDocumentChrome, normalizeArticleTables } from '../../lib/articleContent.js';
 
 /**
  * Shared TipTap configuration for the visual article builder.
@@ -21,7 +23,7 @@ import Callout from './extensions/Callout.js';
  * The content area keeps the `prose-blog` class so Edit mode looks exactly like
  * the published article (blog.css is imported by <ArticleEditor>).
  */
-export function useArticleEditor({ value, onChange }) {
+export function useArticleEditor({ value, onChange, onPasteStyles }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -43,6 +45,8 @@ export function useArticleEditor({ value, onChange }) {
       Image.configure({ HTMLAttributes: { loading: 'lazy' } }),
       Figure,
       Callout,
+      HtmlBlock,
+      PreserveAttributes,
       Table.configure({ resizable: true, HTMLAttributes: { class: 'table-wrap' } }),
       TableRow,
       TableHeader,
@@ -54,6 +58,17 @@ export function useArticleEditor({ value, onChange }) {
       attributes: {
         class:
           'prose-blog blog-cms-content min-h-[360px] max-w-none px-10 py-6 focus:outline-none',
+      },
+      // Paste of styled / full-document HTML: pull <style> out to the article
+      // CSS field (never silently dropped — TipTap has no style node) and clean
+      // up editor table artifacts before ProseMirror parses the fragment.
+      transformPastedHTML: (html) => {
+        const { html: cleanHtml, css } = extractStyleBlocks(stripDocumentChrome(html));
+        if (css && typeof onPasteStyles === 'function') {
+          // Defer the CSS-field state update out of ProseMirror's paste handling.
+          queueMicrotask(() => onPasteStyles(css));
+        }
+        return normalizeArticleTables(cleanHtml);
       },
     },
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),

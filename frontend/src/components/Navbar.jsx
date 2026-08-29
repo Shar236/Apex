@@ -305,27 +305,21 @@ export const Navbar = () => {
                 )}
               </button>
 
-              {/* Secondary Outline CTA: Book Exam */}
-              <Button
-                onClick={handleExamBookingNav}
-                variant="secondary"
-                size="sm"
-                className="hidden lg:inline-flex"
-              >
-                <CalendarCheck className="w-3.5 h-3.5" />
-                <span>Book Exam</span>
-              </Button>
+              {/* Secondary Outline CTA: Book Exam (desktop only) */}
+              <div className="hidden lg:flex">
+                <Button onClick={handleExamBookingNav} variant="secondary" size="sm">
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  <span>Book Exam</span>
+                </Button>
+              </div>
 
-              {/* Primary Pink CTA: Buy Voucher */}
-              <Button
-                onClick={() => handleNav('shop')}
-                variant="primary"
-                size="sm"
-                className="hidden sm:inline-flex"
-              >
-                <Ticket className="w-3.5 h-3.5" />
-                <span>Buy Voucher</span>
-              </Button>
+              {/* Primary Pink CTA: Buy Voucher (tablet + up) */}
+              <div className="hidden sm:flex">
+                <Button onClick={() => handleNav('shop')} variant="primary" size="sm">
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span>Buy Voucher</span>
+                </Button>
+              </div>
 
               {/* Mobile Menu Toggle Button */}
               <button

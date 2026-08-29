@@ -34,6 +34,7 @@ const AwardsAndAchievements = lazyNamed(() => import('./components/AwardsAndAchi
 const ProductCatalog = lazyNamed(() => import('./components/ProductCatalog'), 'ProductCatalog');
 const ProductDetailModal = lazyNamed(() => import('./components/ProductDetailModal'), 'ProductDetailModal');
 const CheckoutModal = lazyNamed(() => import('./components/CheckoutModal'), 'CheckoutModal');
+const VoucherRequestModal = lazyNamed(() => import('./components/VoucherRequestModal'), 'VoucherRequestModal');
 const PTEBookingModal = lazyNamed(() => import('./components/PTEBookingModal'), 'PTEBookingModal');
 const PTEExamBookingPage = lazyNamed(() => import('./components/PTEExamBookingPage'), 'PTEExamBookingPage');
 const VoucherDetailPage = lazyNamed(() => import('./components/VoucherDetailPage'), 'VoucherDetailPage');
@@ -59,7 +60,7 @@ const BlogPostPage = lazyNamed(() => import('./blogs/pages/BlogPostPage'), 'Blog
 const BlogPreviewPage = lazyNamed(() => import('./blogs/pages/BlogPreviewPage'), 'BlogPreviewPage');
 
 const PageFallback = ({ minHeight = 'min-h-80' }) => (
-  <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500 dark:text-neutral-400`}>
+  <div className={`${minHeight} flex items-center justify-center bg-white dark:bg-[#06070B] text-neutral-500 dark:text-neutral-400`}>
     <div className="animate-pulse text-sm font-bold">Loading...</div>
   </div>
 );
@@ -271,6 +272,7 @@ const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer 
     isCheckoutOpen,
     checkoutProduct,
     isPTEBookingOpen,
+    isVoucherRequestOpen,
     isAdminOpen,
   } = useVoucher();
 
@@ -289,6 +291,11 @@ const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer 
     {isPTEBookingOpen && (
       <ModalSuspense>
         <PTEBookingModal />
+      </ModalSuspense>
+    )}
+    {isVoucherRequestOpen && (
+      <ModalSuspense>
+        <VoucherRequestModal />
       </ModalSuspense>
     )}
     <CartDrawer />
@@ -312,7 +319,7 @@ const SharedModalsAndWidgets = ({ minimal = false, floating = true, adminDrawer 
 };
 
 const MarketingLayout = () => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
     <ToastContainer />
     <main className="flex-1">
@@ -324,7 +331,7 @@ const MarketingLayout = () => (
 );
 
 const ExamBookingLayout = () => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
     <ToastContainer />
     <main className="flex-1">
@@ -336,7 +343,7 @@ const ExamBookingLayout = () => (
 );
 
 const VoucherDetailLayout = () => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
     <ToastContainer />
     <main className="flex-1 pb-20 lg:pb-0">
@@ -348,7 +355,7 @@ const VoucherDetailLayout = () => (
 );
 
 const PolicyPageLayout = ({ children }) => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
     <ToastContainer />
     <main className="flex-1">
@@ -360,7 +367,7 @@ const PolicyPageLayout = ({ children }) => (
 );
 
 const AccountLayout = () => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col justify-between antialiased transition-colors duration-300">
     <Navbar />
     <ToastContainer />
     <main className="flex-1">
@@ -372,7 +379,7 @@ const AccountLayout = () => (
 );
 
 const AdminLayout = () => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
     <ToastContainer />
     <main className="flex-1">
       <LazyPage><AdminConsole /></LazyPage>
@@ -382,7 +389,7 @@ const AdminLayout = () => (
 );
 
 const AuthLayout = ({ children }) => (
-  <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col antialiased transition-colors duration-300">
     <ToastContainer />
     <LazyPage minHeight="min-h-screen">{children}</LazyPage>
     <SharedModalsAndWidgets minimal />

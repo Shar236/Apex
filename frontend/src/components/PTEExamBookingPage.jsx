@@ -443,7 +443,7 @@ export const PTEExamBookingPage = () => {
     `https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white antialiased transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white antialiased transition-colors duration-300">
       {/* Schema.org Structured Data */}
       <script
         type="application/ld+json"
@@ -1887,7 +1887,7 @@ export const PTEExamBookingPage = () => {
       </section>
 
       {/* ── NEED HELP BEFORE YOU BOOK? (CONTACT CHANNELS) ──────────────────────── */}
-      <section className="py-12 bg-neutral-50/50 dark:bg-[#0A0A0A]">
+      <section className="py-12 bg-neutral-50/50 dark:bg-[#06070B]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-2xl bg-white dark:bg-[#141414] border border-[#EAEAEA] dark:border-[#262626]">
             <div>

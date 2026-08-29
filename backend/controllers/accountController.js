@@ -200,6 +200,11 @@ export const sendEmailOtp = async (req, res, next) => {
       return next(new AppError(message, 429, window.reason));
     }
 
+    const prevWindowState = {
+      pendingEmailRequestedAt: user.pendingEmailRequestedAt,
+      pendingEmailSendCount: user.pendingEmailSendCount,
+      pendingEmailWindowStart: user.pendingEmailWindowStart,
+    };
     const otp = generateOtp();
     user.pendingEmail = normalizedEmail;
     user.pendingEmailOtpHash = hashOtp(otp);
@@ -210,12 +215,18 @@ export const sendEmailOtp = async (req, res, next) => {
     user.pendingEmailWindowStart = window.nextWindowStart;
     await user.save();
 
-    try {
-      await sendEmailOtpCode(req.user, normalizedEmail, otp);
-    } catch (emailErr) {
-      console.error('[email-otp] Failed to send verification email:', emailErr.message);
-      return next(new AppError("We couldn't send the verification code. Please try again in a moment.", 500, 'EMAIL_SEND_FAILED'));
+    // sendEmail() returns { sent:false } instead of throwing — must check it.
+    const mail = await sendEmailOtpCode(req.user, normalizedEmail, otp);
+    if (!mail.sent) {
+      console.error(`[email:otp] flow=change-email userId=${user._id} recipient=${maskEmail(normalizedEmail)} status=failed providerError=${mail.error || 'unknown'}`);
+      // roll back the send window so the failed attempt doesn't burn the quota
+      user.pendingEmailRequestedAt = prevWindowState.pendingEmailRequestedAt;
+      user.pendingEmailSendCount = prevWindowState.pendingEmailSendCount;
+      user.pendingEmailWindowStart = prevWindowState.pendingEmailWindowStart;
+      await user.save().catch(() => {});
+      return next(new AppError('Unable to send verification email. Please try again.', 502, 'EMAIL_SEND_FAILED'));
     }
+    console.log(`[email:otp] flow=change-email userId=${user._id} recipient=${maskEmail(normalizedEmail)} status=accepted messageId=${mail.messageId || 'n/a'}`);
 
     res.json({
       success: true,
@@ -425,7 +436,12 @@ export const logout = async (req, res, next) => {
 export const dashboardStats = async (req, res, next) => {
   try {
     const uid = req.user._id;
-    const totalOrders = await Order.countDocuments({ userId: uid, orderStatus: { $nin: ['CANCELLED', 'FAILED'] } });
+    // Matches the visible "My Orders" list — request-sourced orders are excluded.
+    const totalOrders = await Order.countDocuments({
+      userId: uid,
+      orderStatus: { $nin: ['CANCELLED', 'FAILED'] },
+      source: { $ne: 'VOUCHER_REQUEST' },
+    });
     const myVouchersAgg = await VoucherCode.aggregate([
       { $match: { userId: uid } },
       {
@@ -485,7 +501,10 @@ export const myOrders = async (req, res, next) => {
   try {
     // Scoped to the authenticated user. Internal gateway plumbing
     // (processedEventIds, webhookStatus, paymentSessionId) is projected out.
-    const orders = await Order.find({ userId: req.user.id })
+    // Orders raised to fulfil a "Request Voucher" request are hidden here — the
+    // VoucherRequest is that purchase's customer-facing record (see
+    // "My Voucher Requests"). The voucher itself still appears in "My Vouchers".
+    const orders = await Order.find({ userId: req.user.id, source: { $ne: 'VOUCHER_REQUEST' } })
       .select('-processedEventIds -webhookStatus -paymentSessionId -cashfreeOrderId -__v')
       .sort({ createdAt: -1 })
       .lean();

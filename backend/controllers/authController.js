@@ -10,9 +10,35 @@ import {
   hashOtp,
   verifyOtpHash,
   checkOtpSendWindow,
+  maskEmail,
   OTP_EXPIRY_MS,
+  OTP_EXPIRY_MINUTES,
   OTP_MAX_VERIFY_ATTEMPTS,
 } from '../utils/otp.js';
+
+/**
+ * Send a registration OTP and — critically — only report success to the caller
+ * when the mail provider actually ACCEPTED the message. On failure the OTP
+ * rate-limit counters are rolled back so the user can retry immediately.
+ * Never logs the OTP.
+ */
+const dispatchRegistrationOtp = async (user, otp, prevWindowState) => {
+  const result = await sendRegistrationOtp(user, otp);
+  if (result.sent) {
+    console.log(`[email:otp] flow=register userId=${user._id} recipient=${maskEmail(user.email)} status=accepted messageId=${result.messageId || 'n/a'}`);
+    return { ok: true };
+  }
+  console.error(`[email:otp] flow=register userId=${user._id} recipient=${maskEmail(user.email)} status=failed providerError=${result.error || 'unknown'}`);
+  // Roll back the send window so the failed attempt doesn't burn the user's quota
+  // or trigger the 30s cooldown before they can legitimately retry.
+  if (prevWindowState) {
+    user.emailVerifyRequestedAt = prevWindowState.emailVerifyRequestedAt;
+    user.emailVerifySendCount = prevWindowState.emailVerifySendCount;
+    user.emailVerifyWindowStart = prevWindowState.emailVerifyWindowStart;
+    await user.save().catch(() => {});
+  }
+  return { ok: false, error: result.error };
+};
 import { validatePasswordStrength } from '../utils/password.js';
 
 export const validateRegister = [
@@ -59,9 +85,15 @@ export const register = async (req, res, next) => {
 
     let user;
     let otp;
+    let prevWindowState = null;
     if (existing && existing.emailVerified) {
       return next(new AppError('Email already registered', 409, 'DUPLICATE_EMAIL'));
     } else if (existing && !existing.emailVerified) {
+      prevWindowState = {
+        emailVerifyRequestedAt: existing.emailVerifyRequestedAt,
+        emailVerifySendCount: existing.emailVerifySendCount,
+        emailVerifyWindowStart: existing.emailVerifyWindowStart,
+      };
       // Resume an abandoned registration: refresh the details/password and resend a code
       // instead of permanently blocking this email because a prior signup was never completed.
       const window = checkOtpSendWindow(
@@ -92,24 +124,29 @@ export const register = async (req, res, next) => {
         role: 'user',
         emailVerified: false,
       });
+      // For a brand-new user the pre-attempt window state is "never sent".
+      prevWindowState = { emailVerifyRequestedAt: null, emailVerifySendCount: 0, emailVerifyWindowStart: null };
       const freshWindow = checkOtpSendWindow(null, 0, null);
       otp = applyOtp(user, freshWindow);
     }
 
     await user.save();
 
-    try {
-      await sendRegistrationOtp(user, otp);
-    } catch (emailErr) {
-      console.error('[register] Failed to send verification email:', emailErr.message);
-      return next(new AppError("We couldn't send the verification code. Please try again in a moment.", 500, 'EMAIL_SEND_FAILED'));
+    const dispatch = await dispatchRegistrationOtp(user, otp, prevWindowState);
+    if (!dispatch.ok) {
+      return next(new AppError(
+        'Unable to send verification email. Please check the address and try again.',
+        502,
+        'EMAIL_SEND_FAILED',
+      ));
     }
 
     res.status(201).json({
       success: true,
       pendingVerification: true,
       email: user.email,
-      message: `Verification code sent to ${user.email}.`,
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+      message: `We've sent a 6-digit verification code to ${maskEmail(user.email)}. It expires in ${OTP_EXPIRY_MINUTES} minutes — check your inbox and spam folder.`,
     });
   } catch (err) {
     if (err?.code === 11000) {
@@ -149,7 +186,7 @@ export const verifyRegistrationOtp = async (req, res, next) => {
     }
 
     if (!user.emailVerifyOtpExpires || user.emailVerifyOtpExpires < new Date()) {
-      return next(new AppError('The verification code has expired. Please request a new code.', 400, 'OTP_EXPIRED'));
+      return next(new AppError('This verification code has expired. Please request a new code.', 400, 'OTP_EXPIRED'));
     }
     if (user.emailVerifyOtpAttempts >= OTP_MAX_VERIFY_ATTEMPTS) {
       return next(new AppError('Too many verification attempts. Please request a new code.', 429, 'OTP_MAX_ATTEMPTS'));
@@ -168,6 +205,7 @@ export const verifyRegistrationOtp = async (req, res, next) => {
     user.emailVerifySendCount = 0;
     user.lastLoginAt = new Date();
     await user.save();
+    console.log(`[email:otp] flow=register userId=${user._id} recipient=${maskEmail(user.email)} status=verified`);
 
     sendRegistrationWelcome(safeUser(user)).catch((err) =>
       console.error('[register] Failed to send welcome email:', err.message)
@@ -202,11 +240,24 @@ export const resendRegistrationOtp = async (req, res, next) => {
       return next(new AppError(message, 429, window.reason));
     }
 
+    const prevWindowState = {
+      emailVerifyRequestedAt: user.emailVerifyRequestedAt,
+      emailVerifySendCount: user.emailVerifySendCount,
+      emailVerifyWindowStart: user.emailVerifyWindowStart,
+    };
+    // A resend explicitly invalidates the previous OTP (applyOtp overwrites the hash).
     const otp = applyOtp(user, window);
     await user.save();
 
-    await sendRegistrationOtp(user, otp);
-    res.json({ success: true, message: `Verification code sent to ${user.email}.` });
+    const dispatch = await dispatchRegistrationOtp(user, otp, prevWindowState);
+    if (!dispatch.ok) {
+      return next(new AppError('Unable to send verification email. Please try again.', 502, 'EMAIL_SEND_FAILED'));
+    }
+    res.json({
+      success: true,
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+      message: `A new 6-digit code has been sent to ${maskEmail(user.email)}. Check your inbox and spam folder.`,
+    });
   } catch (err) {
     next(err);
   }

@@ -22,6 +22,7 @@ const TABS = [
   { id: 'products', label: 'Products & Pricing', icon: <Package className="w-4 h-4" /> },
   { id: 'vouchers', label: 'Voucher Inventory', icon: <Ticket className="w-4 h-4" /> },
   { id: 'orders', label: 'Orders', icon: <ShoppingCart className="w-4 h-4" /> },
+  { id: 'voucher-requests', label: 'Voucher Requests', icon: <Ticket className="w-4 h-4" /> },
   { id: 'pte-bookings', label: 'PTE Booking Requests', icon: <CalendarCheck className="w-4 h-4" /> },
   { id: 'users', label: 'Customers', icon: <Users className="w-4 h-4" /> },
   { id: 'promotions', label: 'Promo Coupons', icon: <Tag className="w-4 h-4" /> },
@@ -61,7 +62,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
   const salesCount = notificationsData?.counts?.sales || 0;
 
   return (
-    <div className="min-h-screen bg-[#F3EEFF]/30 dark:bg-[#0A0A0A] text-neutral-900 dark:text-white flex flex-col lg:flex-row transition-colors duration-300">
+    <div className="min-h-screen bg-[#F3EEFF]/30 dark:bg-[#06070B] text-neutral-900 dark:text-white flex flex-col lg:flex-row transition-colors duration-300">
       <aside className="lg:w-72 lg:min-h-screen bg-white dark:bg-[#101010] border-r border-[#EAEAEA] dark:border-[#222] p-5 lg:sticky lg:top-0 shrink-0 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-6 lg:mb-8">
@@ -158,7 +159,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
                           ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60'
                           : n.type === 'OUT_OF_STOCK'
                           ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40'
-                          : n.type === 'LOW_STOCK'
+                          : n.type === 'LOW_STOCK' || n.type === 'VOUCHER_REQUEST'
                           ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40'
                           : 'bg-emerald-50/60 dark:bg-[#161f1a] border-emerald-200 dark:border-emerald-900/40'
                       }`}
@@ -210,6 +211,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
         {tab === 'products' && <ProductsAdmin />}
         {tab === 'vouchers' && <VouchersAdmin />}
         {tab === 'orders' && <OrdersAdmin />}
+        {tab === 'voucher-requests' && <VoucherRequestsAdmin />}
         {tab === 'pte-bookings' && <PTEBookingsAdmin />}
         {tab === 'users' && <UsersAdmin />}
         {tab === 'promotions' && <PromotionsAdmin />}
@@ -282,6 +284,7 @@ function AdminOverview({ onNavigate }) {
     { label: 'Pending Orders', value: kpi.pendingOrders || 0, icon: <Clock className="w-5 h-5" />, tint: '#F97316' },
     { label: 'Refunds Processed', value: kpi.refunds || 0, icon: <AlertTriangle className="w-5 h-5" />, tint: '#EF4444' },
     { label: 'New PTE Requests', value: kpi.newPTEBookingRequests || 0, icon: <CalendarCheck className="w-5 h-5" />, tint: '#0EA5E9', onClick: () => onNavigate?.('pte-bookings') },
+    { label: 'Open Voucher Requests', value: kpi.newVoucherRequests || 0, icon: <Ticket className="w-5 h-5" />, tint: '#EA580C', onClick: () => onNavigate?.('voucher-requests') },
   ];
 
   return (
@@ -1704,10 +1707,101 @@ function VouchersAdmin() {
   );
 }
 
+const maskCode = (code) => {
+  const c = String(code || '');
+  if (c.length <= 4) return '••••';
+  return `${c.slice(0, 2)}••••${c.slice(-2)}`;
+};
+
+function OrderDetailPanel({ order }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [reveal, setReveal] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    adminApi.order(order._id).then((res) => {
+      if (!alive) return;
+      setDetail(res.success ? res : { data: order, vouchers: [] });
+      setLoading(false);
+    });
+    return () => { alive = false; };
+  }, [order._id]);
+
+  if (loading) return <div className="p-4 text-xs font-bold text-neutral-400 animate-pulse">Loading order details…</div>;
+  const o = detail?.data || order;
+  const vouchers = detail?.vouchers || [];
+  const Field = ({ label, value, mono }) => (
+    <div>
+      <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">{label}</div>
+      <div className={`text-xs font-bold text-neutral-800 dark:text-neutral-200 break-all ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 bg-neutral-50 dark:bg-[#0E0E0E] border-t border-[#EAEAEA] dark:border-[#292929] space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <Field label="Internal Order ID" value={o._id} mono />
+        <Field label="Order No" value={o.orderNo} mono />
+        <Field label="Razorpay Order ID" value={o.razorpayOrderId} mono />
+        <Field label="Razorpay Payment ID" value={o.razorpayPaymentId || o.paymentReference} mono />
+        <Field label="Payment Provider" value={o.paymentProvider} />
+        <Field label="Amount" value={`${formatPrice(o.total)} ${o.currency || 'INR'}`} />
+        <Field label="Payment Status" value={o.paymentStatus} />
+        <Field label="Order Status" value={o.orderStatus} />
+        <Field label="Fulfillment Status" value={o.fulfillmentStatus} />
+        <Field label="Paid At" value={o.paidAt ? new Date(o.paidAt).toLocaleString() : '—'} />
+        <Field label="Email Delivery" value={`${o.emailStatus || 'PENDING'}${o.emailSentAt ? ' · ' + new Date(o.emailSentAt).toLocaleString() : ''}`} />
+        <Field label="Admin Notified" value={o.adminNotifiedAt ? new Date(o.adminNotifiedAt).toLocaleString() : '—'} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Field label="Customer" value={o.userId?.name || o.customerSnapshot?.name || o.billingDetails?.name} />
+        <Field label="Email" value={o.userId?.email || o.customerSnapshot?.email || o.billingDetails?.email} />
+        <Field label="Phone" value={o.userId?.phone || o.customerSnapshot?.phone || o.billingDetails?.phone} />
+      </div>
+
+      {o.fulfillmentError && (
+        <div className="text-[11px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-lg px-3 py-2">
+          Fulfillment error: {o.fulfillmentError}
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">
+            Voucher Codes Delivered ({vouchers.length})
+          </div>
+          {vouchers.length > 0 && (
+            <button onClick={() => setReveal((r) => !r)} className="text-[10px] font-black text-brand-pink">
+              {reveal ? 'Hide codes' : 'Reveal codes'}
+            </button>
+          )}
+        </div>
+        {vouchers.length === 0 ? (
+          <div className="text-xs font-bold text-neutral-400">
+            {o.paymentStatus === 'PAID' ? 'No voucher codes allocated to this order yet.' : 'Not fulfilled — no codes issued.'}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {vouchers.map((v) => (
+              <div key={v._id} className="flex items-center justify-between text-xs font-bold bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-lg px-3 py-2">
+                <span className="font-mono">{reveal ? v.code : maskCode(v.code)}</span>
+                <span className="text-neutral-400">{v.productId?.name || v.voucherType} · {v.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OrdersAdmin() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -1761,8 +1855,18 @@ function OrdersAdmin() {
             <tbody>
               {loading && <tr><td colSpan="9" className="p-4"><div className="h-8 bg-neutral-100 dark:bg-[#292929] rounded animate-pulse" /></td></tr>}
               {!loading && rows.map(o => (
-                <tr key={o._id} className="border-t border-[#EAEAEA] dark:border-[#292929]">
-                  <Td className="whitespace-nowrap font-black">#{o.orderNo}</Td>
+                <React.Fragment key={o._id}>
+                <tr className="border-t border-[#EAEAEA] dark:border-[#292929]">
+                  <Td className="whitespace-nowrap font-black">
+                    <button
+                      onClick={() => setExpandedId((cur) => (cur === o._id ? null : o._id))}
+                      className="inline-flex items-center gap-1 hover:text-brand-pink transition-colors cursor-pointer"
+                      title="View Razorpay IDs, fulfillment & delivered codes"
+                    >
+                      <span className={`transition-transform ${expandedId === o._id ? 'rotate-90' : ''}`}>▸</span>
+                      #{o.orderNo}
+                    </button>
+                  </Td>
                   <Td className="whitespace-nowrap">{o.userId?.name || o.customerSnapshot?.name || 'Guest'}<div className="text-[10px] text-neutral-400">{o.userId?.email || o.customerSnapshot?.email || ''}</div></Td>
                   <Td className="text-right tabular-nums">{formatPrice(o.total)}</Td>
                   <Td>{(o.items || []).length}</Td>
@@ -1788,6 +1892,14 @@ function OrdersAdmin() {
                     )}
                   </Td>
                 </tr>
+                {expandedId === o._id && (
+                  <tr>
+                    <td colSpan={9} className="p-0">
+                      <OrderDetailPanel order={o} />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -2372,6 +2484,413 @@ function PTEBookingsAdmin() {
 
 function UserIconInline() {
   return <Users className="w-3.5 h-3.5 text-neutral-400" />;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * VOUCHER REQUESTS — customers requesting vouchers with zero available codes
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const VR_STATUSES = ['PENDING', 'PROCESSING', 'AWAITING_PAYMENT', 'FULFILLED', 'CANCELLED'];
+const VR_ADMIN_STATUSES = ['PENDING', 'PROCESSING', 'AWAITING_PAYMENT', 'CANCELLED'];
+
+function VRStatusPill({ status }) {
+  const map = {
+    PENDING: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40',
+    PROCESSING: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-900/40',
+    AWAITING_PAYMENT: 'bg-brand-pink/10 text-brand-pink border-brand-pink/30',
+    FULFILLED: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40',
+    CANCELLED: 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700',
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black whitespace-nowrap ${map[status] || map.PENDING}`}>
+      {String(status || '').replace('_', ' ')}
+    </span>
+  );
+}
+
+function VoucherRequestsAdmin() {
+  const [rows, setRows] = useState([]);
+  const [stats, setStats] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [statusDraft, setStatusDraft] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Inventory + "add code" panel state for the detail modal.
+  const [inv, setInv] = useState(null);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeExpiry, setCodeExpiry] = useState('');
+  const [addingCodes, setAddingCodes] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    const params = {};
+    if (status) params.status = status;
+    if (search) params.search = search;
+    const res = await adminApi.voucherRequests(params);
+    setRows(res.data || []);
+    setStats(res.stats || {});
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const t = setTimeout(refresh, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, search]);
+
+  const loadInventory = async (productId) => {
+    setInv(null);
+    if (!productId) return;
+    const res = await adminApi.getProductInventory(productId);
+    if (res?.success) setInv(res.data?.counts || null);
+  };
+
+  const openDetail = (row) => {
+    setSelected(row);
+    setStatusDraft(row.status);
+    setNotesDraft(row.adminNotes || '');
+    setCodeInput('');
+    setCodeExpiry('');
+    const pid = row.productId?._id || row.productId;
+    loadInventory(pid);
+  };
+
+  const closeDetail = () => {
+    setSelected(null);
+    setInv(null);
+  };
+
+  const saveDetail = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const res = await adminApi.updateVoucherRequest(selected._id, {
+      status: statusDraft,
+      adminNotes: notesDraft,
+    });
+    setSaving(false);
+    if (res.success) {
+      closeDetail();
+      refresh();
+    } else {
+      alert(res.message || 'Failed to update request');
+    }
+  };
+
+  const quickStatus = async (row, newStatus) => {
+    const res = await adminApi.updateVoucherRequest(row._id, { status: newStatus });
+    if (res.success) refresh();
+    else alert(res.message || 'Failed to update request');
+  };
+
+  const addCodesForRequest = async () => {
+    if (!selected) return;
+    const codes = codeInput.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    if (codes.length === 0 || !codeExpiry) {
+      alert('Paste at least one voucher code and set an expiry date.');
+      return;
+    }
+    setAddingCodes(true);
+    const productId = selected.productId?._id || selected.productId;
+    const res = await adminApi.addVouchers({ productId, codes, expiryDate: new Date(codeExpiry) });
+    setAddingCodes(false);
+    if (res?.success) {
+      setCodeInput('');
+      await loadInventory(productId);
+      alert(`${res.added || codes.length} code(s) added to inventory. You can now mark this request "AWAITING_PAYMENT".`);
+    } else {
+      alert(res?.message || 'Failed to add voucher codes');
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    const params = {};
+    if (status) params.status = status;
+    if (search) params.search = search;
+    await adminApi.downloadExport('voucher-requests', false, params);
+    setExporting(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Voucher Requests</h1>
+          <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5] mt-1">
+            Customers who requested a voucher that had zero available codes. Source a code, add it to inventory, then mark the request ready for payment.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+          >
+            <Download className="w-4 h-4 text-brand-pink" />
+            <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={refresh}
+            className="p-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black transition-colors shadow-sm"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-4 h-4 text-neutral-400 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Total', count: stats.total || 0, tint: '#6C3CE0' },
+          { label: 'Pending', count: stats.pending || 0, tint: '#D97706' },
+          { label: 'Processing', count: stats.processing || 0, tint: '#0284C7' },
+          { label: 'Awaiting Payment', count: stats.awaitingPayment || 0, tint: '#EC4899' },
+          { label: 'Fulfilled', count: stats.fulfilled || 0, tint: '#10B981' },
+        ].map((kpi, idx) => (
+          <div key={idx} className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">{kpi.label}</div>
+            <div className="font-heading font-black text-2xl mt-1" style={{ color: kpi.tint }}>{kpi.count}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-55 px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
+          <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+          <input
+            placeholder="Search request ID, name, email, voucher..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent outline-none text-xs font-bold w-full"
+          />
+        </div>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold"
+        >
+          <option value="">All Statuses</option>
+          {VR_STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+        </select>
+      </div>
+
+      {selected && (
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 space-y-4">
+              <div>
+                <Label>Customer</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2 text-xs font-bold">
+                  <div className="text-neutral-900 dark:text-white font-black text-sm">{selected.customerName}</div>
+                  <a href={`mailto:${selected.customerEmail}`} className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 hover:text-brand-pink">
+                    <Mail className="w-3.5 h-3.5 text-neutral-400" /> {selected.customerEmail}
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <Label>Requested Voucher</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-2 text-xs font-bold">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Product:</span>
+                    <span className="font-black text-brand-pink text-right">{selected.productName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Type:</span>
+                    <span className="text-neutral-900 dark:text-white">{selected.voucherType}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Category:</span>
+                    <span className="text-neutral-900 dark:text-white">{selected.category || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">Price at request:</span>
+                    <span className="text-neutral-900 dark:text-white">{formatPrice(selected.priceSnapshot)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-neutral-200/60 dark:border-[#252525] pt-2">
+                    <span className="text-neutral-400">Available codes now:</span>
+                    <span className={`font-black ${inv && inv.available > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {inv ? inv.available : '…'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {(selected.status === 'FULFILLED' || selected.orderId) && (
+                <div>
+                  <Label>Fulfilment</Label>
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-1.5 text-xs font-bold">
+                    {selected.orderId?.orderNo && (
+                      <div className="flex justify-between"><span className="text-neutral-400">Order:</span><span className="font-mono">{selected.orderId.orderNo}</span></div>
+                    )}
+                    {selected.assignedVoucherId?.code && (
+                      <div className="flex justify-between"><span className="text-neutral-400">Voucher:</span><span className="font-mono">{selected.assignedVoucherId.code.slice(0, 4)}••••{selected.assignedVoucherId.code.slice(-4)}</span></div>
+                    )}
+                    {selected.fulfilledAt && (
+                      <div className="flex justify-between"><span className="text-neutral-400">Fulfilled:</span><span>{new Date(selected.fulfilledAt).toLocaleString()}</span></div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>Activity History</Label>
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-3 max-h-48 overflow-y-auto">
+                  {selected.activityHistory?.length ? (
+                    [...selected.activityHistory].reverse().map((act, i) => (
+                      <div key={i} className="text-[11px] font-bold border-l-2 border-brand-pink pl-2.5 py-0.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-neutral-400">
+                          <span>{new Date(act.timestamp).toLocaleString()}</span>
+                          <span className="text-[10px]">{(act.adminEmail || '').split('@')[0]}</span>
+                        </div>
+                        <div className="text-neutral-900 dark:text-white font-black">{String(act.status || '').replace('_', ' ')}</div>
+                        {act.note && <div className="text-neutral-500 font-medium">{act.note}</div>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-[11px] font-bold text-neutral-400">Submitted {new Date(selected.createdAt).toLocaleString()}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-4">
+              <div>
+                <Label>Request Status</Label>
+                <select
+                  value={statusDraft}
+                  onChange={(e) => setStatusDraft(e.target.value)}
+                  disabled={selected.status === 'FULFILLED'}
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink disabled:opacity-60"
+                >
+                  {(selected.status === 'FULFILLED' ? VR_STATUSES : VR_ADMIN_STATUSES).map((s) => (
+                    <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] font-bold text-neutral-400 mt-1.5">
+                  “Fulfilled” is set automatically once the customer completes payment — it can't be set here.
+                </p>
+              </div>
+
+              {selected.status !== 'FULFILLED' && (
+                <div className="flex flex-wrap gap-1.5">
+                  {VR_ADMIN_STATUSES.map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setStatusDraft(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-colors ${
+                        statusDraft === st
+                          ? 'bg-brand-pink text-white border-brand-pink'
+                          : 'bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-600 dark:text-neutral-300 border-[#EAEAEA] dark:border-[#292929]'
+                      }`}
+                    >
+                      {st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {selected.status !== 'FULFILLED' && (
+                <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-black text-indigo-800 dark:text-indigo-300">
+                    <Ticket className="w-4 h-4" /> Add voucher code(s) to inventory
+                  </div>
+                  <p className="text-[11px] text-indigo-700 dark:text-indigo-400 font-medium">
+                    Paste the sourced code(s) for <strong>{selected.productName}</strong>. Once inventory &gt; 0 you can set the status to “Awaiting Payment” and the customer is emailed a payment link.
+                  </p>
+                  <textarea
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    rows={3}
+                    placeholder="One code per line, or comma-separated"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-mono focus:outline-none focus:border-brand-pink"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={codeExpiry}
+                      onChange={(e) => setCodeExpiry(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-white dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCodesForRequest}
+                      disabled={addingCodes}
+                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> {addingCodes ? 'Adding…' : 'Add to Inventory'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>Admin Notes {selected.status === 'CANCELLED' ? '(sent to customer on cancel)' : ''}</Label>
+                <textarea
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  rows={4}
+                  placeholder="Internal notes / reason shared with the customer on status change"
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-medium focus:outline-none focus:border-brand-pink"
+                />
+              </div>
+            </div>
+          </div>
+        </FormCard>
+      )}
+
+      <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-bold">
+            <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
+              <tr>
+                <Th>Customer</Th>
+                <Th>Email</Th>
+                <Th>Requested Voucher</Th>
+                <Th>Requested</Th>
+                <Th>Status</Th>
+                <Th className="text-right">Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan="6" className="p-4"><div className="h-8 bg-neutral-100 dark:bg-[#292929] rounded animate-pulse" /></td></tr>}
+              {!loading && rows.map((r) => (
+                <tr key={r._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/60 dark:hover:bg-[#0E0E0E]/60">
+                  <Td className="whitespace-nowrap font-black text-neutral-900 dark:text-white">{r.customerName}</Td>
+                  <Td className="whitespace-nowrap text-neutral-500">{r.customerEmail}</Td>
+                  <Td className="whitespace-nowrap">
+                    <span className="font-black">{r.productName}</span>
+                    <span className="text-neutral-400"> · {r.voucherType}</span>
+                  </Td>
+                  <Td className="whitespace-nowrap text-neutral-500">{new Date(r.createdAt).toLocaleString()}</Td>
+                  <Td><VRStatusPill status={r.status} /></Td>
+                  <Td className="text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
+                      {r.status === 'PENDING' && (
+                        <button onClick={() => quickStatus(r, 'PROCESSING')} className="px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black">Start</button>
+                      )}
+                      <button onClick={() => openDetail(r)} className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-[10px] font-black">Open</button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading && rows.length === 0 && (
+          <Empty title="No voucher requests found" desc="When a customer requests an out-of-stock voucher it appears here." />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function UsersAdmin() {
@@ -4866,7 +5385,7 @@ function VideosAdmin() {
 
             <h3 className="font-heading font-black text-xl text-white">{previewVideo.title}</h3>
 
-            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10 shadow-xl relative flex items-center justify-center">
+            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-[#06070B] border border-white/10 shadow-xl relative flex items-center justify-center">
               <video
                 src={previewVideo.videoUrl || (previewVideo.cloudinaryPublicId ? `https://res.cloudinary.com/nbcbpuql/video/upload/${previewVideo.cloudinaryPublicId}.mp4` : '')}
                 poster={previewVideo.thumbnailUrl || previewVideo.thumbnail}
@@ -6132,7 +6651,7 @@ function WebsiteCMSAdmin() {
             <p className="text-xs text-neutral-500 font-medium">This shows how your campaign and slogans will render to visitors on the homepage.</p>
           </div>
 
-          <div className="p-6 rounded-3xl bg-slate-50 dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#292929] space-y-6">
+          <div className="p-6 rounded-3xl bg-slate-50 dark:bg-[#06070B] border border-slate-200/80 dark:border-[#292929] space-y-6">
             {activeCampaign ? (
               <div className="p-5 rounded-3xl bg-linear-to-r from-[#FFF0F5] via-rose-50 to-pink-50 dark:from-[#2A0A17] dark:via-[#1F0811] dark:to-[#16050B] border border-brand-pink/30 shadow-lg space-y-2">
                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-brand-pink text-white font-black text-xs uppercase">

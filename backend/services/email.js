@@ -43,8 +43,26 @@ const getTransport = () => {
   return transporter;
 };
 
-export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from }) => {
+/** Plain-text fallback from HTML — improves spam scoring + accessibility. */
+const htmlToText = (html) =>
+  String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+/**
+ * Send one email. NEVER throws — returns { sent:boolean, error?, info?, tag? }
+ * so callers can decide what to tell the user. `tag` is a short label used only
+ * for log correlation (e.g. 'otp', 'voucher').
+ */
+export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from, tag = 'generic' }) => {
   if (!to) {
+    console.error(`[email:failed] tag=${tag} reason=recipient-missing`);
     return { sent: false, error: 'Email recipient is missing' };
   }
 
@@ -54,23 +72,48 @@ export const sendEmail = async ({ to, subject, html, text = '', from = config.sm
     to,
     subject,
     html,
-    text,
+    text: text || htmlToText(html),
   };
   if (!transport) {
     const error = 'SMTP configuration is incomplete';
-    console.error(`[email:failed] provider=smtp recipient=${maskEmail(to)} reason=${error}`);
+    console.error(`[email:failed] tag=${tag} recipient=${maskEmail(to)} reason=${error}`);
     return { sent: false, error };
   }
   try {
     const info = await transport.sendMail(mail);
+    const rejected = (info.rejected || []).length > 0;
+    if (rejected) {
+      console.error(`[email:rejected] tag=${tag} recipient=${maskEmail(to)} response=${info.response || 'rejected'}`);
+      return { sent: false, error: `Recipient rejected by mail server: ${info.response || 'rejected'}`, info };
+    }
     console.log(
-      `[email:sent] provider=smtp recipient=${maskEmail(to)} messageId=${info.messageId || 'unknown'} response=${info.response || 'accepted'}`
+      `[email:sent] tag=${tag} recipient=${maskEmail(to)} messageId=${info.messageId || 'unknown'} response=${info.response || 'accepted'}`
     );
-    return { sent: true, info };
+    return { sent: true, info, messageId: info.messageId };
   } catch (err) {
-    console.error(`[email:failed] provider=smtp recipient=${maskEmail(to)} reason=${err.message}`);
-    return { sent: false, error: err.message };
+    // e.g. EAUTH (bad app password), ECONNECTION, ETIMEDOUT, 550 mailbox unavailable
+    console.error(`[email:failed] tag=${tag} recipient=${maskEmail(to)} code=${err.code || err.responseCode || 'ERR'} reason=${err.message}`);
+    return { sent: false, error: err.message, code: err.code || err.responseCode };
   }
+};
+
+/** Safe startup diagnostic — printed by the server on boot. Never logs secrets. */
+export const emailConfigStatus = () => {
+  const providerReady = Boolean(config.smtp.host && config.smtp.user && config.smtp.password);
+  const senderReady = Boolean(config.smtp.from);
+  const fromAddr = (config.smtp.from || '').match(/<([^>]+)>/)?.[1] || config.smtp.from || '';
+  const gmailMismatch =
+    /gmail/i.test(config.smtp.host || '') && fromAddr && config.smtp.user &&
+    fromAddr.toLowerCase() !== config.smtp.user.toLowerCase();
+  console.log(`[email] provider configured: ${providerReady ? 'yes' : 'NO'}  (${config.smtp.host || 'no host'})`);
+  console.log(`[email] sender configured:   ${senderReady ? 'yes' : 'NO'}  (${maskEmail(fromAddr) || 'no from'})`);
+  if (gmailMismatch) {
+    console.warn('[email] ⚠ SMTP_FROM address does not match SMTP_USER — Gmail will rewrite/reject. Use the same address or a verified "Send mail as" alias.');
+  }
+  if (!providerReady) {
+    console.warn('[email] ⚠ transactional email is DISABLED — OTP + voucher emails will not send. Set SMTP_HOST / SMTP_USER / SMTP_PASSWORD / SMTP_FROM.');
+  }
+  return { providerReady, senderReady, gmailMismatch };
 };
 
 const htmlWrap = (title, body) => `
@@ -735,33 +778,230 @@ export const sendPTEBookingAdminNotification = (booking) => {
   });
 };
 
-const otpCodeBlock = (otp) => `
-  <div style="text-align: center; margin: 28px 0;">
-    <span style="display: inline-block; background-color: #1a1a1a; border: 1px solid #292929; border-radius: 14px; padding: 16px 32px; font-size: 32px; font-weight: 900; letter-spacing: 10px; color: #ffffff; font-family: 'Courier New', monospace;">
-      ${otp}
-    </span>
-  </div>
-`;
+/* ══════════════════════════════════════════════════════════════════════════
+ * VOUCHER REQUEST FLOW — customer requested a voucher that had zero available
+ * codes. All of these are best-effort: the caller fires them without awaiting
+ * and logs any failure. They never throw.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const voucherRequestRow = (label, value, color = '#ffffff') => `
+  <tr>
+    <td style="font-size: 13px; color: #999999; padding-bottom: 6px;">${label}</td>
+    <td align="right" style="font-size: 13px; font-weight: 700; color: ${color}; padding-bottom: 6px;">${value}</td>
+  </tr>`;
+
+/** Customer confirmation — "we received your voucher request". */
+export const sendVoucherRequestConfirmationToCustomer = (request) => {
+  const subject = `Voucher Request Received — ${request.requestId}`;
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${request.customerName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
+      <strong style="color:#ffffff;">Voucher Currently Unavailable.</strong> This voucher is temporarily out of stock, but our team has received your request and is sourcing it now.
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #f5c045; margin: 0 0 24px 0;">
+      You will receive your voucher within <strong>1–2 hours</strong> after your request is processed.
+    </p>
+
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        ${voucherRequestRow('Request ID', request.requestId)}
+        ${voucherRequestRow('Voucher', request.productName)}
+        ${voucherRequestRow('Voucher Type', request.voucherType || 'EXAM', '#cccccc')}
+        ${voucherRequestRow('Status', 'Pending', '#f5c045')}
+        ${voucherRequestRow('Requested On', new Date(request.createdAt || Date.now()).toLocaleString('en-IN'), '#cccccc')}
+      </table>
+    </div>
+
+    <div style="background-color: #261f0a; border: 1px solid #7c5e10; border-radius: 14px; padding: 16px; font-size: 13px; color: #f5c045; text-align: center;">
+      We'll email you again as soon as your voucher is ready to purchase and deliver.
+    </div>
+  `;
+  return sendEmail({
+    to: request.customerEmail,
+    tag: 'voucher-request-received',
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/** Internal admin notification — a customer requested an out-of-stock voucher. */
+export const sendVoucherRequestAdminNotification = (request) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const subject = `🎟️ New Voucher Request — ${request.productName} (${request.requestId})`;
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff;">New Voucher Request</h2>
+    <p style="font-size: 13px; color: #f5c045; margin: 0 0 16px 0;">
+      A customer requested a voucher that currently has <strong>no available inventory</strong>. Source a code, add it to stock, then mark the request ready for payment.
+    </p>
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        ${voucherRequestRow('Customer', request.customerName)}
+        ${voucherRequestRow('Email', request.customerEmail, '#FF005C')}
+        ${voucherRequestRow('Voucher', request.productName)}
+        ${voucherRequestRow('Voucher Type', request.voucherType || 'EXAM', '#cccccc')}
+        ${voucherRequestRow('Category', request.category || '—', '#cccccc')}
+        ${voucherRequestRow('Request ID', request.requestId)}
+        ${voucherRequestRow('Requested On', new Date(request.createdAt || Date.now()).toLocaleString('en-IN'), '#cccccc')}
+      </table>
+    </div>
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 800; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 12px;">
+        Open Voucher Requests →
+      </a>
+    </div>
+  `;
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    tag: 'voucher-request-admin',
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/** Customer — the voucher has been sourced and is ready to buy. */
+export const sendVoucherRequestReadyForPaymentToCustomer = (request) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const subject = `Your Requested Voucher Is Ready to Purchase — ${request.productName}`;
+  const priceLine = request.priceSnapshot
+    ? `₹${Number(request.priceSnapshot).toLocaleString('en-IN')}`
+    : 'shown at checkout';
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${request.customerName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 20px 0;">
+      Good news — we've sourced the <strong style="color:#ffffff;">${request.productName}</strong> voucher you requested. You can now complete your purchase and it will be delivered to your account instantly after payment.
+    </p>
+
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        ${voucherRequestRow('Request ID', request.requestId)}
+        ${voucherRequestRow('Voucher', request.productName)}
+        ${voucherRequestRow('Price', priceLine, '#FF005C')}
+        ${voucherRequestRow('Status', 'Ready for payment', '#34d399')}
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 28px;">
+      <a href="${clientUrl}/account?tab=voucher-requests" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 900; font-size: 15px; text-decoration: none; padding: 16px 36px; border-radius: 14px;">
+        Complete Your Purchase →
+      </a>
+    </div>
+  `;
+  return sendEmail({
+    to: request.customerEmail,
+    tag: 'voucher-request-ready',
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/** Customer — payment captured, requested voucher delivered. */
+export const sendVoucherRequestFulfilledToCustomer = (request, voucher = null) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const subject = `🎉 Your Requested ${request.productName} Voucher Is Ready`;
+  const codeBlock = voucher?.code
+    ? `
+      <div style="background-color: #240514; border: 2px dashed #FF005C; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #FF005C; margin-bottom: 8px;">${request.productName}</div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 10px; word-break: break-all;">${voucher.code}</div>
+        ${voucher.expiryDate ? `<div style="font-size: 12px; color: #aaaaaa;">Valid Until: <strong style="color:#ffffff;">${new Date(voucher.expiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>` : ''}
+      </div>`
+    : `<div style="background-color: #261f0a; border: 1px solid #7c5e10; border-radius: 14px; padding: 16px; margin: 16px 0; font-size: 13px; color: #f5c045; text-align: center;">Your voucher code is now available in your Apex account.</div>`;
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${request.customerName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #dddddd; margin: 0 0 8px 0;">
+      Your payment is confirmed and the voucher you requested has been delivered to your account. A full purchase confirmation with redemption steps is on its way in a separate email.
+    </p>
+    ${codeBlock}
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        ${voucherRequestRow('Request ID', request.requestId)}
+        ${voucherRequestRow('Status', 'Fulfilled', '#34d399')}
+        ${request.paymentReference ? voucherRequestRow('Payment Reference', request.paymentReference, '#cccccc') : ''}
+      </table>
+    </div>
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${clientUrl}/account" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 900; font-size: 15px; text-decoration: none; padding: 16px 36px; border-radius: 14px;">
+        View My Voucher →
+      </a>
+    </div>
+  `;
+  return sendEmail({
+    to: request.customerEmail,
+    tag: 'voucher-request-fulfilled',
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/** Customer — request was closed without fulfilment. */
+export const sendVoucherRequestCancelledToCustomer = (request, reason = '') => {
+  const subject = `Update on Your Voucher Request — ${request.requestId}`;
+  const bodyHtml = `
+    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Hi ${request.customerName},</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 20px 0;">
+      We're sorry — your request for the <strong style="color:#ffffff;">${request.productName}</strong> voucher (${request.requestId}) has been cancelled${reason ? ` for the following reason: ${reason}` : ''}. If you have any questions, just reply to this email and our team will help.
+    </p>
+  `;
+  return sendEmail({
+    to: request.customerEmail,
+    tag: 'voucher-request-cancelled',
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+const OTP_EXPIRY_MINUTES = 10;
 
 /**
- * Registration email verification — 6-digit OTP sent to the address the user just registered with.
+ * Light, mostly-text HTML for verification emails. Deliverability matters far
+ * more than branding here: a plain white template with a real text/plain part
+ * (added by sendEmail) is far less likely to be spam-filtered or greylisted by
+ * corporate / university mail servers than the dark marketing template.
+ */
+const otpEmail = ({ heading, intro, otp, closing }) => `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#18181b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;">
+        <tr><td style="padding:28px 32px 8px;font-size:16px;font-weight:700;color:#18181b;">${config.business.name}</td></tr>
+        <tr><td style="padding:0 32px 24px;">
+          <h1 style="font-size:18px;font-weight:700;margin:12px 0 8px;color:#18181b;">${heading}</h1>
+          <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 20px;">${intro}</p>
+          <p style="font-size:13px;color:#71717a;margin:0 0 6px;">Your verification code is:</p>
+          <div style="font-size:30px;font-weight:700;letter-spacing:6px;color:#18181b;font-family:'Courier New',monospace;margin:0 0 16px;">${otp}</div>
+          <p style="font-size:13px;color:#71717a;margin:0 0 4px;">This code expires in ${OTP_EXPIRY_MINUTES} minutes.</p>
+          <p style="font-size:13px;color:#71717a;margin:0;">${closing}</p>
+        </td></tr>
+        <tr><td style="padding:16px 32px 28px;border-top:1px solid #e4e4e7;font-size:12px;color:#a1a1aa;">
+          Need help? Contact ${config.business.supportEmail}<br>© ${new Date().getFullYear()} ${config.business.name}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+/**
+ * Registration email verification — 6-digit OTP sent to the address the user
+ * just registered with. Returns the sendEmail result { sent, error, ... } — the
+ * caller MUST check `.sent` before telling the user the code was sent.
  */
 export const sendRegistrationOtp = (user, otp) => {
+  const text =
+    `Hello,\n\nYour ${config.business.name} verification code is:\n\n${otp}\n\n` +
+    `This code expires in ${OTP_EXPIRY_MINUTES} minutes.\n\n` +
+    `If you did not request an ${config.business.name} account, you can ignore this email.\n\nThanks,\n${config.business.name}`;
   return sendEmail({
     to: user.email,
-    subject: `Verify your email — ${config.business.name}`,
-    html: htmlWrap(
-      'Verify your email',
-      `
-      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Verify your email address</h2>
-      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
-        Hi ${user.name || 'there'}, welcome to ${config.business.name}! Enter this code to finish creating your account:
-      </p>
-      ${otpCodeBlock(otp)}
-      <p style="color: #666666; font-size: 12px; text-align: center; margin: 0;">This code expires in 5 minutes.</p>
-      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't create this account, please ignore this email.</p>
-      `
-    ),
+    tag: 'otp-register',
+    subject: `Your ${config.business.name} Verification Code`,
+    text,
+    html: otpEmail({
+      heading: 'Verify your email address',
+      intro: `Hello${user.name ? ' ' + String(user.name).split(' ')[0] : ''}, enter this code to finish creating your ${config.business.name} account.`,
+      otp,
+      closing: `If you did not request an ${config.business.name} account, you can ignore this email.`,
+    }),
   });
 };
 
@@ -769,24 +1009,21 @@ export const sendRegistrationOtp = (user, otp) => {
  * Change-email OTP — 6-digit code sent to the NEW address before the swap is applied.
  */
 export const sendEmailOtpCode = (user, newEmail, otp) => {
+  const text =
+    `Hello,\n\nYou requested to change your ${config.business.name} account email to ${newEmail}.\n\n` +
+    `Your verification code is:\n\n${otp}\n\nThis code expires in ${OTP_EXPIRY_MINUTES} minutes.\n\n` +
+    `If you did not request this change, ignore this email — your current email stays unchanged.`;
   return sendEmail({
     to: newEmail,
-    subject: `Verify your new email address — ${config.business.name}`,
-    html: htmlWrap(
-      'Verify your email',
-      `
-      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #ffffff;">Verify your new email</h2>
-      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
-        Hi ${user.name || 'there'},
-      </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #cccccc; margin: 0 0 8px 0;">
-        You requested to change your ${config.business.name} account email to <strong style="color: #ffffff;">${newEmail}</strong>. Enter this code to confirm:
-      </p>
-      ${otpCodeBlock(otp)}
-      <p style="color: #666666; font-size: 12px; text-align: center; margin: 0;">This code expires in 5 minutes.</p>
-      <p style="color: #666666; font-size: 12px; margin-top: 24px;">If you didn't request this change, please ignore this email. Your current email will remain unchanged.</p>
-      `
-    ),
+    tag: 'otp-change-email',
+    subject: `Verify your new email — ${config.business.name}`,
+    text,
+    html: otpEmail({
+      heading: 'Verify your new email address',
+      intro: `You requested to change your ${config.business.name} account email to <strong>${newEmail}</strong>. Enter this code to confirm.`,
+      otp,
+      closing: 'If you did not request this change, ignore this email — your current email stays unchanged.',
+    }),
   });
 };
 

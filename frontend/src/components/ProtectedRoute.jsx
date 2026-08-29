@@ -8,7 +8,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A] text-neutral-500">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#06070B] text-neutral-500">
         <div className="animate-pulse text-sm font-bold">Verifying authentication…</div>
       </div>
     );

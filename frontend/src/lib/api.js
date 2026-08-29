@@ -248,7 +248,11 @@ export const paymentApi = {
   // Verify the Razorpay Checkout result on the server (signature + gateway re-check).
   verify: (payload) =>
     request('/api/payments/verify', { method: 'POST', body: JSON.stringify(payload) }),
-  // Read-only server truth about an order. Never mutates anything.
+  // Self-heal: ask the server to check the gateway for a captured payment and
+  // fulfil the order (used when the Checkout callback never fired). Idempotent.
+  reconcile: (orderId) =>
+    request(`/api/payments/reconcile/${orderId}`, { method: 'POST' }),
+  // Server truth about an order (also opportunistically self-heals a PENDING order).
   getStatus: (orderId) => request(`/api/payments/order/${orderId}`),
 };
 
@@ -441,11 +445,26 @@ export const adminApi = {
   },
   getPTEBooking: (id) => request(`/api/admin/pte-bookings/${id}`),
   updatePTEBooking: (id, data) => request(`/api/admin/pte-bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  voucherRequests: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/voucher-requests${qs ? `?${qs}` : ''}`);
+  },
+  getVoucherRequest: (id) => request(`/api/admin/voucher-requests/${id}`),
+  updateVoucherRequest: (id, data) =>
+    request(`/api/admin/voucher-requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 export const pteBookingApi = {
   submit: (payload) => request('/api/pte-booking-requests', { method: 'POST', body: JSON.stringify(payload) }),
   mine: () => request('/api/pte-bookings/mine'),
+};
+
+export const voucherRequestApi = {
+  // Customer: request a voucher that currently has zero available codes.
+  submit: (productId) =>
+    request('/api/voucher-requests', { method: 'POST', body: JSON.stringify({ productId }) }),
+  // Customer: my own voucher requests.
+  mine: () => request('/api/voucher-requests/mine'),
 };
 
 export const videoApi = {

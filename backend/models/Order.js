@@ -84,6 +84,18 @@ const orderSchema = new mongoose.Schema(
         allocatedAt: { type: Date, default: Date.now },
       },
     ],
+    // Where this order originated. 'STOREFRONT' (default / normal checkout) or
+    // 'VOUCHER_REQUEST' (payment for a previously out-of-stock voucher request).
+    // Request-sourced orders are hidden from the customer "My Orders" list — the
+    // VoucherRequest is the customer-facing record — but stay fully visible in
+    // the admin console.
+    source: { type: String, default: 'STOREFRONT', index: true },
+    voucherRequestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VoucherRequest',
+      default: null,
+      index: true,
+    },
     paymentProvider: { type: String, default: null },
     paymentReference: { type: String, default: null, index: true },
     // Razorpay binding — the gateway order id we created for this internal order.

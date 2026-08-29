@@ -97,7 +97,7 @@ export const OurServicesGrid = () => {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-slate-50/80 dark:bg-[#0A0A0A] border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
+    <section className="py-16 sm:py-24 bg-slate-50/80 dark:bg-[#06070B] border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

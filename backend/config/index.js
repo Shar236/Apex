@@ -1,8 +1,25 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Always load THIS package's .env (backend/.env), regardless of the process cwd,
+// so `node server.js`, `npm --prefix backend run dev` and a container entrypoint
+// all read the same file. A hosting platform's real environment variables still
+// take precedence — dotenv never overrides an already-set var.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Razorpay test vs live is decided ENTIRELY by the key id prefix — Razorpay
+// serves the same API/checkout for both. This is the single source of truth;
+// a stale RAZORPAY_ENV can never disagree with the actual key in use.
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
+const razorpayIsLive = /^rzp_live_/.test(razorpayKeyId);
+const razorpayIsTest = /^rzp_test_/.test(razorpayKeyId);
 
 export const config = {
   port: process.env.PORT || 5000,
+  nodeEnv: (process.env.NODE_ENV || 'development').toLowerCase(),
+  isProduction: (process.env.NODE_ENV || '').toLowerCase() === 'production',
   mongodbUri:
     process.env.MONGODB_URI ||
     'mongodb+srv://sharvandev28_db_user:Fjq9DDde0TfrkZME@apexcluster.adxjwp2.mongodb.net/apex_vouchers?retryWrites=true&w=majority&appName=apexcluster',
@@ -32,13 +49,18 @@ export const config = {
 
   razorpay: {
     // Publishable — safe to send to the browser.
-    keyId: process.env.RAZORPAY_KEY_ID || '',
+    keyId: razorpayKeyId,
     // SECRET — server only. Never sent to the client, never logged.
     keySecret: process.env.RAZORPAY_KEY_SECRET || '',
     // Separate secret configured in the Razorpay dashboard for webhook signing.
-    // Falls back to keySecret only so a mis-config fails closed, not open.
+    // In development it falls back to keySecret; production REQUIRES an explicit
+    // value (enforced by assertPaymentConfig) so webhook verification is real.
     webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || '',
-    env: (process.env.RAZORPAY_ENV || 'test').toLowerCase(),
+    webhookSecretExplicit: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
+    // 'live' | 'test' | 'unknown' — derived from the key id, never trusted from env.
+    env: razorpayIsLive ? 'live' : razorpayIsTest ? 'test' : 'unknown',
+    isLive: razorpayIsLive,
+    isTest: razorpayIsTest,
     apiBase: 'https://api.razorpay.com/v1',
   },
 

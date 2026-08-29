@@ -62,6 +62,15 @@ const blogPostSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    // Article-scoped CSS, extracted from any pasted <style> and from the HTML
+    // Source view's dedicated CSS section. Stored sanitized-but-unscoped (author
+    // selectors as written); scoped under [data-blog-article="<id>"] at render
+    // time by serializePublicPost / previewBlog. `''` is the safe default for
+    // every pre-existing article — Article = HTML + CSS + structured metadata.
+    css: {
+      type: String,
+      default: '',
+    },
     coverImage: {
       type: String,
       trim: true,

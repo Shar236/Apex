@@ -40,25 +40,28 @@
 }
 
 .dark {
-  --bg-primary: #0A0A0A;
-  --bg-secondary: #111111;
-  --bg-card: #161616;
+  /* Cinematic night palette — deep near-black with a faint navy undertone
+     (not flat #000), premium "dark glass" surfaces, subtle navy-tinted borders.
+     Pink/magenta accent is unchanged. */
+  --bg-primary: #06070B;
+  --bg-secondary: #0C0E14;
+  --bg-card: #13151D;
   --text-primary: #FFFFFF;
-  --text-secondary: #94A3B8;
+  --text-secondary: #9BA4B6;
   --brand-pink: #FF005C;
   --brand-pink-hover: #E00052;
-  --soft-accent-bg: #1E293B;
-  --border-color: #262626;
+  --soft-accent-bg: #17203A;
+  --border-color: #20242F;
   color-scheme: dark;
 
-  /* Semantic tokens — dark. Real dark surfaces, not an inversion. */
-  --color-surface: #0F1115;
-  --color-surface-raised: #16181D;
-  --color-surface-sunken: #0A0B0E;
-  --color-line: #23262E;
-  --color-line-strong: #31353F;
-  --color-ink: #F4F6FB;
-  --color-ink-muted: #9AA3B4;
+  /* Semantic tokens — dark. Real layered dark surfaces, not an inversion. */
+  --color-surface: #0B0D13;
+  --color-surface-raised: #14161F;
+  --color-surface-sunken: #08090D;
+  --color-line: #20242F;
+  --color-line-strong: #2E323D;
+  --color-ink: #F5F7FC;
+  --color-ink-muted: #98A2B5;
   --color-success: #3DDC97;
 }
 
@@ -104,9 +107,45 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Never allow sideways scroll. `clip` (not `hidden`) so it doesn't create a
+   scroll container and position: sticky keeps working. */
+html {
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 .dark body {
-  background-color: #0A0A0A;
+  background-color: #06070B;
   color: #FFFFFF;
+}
+
+/* Cinematic ambient wash for night mode — a soft pink + violet aurora fixed
+   behind the whole page. Sits under all content (z-index:-1); opaque sections
+   cover it, so it reads only at section seams and through translucent surfaces. */
+.dark body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58rem 40rem at 82% -8%, rgba(255, 0, 92, 0.13), transparent 60%),
+    radial-gradient(52rem 44rem at 8% 4%, rgba(93, 63, 211, 0.12), transparent 62%),
+    radial-gradient(46rem 46rem at 50% 116%, rgba(255, 0, 92, 0.07), transparent 60%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dark body::before {
+    animation: auroraDrift 32s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes auroraDrift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-1.5%, 1.5%, 0) scale(1.05); }
 }
 
 /* Headings: Sora. Lightweight by design — a heading with no explicit weight
@@ -127,7 +166,7 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; border: 2px solid var(--bg-primary); }
-.dark ::-webkit-scrollbar-thumb { background: #334155; border: 2px solid #0A0A0A; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; border: 2px solid #06070B; }
 
 /* Custom Animations */
 @keyframes float-gentle {

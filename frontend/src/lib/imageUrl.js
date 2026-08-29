@@ -1,49 +1,99 @@
 import { imageMap } from './imageMap.js';
 
-/**
- * Pure string helpers for image delivery. No SDK, no network.
- *
- * The backend already returns Cloudinary URLs for admin/CMS content (products,
- * blogs, awards). These helpers:
- *   1. redirect known legacy local paths to their migrated Cloudinary URL
- *      (via imageMap), and
- *   2. ensure any Cloudinary URL carries an f_auto,q_auto (+ optional width)
- *      delivery transform so the browser gets an optimally sized modern format.
- *
- * Non-Cloudinary values (local `/foo.png`, external URLs, data URIs) are
- * returned unchanged, so wrapping a `src` in `imageUrl()` is always safe.
- */
+const CLOUDINARY_CLOUD_NAME = 'nbcbpuql';
 
 const isCloudinary = (url) =>
   typeof url === 'string' &&
   url.includes('res.cloudinary.com') &&
   url.includes('/upload/');
 
+const resolveSource = (src) => {
+  if (!src || typeof src !== 'string') return '';
+
+  // Explicit legacy/local mapping
+  if (imageMap[src]) {
+    return imageMap[src];
+  }
+
+  // Already a Cloudinary delivery URL
+  if (isCloudinary(src)) {
+    return src;
+  }
+
+  // Bare Cloudinary public ID
+  if (
+    !src.startsWith('/') &&
+    !src.startsWith('http://') &&
+    !src.startsWith('https://') &&
+    !src.startsWith('data:') &&
+    !src.startsWith('blob:')
+  ) {
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${src}`;
+  }
+
+  return src;
+};
+
 export const imageUrl = (src, { width } = {}) => {
-  if (!src || typeof src !== 'string') return src || '';
-  const mapped = imageMap[src] || src;
-  if (!isCloudinary(mapped)) return mapped;
+  if (!src || typeof src !== 'string') {
+    return src || '';
+  }
+
+  const mapped = resolveSource(src);
+
+  if (!isCloudinary(mapped)) {
+    return mapped;
+  }
 
   const transform = width
     ? `f_auto,q_auto,w_${Math.round(width)},c_limit`
     : 'f_auto,q_auto';
 
+  // Replace an existing Cloudinary transformation
   if (/\/upload\/[^/]*f_auto[^/]*\//.test(mapped)) {
-    return mapped.replace(/\/upload\/[^/]*f_auto[^/]*\//, `/upload/${transform}/`);
+    return mapped.replace(
+      /\/upload\/[^/]*f_auto[^/]*\//,
+      `/upload/${transform}/`
+    );
   }
-  return mapped.replace('/upload/', `/upload/${transform}/`);
+
+  // Add transformation to the delivery URL
+  return mapped.replace(
+    '/upload/',
+    `/upload/${transform}/`
+  );
 };
 
 /**
- * Responsive srcset for a Cloudinary image. Returns '' for anything else, so it
- * can be passed straight to an <img srcSet> without conditionals.
+ * Responsive Cloudinary srcSet.
+ *
+ * Returns an empty string for non-Cloudinary images.
  */
-export const cldSrcSet = (src, widths = [400, 800, 1200]) => {
-  const mapped = (src && imageMap[src]) || src;
-  if (!isCloudinary(mapped)) return '';
-  const base = mapped.replace(/\/upload\/[^/]*f_auto[^/]*\//, '/upload/');
+export const cldSrcSet = (
+  src,
+  widths = [400, 800, 1200]
+) => {
+  const mapped = resolveSource(src);
+
+  if (!isCloudinary(mapped)) {
+    return '';
+  }
+
+  // Remove existing transformation so we don't stack transformations.
+  const base = mapped.replace(
+    /\/upload\/[^/]*f_auto[^/]*\//,
+    '/upload/'
+  );
+
   return widths
-    .map((w) => `${base.replace('/upload/', `/upload/w_${w},c_limit,f_auto,q_auto/`)} ${w}w`)
+    .map((w) => {
+      const url = base.replace(
+        '/upload/',
+        `/upload/w_${w},c_limit,f_auto,q_auto/`
+      );
+
+      return `${url} ${w}w`;
+    })
     .join(', ');
 };
 

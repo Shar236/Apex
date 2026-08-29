@@ -144,26 +144,49 @@
   border-color: #27272a;
 }
 
-/* Tables inside articles — scrollable on small screens */
-.prose-blog .table-wrap,
-.prose-blog > table {
-  display: block;
+/* Tables inside articles — each table scrolls inside its OWN box on small
+ * screens (never a page-wide scrollbar). `.table-responsive` is the wrapper
+ * added at render time; `.table-wrap` is TipTap's own class — both are handled. */
+.prose-blog .table-responsive {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
   margin: 1.6em 0;
   border-radius: 14px;
   border: 1px solid #e4e4e7;
   box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.06);
 }
-.dark .prose-blog .table-wrap,
-.dark .prose-blog > table {
+.dark .prose-blog .table-responsive {
   border-color: #27272a;
+}
+.prose-blog .table-responsive > table,
+.prose-blog .table-responsive > .table-wrap {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 .prose-blog table {
   width: 100%;
-  border-collapse: collapse;
+  max-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
   font-size: 0.92em;
-  min-width: 520px;
+}
+/* A table not inside `.table-responsive` (the visual editor's Edit view, or
+ * legacy content) still gets a frame so it never looks unstyled. */
+.prose-blog > table,
+.prose-blog > .table-wrap {
+  display: block;
+  overflow-x: auto;
+  margin: 1.6em 0;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+}
+.dark .prose-blog > table,
+.dark .prose-blog > .table-wrap {
+  border-color: #27272a;
 }
 .prose-blog th {
   background: #FFF0F5;

@@ -49,7 +49,7 @@ export const LiveChatWidget = () => {
         <div className="w-80 sm:w-96 bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-[#EAEAEA] dark:border-[#292929] overflow-hidden flex flex-col h-120 animate-in slide-in-from-bottom-5 duration-200">
           
           {/* Chat Header */}
-          <div className="bg-[#111111] dark:bg-[#0A0A0A] text-white p-4 flex items-center justify-between border-b border-[#292929]">
+          <div className="bg-[#111111] dark:bg-[#06070B] text-white p-4 flex items-center justify-between border-b border-[#292929]">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <ApexLogo className="h-5" whiteText={true} />
@@ -62,7 +62,7 @@ export const LiveChatWidget = () => {
           </div>
 
           {/* Chat Messages Body */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#FFF0F5]/30 dark:bg-[#0A0A0A]/50 text-xs">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#FFF0F5]/30 dark:bg-[#06070B]/50 text-xs">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -88,7 +88,7 @@ export const LiveChatWidget = () => {
               placeholder="Ask a question about vouchers..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0A0A0A] border border-[#EAEAEA] dark:border-[#292929] text-xs font-semibold text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-brand-pink"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#06070B] border border-[#EAEAEA] dark:border-[#292929] text-xs font-semibold text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-brand-pink"
             />
             <button
               type="submit"

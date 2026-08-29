@@ -51,7 +51,8 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState('');
-  const [resendState, setResendState] = useState('idle'); // idle | sending | sent
+  const [resendState, setResendState] = useState('idle'); // idle | sending | sent | failed
+  const [resendMsg, setResendMsg] = useState('');
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -71,8 +72,14 @@ export const LoginPage = () => {
 
   const handleResendVerification = async () => {
     setResendState('sending');
-    await resendRegistrationOtp(email);
-    setResendState('sent');
+    const res = await resendRegistrationOtp(email);
+    if (res.success) {
+      setResendState('sent');
+      setResendMsg(res.message || 'Verification email sent. Check your inbox and spam folder.');
+    } else {
+      setResendState('failed');
+      setResendMsg(res.message || 'Unable to send the verification email. Please try again shortly.');
+    }
   };
 
   return (
@@ -103,14 +110,15 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={handleResendVerification}
-                disabled={resendState !== 'idle'}
+                disabled={resendState === 'sending' || resendState === 'sent'}
                 className="text-accent hover:underline font-medium disabled:opacity-60"
               >
                 {resendState === 'sending' && 'Sending…'}
-                {resendState === 'sent' && 'Verification code sent — check your inbox'}
-                {resendState === 'idle' && 'Resend verification email'}
+                {resendState === 'sent' && (resendMsg || 'Verification code sent — check your inbox & spam')}
+                {(resendState === 'idle' || resendState === 'failed') && 'Resend verification email'}
               </button>
             )}
+            {resendState === 'failed' && <p className="text-rose-600">{resendMsg}</p>}
             {resendState === 'sent' && (
               <Link
                 to="/register"
@@ -280,8 +288,10 @@ export const RegisterPage = () => {
   const [otp, setOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [resendActive, setResendActive] = useState(true);
-  const resendSeconds = useResendCountdown(resendActive);
+  const [resendKey, setResendKey] = useState(0);
+  const [resending, setResending] = useState(false);
+  const resendSeconds = useResendCountdown(step === 2, 30, resendKey);
+  const canResend = step === 2 && resendSeconds === 0 && !resending;
   const passwordError = form.password ? validatePasswordStrength(form.password) : null;
 
   const onSubmitDetails = async (e) => {
@@ -326,7 +336,7 @@ export const RegisterPage = () => {
     setLoading(false);
     if (res.success) {
       setStep(2);
-      setResendActive(true);
+      setResendKey((k) => k + 1); // start the 30s resend cooldown
     } else {
       setError(res.message || 'Registration failed');
     }
@@ -350,12 +360,22 @@ export const RegisterPage = () => {
     }
   };
 
+  const [resendNotice, setResendNotice] = useState('');
   const handleResend = async () => {
-    setResendActive(false);
+    if (!canResend) return;
+    setResending(true);
     setOtpError('');
+    setResendNotice('');
     const res = await resendRegistrationOtp(form.email);
-    if (!res.success) setOtpError(res.message || "We couldn't resend the code. Please try again.");
-    setTimeout(() => setResendActive(true), 0);
+    setResending(false);
+    if (res.success) {
+      setOtp('');
+      setResendNotice(res.message || 'A new code has been sent. Check your inbox and spam folder.');
+      setResendKey((k) => k + 1); // restart the 30s cooldown
+    } else {
+      // failed send → surface the error and leave the button enabled for retry
+      setOtpError(res.message || "We couldn't resend the code. Please try again.");
+    }
   };
 
   return (
@@ -455,9 +475,13 @@ export const RegisterPage = () => {
         <form onSubmit={onVerifyOtp} className="space-y-5">
           <p className="text-xs text-center text-ink-muted font-semibold">
             We've sent a 6-digit verification code to{' '}
-            <strong className="text-neutral-900 dark:text-white">{maskEmailForDisplay(form.email)}</strong>
+            <strong className="text-neutral-900 dark:text-white">{maskEmailForDisplay(form.email)}</strong>.
+            <br />It expires in 10 minutes — check your inbox <strong>and spam / junk folder</strong>.
           </p>
           <OtpInput value={otp} onChange={setOtp} error={otpError} disabled={verifying} />
+          {resendNotice && !otpError && (
+            <p className="text-xs text-center font-semibold text-emerald-600 dark:text-emerald-400">{resendNotice}</p>
+          )}
           <button
             disabled={verifying}
             className="w-full py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
@@ -466,12 +490,14 @@ export const RegisterPage = () => {
             {verifying ? 'Verifying…' : 'Verify OTP'}
           </button>
           <div className="text-center text-xs font-bold">
-            {resendActive ? (
+            {canResend ? (
               <button type="button" onClick={handleResend} className="text-accent hover:underline flex items-center gap-1 justify-center mx-auto">
                 <RotateCcw className="w-3 h-3" /> Resend Code
               </button>
+            ) : resending ? (
+              <span className="text-neutral-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Sending…</span>
             ) : (
-              <span className="text-neutral-400">Resend available in {resendSeconds}s</span>
+              <span className="text-neutral-400">Resend code in {resendSeconds}s</span>
             )}
           </div>
         </form>

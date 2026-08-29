@@ -22,7 +22,10 @@ export default defineConfig({
             id.includes('@lezer') ||
             id.includes('@uiw') ||
             id.includes('@marijn') ||
-            id.includes('style-mod') || id.includes('w3c-keyname') || id.includes('crelt')
+            id.includes('style-mod') || id.includes('w3c-keyname') || id.includes('crelt') ||
+            // postcss is used ONLY by the blog editor's live CSS-scoping preview
+            // — keep it in the lazy admin graph, not the eagerly-loaded vendor.
+            id.includes('/postcss/')
           ) {
             return undefined;
           }

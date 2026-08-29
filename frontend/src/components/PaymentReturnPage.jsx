@@ -30,6 +30,7 @@ export const PaymentReturnPage = () => {
   const [attempts, setAttempts] = useState(0);
   const celebrated = useRef(false);
 
+  const firstCheck = useRef(true);
   const check = useCallback(async () => {
     if (!orderId) {
       setLoading(false);
@@ -37,7 +38,13 @@ export const PaymentReturnPage = () => {
       return null;
     }
     try {
-      const res = await paymentApi.getStatus(orderId);
+      // First load: actively reconcile with the gateway (handles the case where
+      // the Checkout callback never ran). After that, plain status polling —
+      // which also self-heals a PENDING order server-side.
+      const res = firstCheck.current
+        ? await paymentApi.reconcile(orderId).catch(() => paymentApi.getStatus(orderId))
+        : await paymentApi.getStatus(orderId);
+      firstCheck.current = false;
       setLoading(false);
       if (!res?.success) {
         setError(res?.message || 'Could not load payment status.');
@@ -71,7 +78,7 @@ export const PaymentReturnPage = () => {
       if (alive && !settled) {
         const t = setInterval(() => {
           setAttempts((a) => {
-            if (a >= 5) {
+            if (a >= 10) {
               clearInterval(t);
               return a;
             }

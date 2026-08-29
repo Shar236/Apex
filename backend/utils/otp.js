@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import { config } from '../config/index.js';
 
-export const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+export const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+export const OTP_EXPIRY_MINUTES = 10;
 export const OTP_RESEND_COOLDOWN_MS = 30 * 1000; // 30 seconds
+export const OTP_RESEND_COOLDOWN_SECONDS = 30;
 export const OTP_MAX_SENDS_PER_WINDOW = 3;
 export const OTP_SEND_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 export const OTP_MAX_VERIFY_ATTEMPTS = 5;

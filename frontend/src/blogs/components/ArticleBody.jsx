@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, User, CalendarDays, Share2, ArrowRight, PenLine } from 'lucide-react';
 import { imageUrl, cldSrcSet } from '../../lib/imageUrl.js';
+import { renderArticleHtml } from '../lib/articleContent.js';
 import FaqAccordion from './FaqAccordion.jsx';
 import RelatedArticles from './RelatedArticles.jsx';
 
@@ -32,6 +33,14 @@ export default function ArticleBody({ post, relatedPosts = [] }) {
   const showUpdated =
     post.updatedAt && post.publishedAt &&
     new Date(post.updatedAt) - new Date(post.publishedAt) > 86400000;
+
+  // Article = HTML + CSS + metadata. `post.css` arrives already scoped by the
+  // server to `[data-blog-article="<id>"]` — the same id carried by the content
+  // wrapper below — so it styles only this article's body and can never reach
+  // the navbar, footer, page chrome or another post.
+  const scopeId = post._id || post.slug || '';
+  const articleCss = post.css || '';
+  const contentHtml = renderArticleHtml(post.content);
 
   return (
     <>
@@ -94,10 +103,13 @@ export default function ArticleBody({ post, relatedPosts = [] }) {
           </figure>
         )}
 
-        {/* Article content — automatic TOC scans H2/H3 inside this wrapper */}
+        {/* Article content — automatic TOC scans H2/H3 inside this wrapper.
+            `data-blog-article` is the scope root for the article's own CSS. */}
+        {articleCss && <style dangerouslySetInnerHTML={{ __html: articleCss }} />}
         <div
+          data-blog-article={scopeId}
           className="prose-blog max-w-none blog-cms-content"
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
 
         {/* Tags */}

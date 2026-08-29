@@ -26,6 +26,7 @@ import {
   listOrdersAdmin,
   updateOrderStatus,
   resendOrderEmail,
+  sendTestEmail,
   listCampaigns,
   createCampaign,
   updateCampaign,
@@ -52,6 +53,9 @@ import {
   uploadMedia,
   uploadProductLogo,
   uploadProductImage,
+  listVoucherRequestsAdmin,
+  getVoucherRequestAdmin,
+  updateVoucherRequestAdmin,
 } from '../controllers/adminController.js';
 import { getOrderByIdAdmin } from '../controllers/orderController.js';
 import {
@@ -187,7 +191,13 @@ r.get('/pte-bookings', listPTEBookingRequestsAdmin);
 r.get('/pte-bookings/:id', getPTEBookingRequestAdmin);
 r.patch('/pte-bookings/:id', updatePTEBookingRequestAdmin);
 
+r.get('/voucher-requests', listVoucherRequestsAdmin);
+r.get('/voucher-requests/:id', getVoucherRequestAdmin);
+r.patch('/voucher-requests/:id', updateVoucherRequestAdmin);
+
 r.get('/audit-logs', listAuditLogs);
 r.get('/export/:resource', exportCSV);
+
+r.post('/email/test', sendTestEmail);
 
 export default r;

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Play, Tag, Award, Mail, Calendar, Headphones, Star } from 'lucide-react';
 import { useVoucher } from '../context/VoucherContext';
-import { useTheme } from '../context/ThemeContext';
-import { DaylightHero3DGraphic } from './DaylightHero3DGraphic';
-import { NightHero3DGraphic } from './NightHero3DGraphic';
+import { HeroTrioVisual } from './HeroTrioVisual';
 import { Button } from './ui';
 
 const CampaignCountdownTimer = ({ endDate }) => {
@@ -49,7 +47,6 @@ const CampaignCountdownTimer = ({ endDate }) => {
 
 export const Hero3D = () => {
   const { setActiveTab, heroSettings, activeCampaign, benefitCards } = useVoucher();
-  const { isDark } = useTheme();
 
   const heading1 = heroSettings?.headingLine1 || 'Your Exam. Your Dream.';
   const headingHighlight = heroSettings?.headingHighlight || 'Our Vouchers.';
@@ -76,9 +73,12 @@ export const Hero3D = () => {
       : defaultBenefits;
 
   return (
-    <section className="relative overflow-hidden bg-linear-to-b from-surface-raised via-surface to-surface-raised pt-8 lg:pt-14 pb-16 border-b border-line transition-colors duration-300">
-      {/* Background Subtle Soft Glow */}
-      <div className="absolute top-0 right-1/4 w-150 h-150 bg-accent/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+    <section className="relative overflow-hidden bg-linear-to-b from-surface-raised via-surface to-surface-raised dark:from-[#0A0B12] dark:via-[#08090E] dark:to-[#0A0B12] pt-8 lg:pt-14 pb-16 border-b border-line transition-colors duration-300">
+      {/* Ambient light — subtle in light mode, cinematic in dark */}
+      <div className="absolute top-0 right-1/4 w-150 h-150 bg-accent/5 dark:bg-accent/12 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <div className="hidden dark:block absolute -bottom-24 left-[6%] w-136 h-136 rounded-full bg-[#5D3FD3]/14 blur-[130px] pointer-events-none" />
+      {/* Edge vignette so the visual melts into the dark */}
+      <div className="hidden dark:block absolute inset-0 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_35%,transparent_45%,rgba(4,5,9,0.55)_100%)]" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center">
@@ -159,9 +159,9 @@ export const Hero3D = () => {
             </div>
           </div>
 
-          {/* Right Column: Custom 3D Code Interactive Hero Graphic Component */}
+          {/* Right Column: trio hero visual (theme-aware, Framer Motion) */}
           <div className="lg:col-span-5 flex justify-center">
-            {isDark ? <NightHero3DGraphic /> : <DaylightHero3DGraphic />}
+            <HeroTrioVisual />
           </div>
         </div>
 

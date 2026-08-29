@@ -39,7 +39,7 @@ export default function ArticleLayout({ post, isPreview = false, tocScope, child
     : false;
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] text-neutral-900 dark:text-white transition-colors duration-300">
+    <div className="bg-white dark:bg-[#06070B] text-neutral-900 dark:text-white transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {isPreview && (
           <div className="mb-6 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs font-black text-center">

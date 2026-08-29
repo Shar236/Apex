@@ -24,7 +24,7 @@ import { VoucherCode } from '../models/VoucherCode.js';
 import { Order } from '../models/Order.js';
 import { User } from '../models/User.js';
 import { generateOrderNo } from '../utils/index.js';
-import { verifyPayment, getPaymentStatus, handleRazorpayWebhook, createPaymentOrder } from '../controllers/paymentController.js';
+import { verifyPayment, getPaymentStatus, handleRazorpayWebhook, createPaymentOrder, reconcilePayment } from '../controllers/paymentController.js';
 import { myVouchers, myOrders } from '../controllers/accountController.js';
 import { getOrder } from '../controllers/orderController.js';
 
@@ -57,8 +57,17 @@ const run = async (handler, { user, body = {}, params = {}, headers = {}, rawBod
 // ── Razorpay HTTP stub ──────────────────────────────────────────────────────
 const realFetch = global.fetch;
 let gatewayPaymentOverride = null; // set per-test to shape /payments/:id response
+let gatewayOrderPaymentsOverride = null; // set per-test → items[] for GET /orders/:id/payments
 global.fetch = async (url, opts) => {
   const u = String(url);
+  // GET /orders/{id}/payments  — reconciliation path
+  if (/api\.razorpay\.com\/v1\/orders\/[^/]+\/payments/.test(u)) {
+    const rzpOrderId = u.match(/\/orders\/([^/]+)\/payments/)[1];
+    const items = gatewayOrderPaymentsOverride
+      ? gatewayOrderPaymentsOverride.map((p) => ({ order_id: rzpOrderId, currency: 'INR', ...p }))
+      : [];
+    return { ok: true, status: 200, json: async () => ({ entity: 'collection', count: items.length, items }) };
+  }
   if (u.includes('api.razorpay.com/v1/payments/')) {
     const paymentId = u.split('/payments/')[1];
     const base = {
@@ -480,6 +489,87 @@ const main = async () => {
     const r5 = await run(myOrders, { user: attacker });
     const leakedOrder = (r5.res.body?.data || []).some((o) => String(o._id) === String(paidOrderId));
     ok(!leakedOrder, 'T14e attacker myOrders does NOT contain the victim order');
+  }
+
+  // ── RECONCILIATION: the self-heal path (browser callback never ran) ───────
+
+  // T20 — order PENDING + a captured gateway payment exists → reconcile fulfils
+  {
+    const order = await makePendingOrder(user, product);
+    gatewayOrderPaymentsOverride = [
+      { id: 'pay_RECON1', status: 'captured', order_id: order.razorpayOrderId, amount: order.total * 100, currency: 'INR', method: 'upi' },
+    ];
+    const { res } = await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    gatewayOrderPaymentsOverride = null;
+    const fresh = await Order.findById(order._id);
+    ok(res.body?.success && fresh.paymentStatus === 'PAID' && fresh.fulfillmentStatus === 'FULFILLED',
+      'T20  reconcile with a captured gateway payment → PAID + FULFILLED');
+    ok((await vouchersFor(order._id)) === 1, 'T20b reconcile allocated exactly 1 voucher');
+    ok(fresh.razorpayPaymentId === 'pay_RECON1', 'T20c captured payment id recorded');
+
+    // idempotent — a second reconcile / status poll must not double-allocate
+    const r2 = await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    const r3 = await run(getPaymentStatus, { user, params: { orderId: order._id.toString() } });
+    ok((await vouchersFor(order._id)) === 1 && r2.res.body?.success && r3.res.body?.success,
+      'T20d repeat reconcile + status poll → still exactly 1 voucher');
+  }
+
+  // T21 — order PENDING, gateway has only a FAILED payment → no voucher, order FAILED
+  {
+    const order = await makePendingOrder(user, product);
+    gatewayOrderPaymentsOverride = [
+      { id: 'pay_FAIL', status: 'failed', order_id: order.razorpayOrderId, amount: order.total * 100, currency: 'INR' },
+    ];
+    await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    gatewayOrderPaymentsOverride = null;
+    const fresh = await Order.findById(order._id);
+    ok(fresh.paymentStatus === 'FAILED' && (await vouchersFor(order._id)) === 0,
+      'T21  reconcile with only a failed payment → order FAILED, 0 vouchers');
+  }
+
+  // T22 — order PENDING, gateway has NO payment yet → stays PENDING, 0 vouchers
+  {
+    const order = await makePendingOrder(user, product);
+    gatewayOrderPaymentsOverride = [];
+    const { res } = await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    gatewayOrderPaymentsOverride = null;
+    const fresh = await Order.findById(order._id);
+    ok(res.body?.pending === true && fresh.paymentStatus === 'PENDING' && (await vouchersFor(order._id)) === 0,
+      'T22  reconcile with no gateway payment → PENDING, 0 vouchers');
+  }
+
+  // T23 — gateway captured but amount mismatch → NOT fulfilled
+  {
+    const order = await makePendingOrder(user, product);
+    gatewayOrderPaymentsOverride = [
+      { id: 'pay_WRONGAMT', status: 'captured', order_id: order.razorpayOrderId, amount: 1, currency: 'INR' },
+    ];
+    await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    gatewayOrderPaymentsOverride = null;
+    ok((await Order.findById(order._id)).paymentStatus === 'PENDING' && (await vouchersFor(order._id)) === 0,
+      'T23  reconcile: captured payment with wrong amount → not fulfilled');
+  }
+
+  // T24 — CANCELLED order with a captured gateway payment → NOT auto-fulfilled
+  {
+    const order = await makePendingOrder(user, product);
+    await Order.updateOne({ _id: order._id }, { $set: { paymentStatus: 'CANCELLED', orderStatus: 'CANCELLED' } });
+    gatewayOrderPaymentsOverride = [
+      { id: 'pay_LATE', status: 'captured', order_id: order.razorpayOrderId, amount: order.total * 100, currency: 'INR' },
+    ];
+    const { res } = await run(reconcilePayment, { user, params: { orderId: order._id.toString() } });
+    gatewayOrderPaymentsOverride = null;
+    const fresh = await Order.findById(order._id);
+    ok(fresh.paymentStatus === 'CANCELLED' && (await vouchersFor(order._id)) === 0 && res.body?.notCollectable === true,
+      'T24  reconcile: CANCELLED order + captured payment → not fulfilled, flagged for admin');
+  }
+
+  // T25 — reconcile enforces ownership (IDOR)
+  {
+    const order = await makePendingOrder(user, product);
+    const { res, err } = await run(reconcilePayment, { user: attacker, params: { orderId: order._id.toString() } });
+    ok((err && err.code === 'ORDER_FORBIDDEN') || res.statusCode === 403,
+      'T25  reconcile for another user → ORDER_FORBIDDEN');
   }
 
   // T15 — voucher/order responses never leak the Razorpay secret

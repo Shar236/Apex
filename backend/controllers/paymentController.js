@@ -1,6 +1,7 @@
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
+import { VoucherRequest } from '../models/VoucherRequest.js';
 import { Promotion } from '../models/Promotion.js';
 import { Campaign } from '../models/Campaign.js';
 import { AuditLog } from '../models/AuditLog.js';
@@ -14,15 +15,35 @@ import {
   sendAdminEmailDeliveryFailureAlert,
 } from '../services/email.js';
 import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
+import { markVoucherRequestFulfilled } from '../services/voucherRequestService.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
 import {
   isRazorpayConfigured,
   createRazorpayOrder,
   fetchRazorpayPayment,
+  fetchRazorpayOrderPayments,
   verifyCheckoutSignature,
   verifyWebhookSignature,
 } from '../services/razorpay.js';
+import { assertPaymentOrderAllowed } from '../config/validateConfig.js';
+
+/**
+ * Structured, secret-safe fulfilment trace. Logs only identifiers + statuses —
+ * never a full voucher code, key secret, webhook secret or customer PII.
+ */
+const fx = (stage, order, extra = {}) => {
+  const safe = { ...extra };
+  if (safe.code) safe.code = String(safe.code).replace(/.(?=.{4})/g, '•'); // just in case
+  console.log(
+    `[fulfillment] ${stage}` +
+      ` order=${order?.orderNo || order?._id || '?'}` +
+      ` rzpOrder=${order?.razorpayOrderId || '-'}` +
+      ` rzpPayment=${order?.razorpayPaymentId || safe.razorpayPaymentId || '-'}` +
+      ` pay=${order?.paymentStatus || '-'}/${order?.orderStatus || '-'}/${order?.fulfillmentStatus || '-'}` +
+      (Object.keys(safe).length ? ` ${JSON.stringify(safe)}` : ''),
+  );
+};
 
 const MAX_LINE_ITEMS = 20;
 const MAX_LINE_ITEM_QUANTITY = 50;
@@ -209,8 +230,11 @@ const publicVoucherList = async (order) => {
  * - Sends the confirmation email safely (failure never un-pays the order).
  * ──────────────────────────────────────────────────────────────────────────── */
 const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, eventId }) => {
+  fx('fulfill:enter', order, { source, razorpayPaymentId: razorpayPaymentId || null });
+
   // Idempotency: already fully done.
   if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
+    fx('fulfill:already-fulfilled', order, { source });
     return { alreadyFulfilled: true, vouchers: await publicVoucherList(order), order };
   }
 
@@ -240,8 +264,10 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
 
   // If we didn't win the claim, another path is (or already finished) fulfilling.
   if (!claimed) {
+    fx('fulfill:claim-lost', working, { source });
     return { alreadyFulfilled: true, vouchers: await publicVoucherList(working), order: working };
   }
+  fx('fulfill:claimed PENDING->PAID', working, { source });
 
   await AuditLog.create({
     adminEmail: user?.email || working.customerSnapshot?.email || 'system@apexvouchers.in',
@@ -271,6 +297,7 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
       await session.endSession();
     }
   } catch (allocErr) {
+    fx('fulfill:allocation-FAILED', working, { source, error: allocErr.message, code: allocErr.code });
     working.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
     working.fulfillmentStatus =
       allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
@@ -293,13 +320,133 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   }
 
   const enriched = enrichVouchers(working, vouchers);
+  fx('fulfill:allocated', working, { source, voucherCount: enriched.length });
 
   // One fulfillment event → customer email + admin sale notification.
   // Both are best-effort and CANNOT change the PAID / FULFILLED state.
   await notifyAdminSaleOnce(user, working, enriched);
   await deliverOrderEmailSafe(user, working, enriched);
 
+  // Close out a "Request Voucher" request if this order was raised to fulfil one.
+  // Best-effort — never affects the PAID / FULFILLED state.
+  if (working.voucherRequestId) {
+    await markVoucherRequestFulfilled({ order: working, voucher: vouchers[0], user }).catch((err) =>
+      console.error(`[voucher-request:fulfill-hook] order=${working.orderNo}: ${err.message}`),
+    );
+  }
+
+  fx('fulfill:done', working, { source, emailStatus: working.emailStatus, adminNotified: !!working.adminNotifiedAt });
+
   return { alreadyFulfilled: false, vouchers: enriched, order: working };
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * RECONCILIATION — the safety net when neither the browser callback nor a
+ * webhook delivered the result (UPI redirect, tab closed mid-payment, webhook
+ * not yet configured, webhook delayed).
+ *
+ * Given an internal order that is still unpaid but has a Razorpay order id, ask
+ * Razorpay directly which payments exist for it, and — if a genuine captured
+ * payment for the exact amount/currency is found — run the SAME single
+ * fulfilment gate. Read-only against our DB until a real captured payment is
+ * confirmed. Never fulfils a CANCELLED / REFUNDED order (that was a deliberate
+ * state change) — instead it raises a loud admin alert so the money can be
+ * refunded or the order re-opened.
+ * ──────────────────────────────────────────────────────────────────────────── */
+export const reconcileOrderPayment = async ({ order, user, source = 'reconcile', dryRun = false }) => {
+  // Already done.
+  if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
+    return { reconciled: true, alreadyFulfilled: true, order, vouchers: dryRun ? [] : await publicVoucherList(order) };
+  }
+  if (!order.razorpayOrderId) {
+    return { reconciled: false, reason: 'NO_GATEWAY_ORDER', order };
+  }
+  if (!isRazorpayConfigured()) {
+    return { reconciled: false, reason: 'GATEWAY_UNCONFIGURED', order };
+  }
+
+  fx('reconcile:enter', order, { source });
+
+  let payments = [];
+  try {
+    payments = await fetchRazorpayOrderPayments(order.razorpayOrderId);
+  } catch (err) {
+    fx('reconcile:gateway-error', order, { source, error: err.message });
+    return { reconciled: false, reason: 'GATEWAY_ERROR', order };
+  }
+
+  const expectedPaise = Math.round(order.total * 100);
+  const expectedCurrency = String(order.currency || 'INR').toUpperCase();
+  const captured = payments.find(
+    (p) =>
+      p.status === 'captured' &&
+      p.order_id === order.razorpayOrderId &&
+      Number(p.amount) === expectedPaise &&
+      String(p.currency || 'INR').toUpperCase() === expectedCurrency,
+  );
+  const amountMismatchCapture = payments.find(
+    (p) => p.status === 'captured' && p.order_id === order.razorpayOrderId && Number(p.amount) !== expectedPaise,
+  );
+
+  fx('reconcile:gateway-result', order, {
+    source,
+    attempts: payments.length,
+    statuses: payments.map((p) => p.status).join(',') || 'none',
+    captured: !!captured,
+  });
+
+  // A captured payment exists but the order is no longer collectable → do NOT
+  // silently fulfil; a human must refund or re-open it.
+  if ((captured || amountMismatchCapture) && !['PENDING'].includes(order.paymentStatus)) {
+    if (dryRun) {
+      return { reconciled: false, reason: 'ORDER_NOT_COLLECTABLE', capturedPaymentId: (captured || amountMismatchCapture).id, order };
+    }
+    await AuditLog.create({
+      adminEmail: 'reconcile@apexvouchers.in',
+      action: 'PAID_ORDER_NOT_COLLECTABLE',
+      resourceType: 'Order',
+      resourceId: order._id.toString(),
+      details: {
+        orderNo: order.orderNo,
+        orderPaymentStatus: order.paymentStatus,
+        orderStatus: order.orderStatus,
+        razorpayOrderId: order.razorpayOrderId,
+        capturedPaymentId: (captured || amountMismatchCapture).id,
+        amountMismatch: !captured,
+      },
+    }).catch(() => {});
+    try {
+      await sendAdminVoucherAssignmentFailureAlert(
+        order,
+        `A captured Razorpay payment (${(captured || amountMismatchCapture).id}) exists for order ${order.orderNo}, but the order is ${order.paymentStatus}/${order.orderStatus}. Refund the customer or re-open and fulfil the order.`,
+      );
+    } catch {}
+    fx('reconcile:paid-order-not-collectable', order, { source, capturedPaymentId: (captured || amountMismatchCapture).id });
+    return { reconciled: false, reason: 'ORDER_NOT_COLLECTABLE', capturedPaymentId: (captured || amountMismatchCapture).id, order };
+  }
+
+  if (captured) {
+    if (dryRun) return { reconciled: true, wouldFulfil: true, razorpayPaymentId: captured.id, order };
+    fx('reconcile:captured-found → fulfilling', order, { source, razorpayPaymentId: captured.id });
+    const result = await fulfillVerifiedOrder({ order, user, razorpayPaymentId: captured.id, source });
+    return { reconciled: true, ...result };
+  }
+
+  // No captured payment. If every attempt failed and the order is still PENDING,
+  // record the failure (atomic, only from PENDING) so the UI stops "processing".
+  const hasOnlyFailures = payments.length > 0 && payments.every((p) => ['failed'].includes(p.status));
+  if (hasOnlyFailures && order.paymentStatus === 'PENDING') {
+    if (dryRun) return { reconciled: true, wouldFail: true, order };
+    await Order.updateOne(
+      { _id: order._id, paymentStatus: 'PENDING' },
+      { $set: { paymentStatus: 'FAILED', orderStatus: 'FAILED', fulfillmentStatus: 'FAILED' } },
+    );
+    fx('reconcile:marked-failed', order, { source });
+    const fresh = await Order.findById(order._id);
+    return { reconciled: true, failed: true, order: fresh, vouchers: [] };
+  }
+
+  return { reconciled: false, reason: payments.length ? 'NO_CAPTURED_PAYMENT' : 'NO_PAYMENT_YET', order };
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -313,7 +460,8 @@ export const getPublicPaymentConfig = (_req, res) => {
     configured: isRazorpayConfigured(),
     keyId: config.razorpay.keyId || null, // publishable key — safe for the browser
     currency: 'INR',
-    env: config.razorpay.env,
+    env: config.razorpay.env, // 'live' | 'test' | 'unknown' — derived from the key id
+    live: config.razorpay.isLive,
   });
 };
 
@@ -325,11 +473,38 @@ export const getPublicPaymentConfig = (_req, res) => {
 export const createPaymentOrder = async (req, res, next) => {
   let session;
   try {
-    if (!isRazorpayConfigured()) {
-      return next(new AppError('Online payment is temporarily unavailable. Please try again later.', 503, 'PAYMENT_GATEWAY_UNCONFIGURED'));
+    const gate = assertPaymentOrderAllowed();
+    if (!gate.ok) {
+      console.error(`[payment:order:blocked] ${gate.code}`);
+      return next(new AppError('Online payment is temporarily unavailable. Please try again later.', 503, gate.code));
     }
 
-    const { items, promoCode, billing, paymentMethod } = req.body || {};
+    let { items, promoCode, billing, paymentMethod } = req.body || {};
+    const { voucherRequestId } = req.body || {};
+
+    // Payment for a previously out-of-stock voucher request: trust the request,
+    // not the client. The customer pays the current price for exactly one code
+    // of the requested product.
+    let voucherRequest = null;
+    if (voucherRequestId) {
+      if (!isValidObjectId(voucherRequestId)) {
+        return next(new AppError('Invalid voucher request id', 400, 'INVALID_REQUEST_ID'));
+      }
+      voucherRequest = await VoucherRequest.findById(voucherRequestId);
+      if (!voucherRequest || String(voucherRequest.userId) !== String(req.user.id)) {
+        return next(new AppError('Voucher request not found', 404, 'VOUCHER_REQUEST_NOT_FOUND'));
+      }
+      if (voucherRequest.status === 'FULFILLED') {
+        return next(new AppError('This voucher request has already been fulfilled', 409, 'REQUEST_ALREADY_FULFILLED'));
+      }
+      if (voucherRequest.status !== 'AWAITING_PAYMENT') {
+        return next(new AppError('This voucher request is not ready for payment yet', 409, 'REQUEST_NOT_PAYABLE'));
+      }
+      // Ignore any client-supplied items — the request defines the purchase.
+      items = [{ productId: String(voucherRequest.productId), quantity: 1 }];
+      promoCode = null;
+    }
+
     if (!Array.isArray(items) || items.length === 0) {
       return next(new AppError('Items required', 400, 'ITEMS_REQUIRED'));
     }
@@ -383,6 +558,8 @@ export const createPaymentOrder = async (req, res, next) => {
       paymentStatus: 'PENDING',
       orderStatus: 'PAYMENT_PENDING',
       fulfillmentStatus: 'PENDING',
+      source: voucherRequest ? 'VOUCHER_REQUEST' : 'STOREFRONT',
+      voucherRequestId: voucherRequest?._id || null,
       paymentProvider: 'razorpay',
       paymentMethod: paymentMethod || 'upi',
       billingDetails: {
@@ -432,6 +609,13 @@ export const createPaymentOrder = async (req, res, next) => {
 
     order.razorpayOrderId = rzpOrder.id;
     await order.save();
+
+    if (voucherRequest) {
+      await VoucherRequest.updateOne(
+        { _id: voucherRequest._id },
+        { $set: { orderId: order._id } }
+      ).catch(() => {});
+    }
 
     res.status(201).json({
       success: true,
@@ -485,6 +669,7 @@ export const verifyPayment = async (req, res, next) => {
     if (String(order.userId) !== String(req.user.id)) {
       return next(new AppError('Not authorized to access this order', 403, 'ORDER_FORBIDDEN'));
     }
+    fx('verify:enter', order, { hasSig: !!razorpaySignature });
 
     // Idempotent short-circuit.
     if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
@@ -529,6 +714,7 @@ export const verifyPayment = async (req, res, next) => {
     const okCurrency = String(payment.currency).toUpperCase() === String(order.currency || 'INR').toUpperCase();
 
     if (!okStatus || !okOrder || !okAmount || !okCurrency) {
+      fx('verify:REJECTED gateway-mismatch', order, { paymentStatus: payment.status, okStatus, okOrder, okAmount, okCurrency });
       await AuditLog.create({
         adminEmail: req.user.email || 'system@apexvouchers.in',
         action: 'PAYMENT_VERIFY_REJECTED',
@@ -562,6 +748,7 @@ export const verifyPayment = async (req, res, next) => {
       razorpayPaymentId,
       source: 'verify',
     });
+    fx('verify:done', result.order, { needsAllocation: !!result.needsAllocation, vouchers: (result.vouchers || []).length });
 
     if (result.needsAllocation) {
       return res.json({
@@ -601,19 +788,119 @@ export const verifyPayment = async (req, res, next) => {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
+ * POST /api/payments/reconcile/:orderId   (auth required)
+ * The self-heal path. Called by the success / return page when it sees an
+ * unpaid order — asks Razorpay directly whether a captured payment exists and,
+ * if so, runs the SAME fulfilment gate. Safe to call repeatedly (idempotent).
+ * Requires nothing from the browser except the order id.
+ * ══════════════════════════════════════════════════════════════════════════ */
+const reconcileLocks = new Set(); // in-process guard against 2s-poll stampede
+
+export const reconcilePayment = async (req, res, next) => {
+  const { orderId } = req.params;
+  try {
+    const q = isValidObjectId(orderId) ? { _id: orderId } : { orderNo: orderId };
+    const order = await Order.findOne(q);
+    if (!order) return next(new AppError('Order not found', 404, 'ORDER_NOT_FOUND'));
+    if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
+      return next(new AppError('Not authorized to access this order', 403, 'ORDER_FORBIDDEN'));
+    }
+
+    const key = order._id.toString();
+    if (reconcileLocks.has(key)) {
+      return res.json({ success: true, pending: true, message: 'Still confirming your payment…', ...statusPayload(order, []) });
+    }
+    reconcileLocks.add(key);
+    let result;
+    try {
+      result = await reconcileOrderPayment({ order, user: req.user, source: 'reconcile' });
+    } finally {
+      reconcileLocks.delete(key);
+    }
+
+    const fresh = result.order || (await Order.findById(order._id));
+    const fulfilled =
+      fresh.paymentStatus === 'PAID' &&
+      (fresh.orderStatus === 'FULFILLED' || fresh.fulfillmentStatus === 'FULFILLED');
+    const vouchers = fulfilled ? await publicVoucherList(fresh) : [];
+
+    return res.json({
+      success: true,
+      reconciled: !!result.reconciled,
+      pending: !fulfilled && !result.failed && fresh.paymentStatus === 'PENDING',
+      needsAllocation: fresh.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
+      notCollectable: result.reason === 'ORDER_NOT_COLLECTABLE',
+      message: fulfilled
+        ? 'Payment confirmed — your voucher is ready.'
+        : result.failed
+          ? 'This payment did not complete. No voucher was issued.'
+          : result.reason === 'ORDER_NOT_COLLECTABLE'
+            ? 'We received a payment but this order is closed — our team has been alerted.'
+            : 'Payment not confirmed yet. If money was deducted your voucher will appear here shortly.',
+      ...statusPayload(fresh, vouchers),
+      vouchers,
+    });
+  } catch (err) {
+    reconcileLocks.delete(String(orderId));
+    next(err);
+  }
+};
+
+// Shared status projection so /status, /verify and /reconcile agree.
+const statusPayload = (order, vouchers = []) => ({
+  paymentStatus: order.paymentStatus,
+  orderStatus: order.orderStatus,
+  fulfillmentStatus: order.fulfillmentStatus,
+  emailStatus: order.emailStatus,
+  data: {
+    orderNo: order.orderNo,
+    total: order.total,
+    currency: order.currency,
+    paymentStatus: order.paymentStatus,
+    orderStatus: order.orderStatus,
+    fulfillmentStatus: order.fulfillmentStatus,
+    emailStatus: order.emailStatus,
+    paymentReference: order.razorpayPaymentId || order.paymentReference || null,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt,
+  },
+  vouchers,
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
  * GET /api/payments/order/:orderId   (auth required)
- * READ-ONLY. Returns the server's truth about an order. Never mutates state,
- * never fulfils. Safe to poll / refresh / open directly.
+ * Returns the server's truth about an order. If the order is still PENDING but
+ * has a Razorpay order id, it opportunistically reconciles first (so a polling
+ * success page self-heals even with no webhook). It never trusts the browser
+ * and never fulfils on anything but a gateway-confirmed captured payment.
  * ══════════════════════════════════════════════════════════════════════════ */
 export const getPaymentStatus = async (req, res, next) => {
   try {
     const { orderId } = req.params;
     const q = isValidObjectId(orderId) ? { _id: orderId } : { orderNo: orderId };
-    const order = await Order.findOne(q).lean();
+    let order = await Order.findOne(q);
     if (!order) return next(new AppError('Order not found', 404, 'ORDER_NOT_FOUND'));
     if (String(order.userId) !== String(req.user.id) && req.user.role !== 'admin') {
       return next(new AppError('Not authorized to access this order', 403, 'ORDER_FORBIDDEN'));
     }
+
+    // Opportunistic self-heal — bounded by an in-process lock so 2–3s polling
+    // doesn't hammer the gateway.
+    if (order.paymentStatus === 'PENDING' && order.razorpayOrderId && String(order.userId) === String(req.user.id)) {
+      const key = order._id.toString();
+      if (!reconcileLocks.has(key)) {
+        reconcileLocks.add(key);
+        try {
+          await reconcileOrderPayment({ order, user: req.user, source: 'status-poll' });
+          order = await Order.findOne(q);
+        } catch (e) {
+          fx('status:reconcile-error', order, { error: e.message });
+        } finally {
+          reconcileLocks.delete(key);
+        }
+      }
+    }
+    order = order.toObject ? order.toObject() : order;
 
     const isFulfilled =
       order.paymentStatus === 'PAID' &&
@@ -623,23 +910,9 @@ export const getPaymentStatus = async (req, res, next) => {
 
     res.json({
       success: true,
-      paymentStatus: order.paymentStatus,
-      orderStatus: order.orderStatus,
-      fulfillmentStatus: order.fulfillmentStatus,
-      emailStatus: order.emailStatus,
-      data: {
-        orderNo: order.orderNo,
-        total: order.total,
-        currency: order.currency,
-        paymentStatus: order.paymentStatus,
-        orderStatus: order.orderStatus,
-        fulfillmentStatus: order.fulfillmentStatus,
-        emailStatus: order.emailStatus,
-        paymentReference: order.razorpayPaymentId || order.paymentReference || null,
-        createdAt: order.createdAt,
-        paidAt: order.paidAt,
-      },
-      vouchers,
+      pending: order.paymentStatus === 'PENDING',
+      needsAllocation: order.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
+      ...statusPayload(order, vouchers),
     });
   } catch (err) {
     next(err);

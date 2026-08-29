@@ -1,7 +1,7 @@
 /** Blog editor draft shape + normalization between API post <-> editor draft. */
 
 export const emptyDraft = () => ({
-  title: '', slug: '', excerpt: '', content: '',
+  title: '', slug: '', excerpt: '', content: '', css: '',
   coverImage: '', coverImagePublicId: '', coverImageAlt: '', coverImageTitle: '', coverImageCaption: '', coverImageDescription: '',
   images: [], author: 'Apex Vouchers', authorBio: '', authorImage: '', reviewer: '', reviewedAt: '',
   category: 'Exam Guide', tags: [], featured: false,

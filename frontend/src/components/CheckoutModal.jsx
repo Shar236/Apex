@@ -28,7 +28,8 @@ const loadRazorpaySdk = () =>
 
 export const CheckoutModal = () => {
   const navigate = useNavigate();
-  const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, formatPrice, handlePurchaseSuccess, clearCart, setActiveTab } = useVoucher();
+  const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, checkoutMeta, formatPrice, handlePurchaseSuccess, clearCart, setActiveTab } = useVoucher();
+  const voucherRequestId = checkoutMeta?.voucherRequestId || null;
   const { isAuthenticated, user, login, register } = useAuth();
 
   const [promoCode, setPromoCode] = useState('');
@@ -142,32 +143,67 @@ export const CheckoutModal = () => {
   // NOTE: the browser NEVER decides that a payment succeeded — the backend does,
   // after verifying the Razorpay signature and re-checking the payment with the
   // gateway. We only render what the server tells us.
-  const applyVerifiedResult = (verifyRes, order) => {
+  const showSuccess = (data, vouchers, orderRef) => {
     setIsProcessing(false);
     setProcessingState('idle');
+    setError('');
+    setIsCompleted(true);
+    setCompletedOrder(data || orderRef || null);
+    setCompletedVouchers(vouchers || []);
+    if ((vouchers || []).length > 0) {
+      confetti({ particleCount: 120, spread: 75, origin: { y: 0.6 } });
+    }
+    clearCart();
+    handlePurchaseSuccess({ orderId: (data && data.orderNo) || orderRef?.orderNo });
+  };
 
-    if (verifyRes?.success && verifyRes.paymentStatus === 'PAID' && !verifyRes.needsAllocation) {
-      setIsCompleted(true);
-      setCompletedOrder(verifyRes.data || order || null);
-      setCompletedVouchers(verifyRes.vouchers || []);
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      clearCart();
-      handlePurchaseSuccess({ orderId: order?.orderNo });
-      return;
+  const isPaidResult = (r) =>
+    r?.success && (r.paymentStatus === 'PAID' || r.orderStatus === 'FULFILLED' || r.fulfillmentStatus === 'FULFILLED');
+
+  const applyVerifiedResult = (verifyRes, orderRef) => {
+    if (isPaidResult(verifyRes) && !verifyRes.needsAllocation) {
+      showSuccess(verifyRes.data, verifyRes.vouchers, orderRef);
+      return true;
     }
     if (verifyRes?.needsAllocation) {
-      setIsCompleted(true);
-      setCompletedOrder(verifyRes.data || order || null);
-      setCompletedVouchers([]);
-      clearCart();
-      handlePurchaseSuccess({ orderId: order?.orderNo });
-      return;
+      showSuccess(verifyRes.data, [], orderRef);
+      return true;
     }
-    if (verifyRes?.paymentStatus === 'PENDING') {
-      setError(verifyRes.message || 'Payment is being finalized. Please check your Candidate Vault in a minute.');
-      return;
+    if (verifyRes?.notCollectable) {
+      setIsProcessing(false); setProcessingState('idle');
+      setError(verifyRes.message || 'We received a payment but this order is closed — our team has been alerted and will contact you.');
+      return true;
     }
-    setError(verifyRes?.message || 'We could not verify your payment. If money was deducted it will be auto-refunded.');
+    if (verifyRes?.failed || verifyRes?.paymentStatus === 'FAILED') {
+      setIsProcessing(false); setProcessingState('idle');
+      setError('This payment did not complete. No voucher was issued — you can safely retry.');
+      return true;
+    }
+    return false; // still pending — caller keeps polling
+  };
+
+  // Self-heal loop: used when the Razorpay callback did not run (UPI redirect,
+  // tab switch, modal closed after paying). Asks our server to reconcile with
+  // the gateway and fulfil. Safe to call repeatedly.
+  const pollFulfilment = async (orderId, orderRef, { attempts = 12, delayMs = 2500 } = {}) => {
+    setProcessingState('verifying');
+    for (let i = 0; i < attempts; i += 1) {
+      let res;
+      try {
+        res = i === 0
+          ? await paymentApi.reconcile(orderId)
+          : await paymentApi.getStatus(orderId);
+      } catch { /* keep trying */ }
+      if (res && applyVerifiedResult(res, orderRef)) return true;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    // Gave up waiting — the webhook / a later poll will still finish it.
+    setIsProcessing(false);
+    setProcessingState('idle');
+    setError(
+      'Payment received — we are still confirming it with the bank. Your voucher will appear in your Candidate Vault and email within a few minutes. You have not been charged twice.',
+    );
+    return false;
   };
 
   const handlePaymentSubmit = async (e) => {
@@ -196,6 +232,9 @@ export const CheckoutModal = () => {
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
       paymentMethod,
       billing: { ...formData, email: formData.email || user?.email },
+      // Present only when paying for a previously out-of-stock voucher request —
+      // the server then trusts the request, not these items.
+      ...(voucherRequestId ? { voucherRequestId } : {}),
     };
 
     // 1. Server creates the internal order (PENDING) + a Razorpay order for the
@@ -229,6 +268,31 @@ export const CheckoutModal = () => {
       return;
     }
 
+    // UPI: offer only Dynamic QR (desktop) + UPI Intent / app choice (mobile).
+    // The "enter a UPI ID / VPA" (collect) flow is intentionally NOT offered —
+    // Razorpay is retiring UPI Collect for standard businesses and it was the
+    // source of the "Could not verify UPI ID" error. Razorpay renders `qr` on
+    // desktop and `intent` on mobile automatically from this one config.
+    // `show_default_blocks: true` keeps Cards / Netbanking / Wallets / etc.
+    const displayConfig = {
+      display: {
+        blocks: {
+          apex_upi: {
+            name: 'Pay via UPI (scan QR / choose an app)',
+            instruments: [{ method: 'upi', flows: ['qr', 'intent'] }],
+          },
+          apex_card: {
+            name: 'Cards',
+            instruments: [{ method: 'card' }],
+          },
+        },
+        sequence: paymentMethod === 'card'
+          ? ['block.apex_card', 'block.apex_upi']
+          : ['block.apex_upi', 'block.apex_card'],
+        preferences: { show_default_blocks: true },
+      },
+    };
+
     // 3. Open Razorpay Checkout. Success/failure is decided by our server in step 4.
     const rzp = new Razorpay({
       key: keyId,
@@ -242,14 +306,22 @@ export const CheckoutModal = () => {
         email: prefill?.email || formData.email || user?.email || '',
         contact: prefill?.contact || formData.phone || '',
       },
+      config: displayConfig,
       theme: { color: '#FF005C' },
       modal: {
         escape: true,
+        // The modal also closes AFTER a paid UPI transaction (the customer taps
+        // "done" in their UPI app). So never assume "cancelled" — ask our server
+        // to reconcile with the gateway first; only if there's genuinely no
+        // payment does the user see the retry message.
         ondismiss: () => {
-          if (paymentHandledRef.current) return; // payment already captured — ignore late dismiss
-          setIsProcessing(false);
-          setProcessingState('idle');
-          setError('Payment was cancelled. Your order is saved — you can retry any time. No voucher has been issued.');
+          if (paymentHandledRef.current) return; // /verify already running from handler
+          paymentHandledRef.current = true;
+          pollFulfilment(orderId, orderRef, { attempts: 8, delayMs: 2500 }).then((paid) => {
+            if (!paid && !isCompleted) {
+              setError((prev) => prev || 'Payment window closed. If you completed the payment your voucher will appear in your Candidate Vault shortly; otherwise you can retry — no voucher has been issued.');
+            }
+          });
         },
       },
       handler: async (resp) => {
@@ -262,23 +334,23 @@ export const CheckoutModal = () => {
             razorpay_payment_id: resp.razorpay_payment_id,
             razorpay_signature: resp.razorpay_signature,
           });
-          applyVerifiedResult(verifyRes, orderRef);
+          // Verified + fulfilled → done. Anything else (still finalizing) → poll.
+          if (!applyVerifiedResult(verifyRes, orderRef)) {
+            await pollFulfilment(orderId, orderRef);
+          }
         } catch (err) {
-          setIsProcessing(false);
-          setProcessingState('idle');
-          setError(
-            err?.message ||
-              'Payment received but verification failed on our side. Your Candidate Vault will update automatically once confirmed.'
-          );
+          // The signature call failed on our side — the payment may still be
+          // captured at the gateway. Fall back to server-side reconciliation.
+          await pollFulfilment(orderId, orderRef);
         }
       },
     });
 
     rzp.on('payment.failed', (resp) => {
-      setIsProcessing(false);
-      setProcessingState('idle');
-      const reason = resp?.error?.description || 'Your payment could not be completed.';
-      setError(`${reason} No voucher has been issued — you can retry.`);
+      // Don't hard-fail the UI — a "failed" event can still be followed by a
+      // successful retry inside the same modal. Reconcile before deciding.
+      const reason = resp?.error?.description || 'The payment attempt could not be completed.';
+      setError(`${reason} If you retried and it went through, your voucher will appear shortly.`);
     });
 
     rzp.open();
@@ -488,7 +560,7 @@ export const CheckoutModal = () => {
               </div>
 
               <div className="pt-2 space-y-2">
-                <MiniLabel>Payment Method</MiniLabel>
+                <MiniLabel>Preferred Payment Method</MiniLabel>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -496,7 +568,7 @@ export const CheckoutModal = () => {
                     className={`p-3 rounded-xl border font-normal text-xs flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'border-accent bg-accent/8 text-accent' : 'border-line bg-surface-raised text-ink-muted'}`}
                   >
                     <QrCode className="w-4 h-4" />
-                    <span>UPI / GPay / QR</span>
+                    <span>UPI — QR / Apps</span>
                   </button>
                   <button
                     type="button"
@@ -507,6 +579,9 @@ export const CheckoutModal = () => {
                     <span>Card / NetBanking</span>
                   </button>
                 </div>
+                <p className="text-[10px] font-normal text-neutral-400">
+                  Opens Razorpay&apos;s secure window. UPI shows a scannable QR on desktop and your installed UPI apps on mobile — no need to type a UPI ID. Cards, Netbanking &amp; Wallets are also available.
+                </p>
               </div>
 
               <div className="rounded-2xl bg-accent/8 border border-accent/20 p-4 space-y-2 mt-3 text-sm font-normal">
@@ -567,11 +642,23 @@ export const CheckoutModal = () => {
               <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">
                 ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
               </span>
-              <h2 className="font-heading font-medium text-3xl">Payment Successful</h2>
-              <p className="text-sm text-ink font-medium mt-1">Voucher purchased successfully.</p>
-              <p className="text-xs text-ink-muted font-normal mt-1">
-                Your voucher has been securely assigned to your account.
+              <h2 className="font-heading font-medium text-3xl">
+                {needsAllocation ? 'Payment Received 🎉' : 'Congratulations! 🎉'}
+              </h2>
+              <p className="text-sm text-ink font-medium mt-1">
+                {needsAllocation ? 'Thank you for your purchase.' : 'Thank you for buying your voucher — your voucher is ready.'}
               </p>
+
+              {!needsAllocation && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted max-w-xs mx-auto text-left">
+                  {completedVouchers[0]?.productName && (<><span>Voucher</span><span className="text-ink font-medium text-right">{completedVouchers[0].productName}</span></>)}
+                  <span>Order number</span><span className="text-ink font-medium text-right">{completedOrder?.orderNo || '—'}</span>
+                  <span>Purchase date</span><span className="text-ink font-medium text-right">{new Date(completedOrder?.paidAt || Date.now()).toLocaleDateString()}</span>
+                  <span>Payment</span><span className="text-success font-medium text-right">Paid</span>
+                  <span>Voucher</span><span className="text-success font-medium text-right">Delivered</span>
+                </div>
+              )}
+
               <div
                 className={`mt-3 text-xs font-normal rounded-xl py-2 px-3 inline-flex items-center gap-1.5 ${
                   emailSent

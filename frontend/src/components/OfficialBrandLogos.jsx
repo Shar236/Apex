@@ -199,19 +199,16 @@ export const ETSGRELogo = ETSGreLogo;
 
 /* ─────────────────────────────────────────────
    7. ETS TOEFL Logo
-   Light bg: near-black (#111827) — dark bg: white
-   Previously used dark:text-white which made it INVISIBLE on white cards in dark mode.
+   Light bg: full black (#000000) — dark bg: white (#FFFFFF)
 ───────────────────────────────────────────── */
 export const ETSToeflLogo = ({ className = 'h-12', inverted = false }) => {
-  // ETS official brand blue (#1B3A6B) on light bg, white on dark bg
-  const color    = inverted ? '#FFFFFF' : '#0088f7ff';
-  const subColor = inverted ? '#94A3B8' : '#0449afff';
+  const color = inverted ? '#FFFFFF' : '#000000';
 
   return (
     <div className={`flex items-center justify-center gap-1.5 select-none ${className}`} aria-label="ETS TOEFL">
       <div className="font-black text-2xl leading-none" style={{ color }}>✱</div>
       <div className="font-heading font-black text-2xl sm:text-3xl tracking-tighter lowercase flex items-baseline" style={{ color }}>
-        toefl<span className="text-xs font-bold ml-0.5" style={{ color: subColor }}>®</span>
+        toefl<span className="text-xs font-bold ml-0.5" style={{ color }}>®</span>
       </div>
     </div>
   );

@@ -226,7 +226,7 @@ export function PTEReschedulingGuidePage() {
   ];
 
   return (
-    <div className="bg-[#FAF8F5] dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 min-h-screen antialiased transition-colors duration-300">
+    <div className="bg-[#FAF8F5] dark:bg-[#06070B] text-neutral-900 dark:text-neutral-100 min-h-screen antialiased transition-colors duration-300">
       
       {/* ── Breadcrumbs & Top Header ────────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#121212] border-b border-[#EAEAEA] dark:border-[#222]">
@@ -242,7 +242,7 @@ export function PTEReschedulingGuidePage() {
       </div>
 
       {/* ── Hero Article Header ───────────────────────────────────────────── */}
-      <header className="relative bg-linear-to-b from-white via-[#FFF5F8] to-[#FAF8F5] dark:from-[#121212] dark:via-[#1A0C13] dark:to-[#0A0A0A] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16">
+      <header className="relative bg-linear-to-b from-white via-[#FFF5F8] to-[#FAF8F5] dark:from-[#121212] dark:via-[#1A0C13] dark:to-[#06070B] border-b border-[#EAEAEA] dark:border-[#222] py-12 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-pink/10 dark:bg-brand-pink/20 border border-brand-pink/30 text-brand-pink text-xs font-black tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5" /> Official 2026 Academic & Core Guide
