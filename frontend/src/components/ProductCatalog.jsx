@@ -135,7 +135,7 @@ export const ProductCatalog = () => {
             <p className="text-xs font-bold text-slate-600 dark:text-slate-500 mb-6">
               Showing {visibleProducts.length} of {filteredProducts.length} vouchers
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-stretch">
               {visibleProducts.map((p) => (
                 <HomepageVoucherCard key={p.id || p._id} product={p} />
               ))}

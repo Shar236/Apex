@@ -3,10 +3,22 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
-  --font-heading: 'Outfit', 'Sora', 'Plus Jakarta Sans', sans-serif;
-  --font-hero: 'Outfit', 'Urbanist', 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-heading: 'Sora', 'DM Sans', sans-serif;
+  --font-hero: 'Sora', 'DM Sans', sans-serif;
   --color-brand-pink: #FF005C;
+
+  /* ── Semantic surface / line / ink tokens (light defaults; dark below) ── */
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #F8FAFC;
+  --color-surface-sunken: #F1F5F9;
+  --color-line: #E7E9EE;
+  --color-line-strong: #D4D8E0;
+  --color-ink: #0B1020;
+  --color-ink-muted: #5A6478;
+  --color-accent: #FF005C;
+  --color-accent-hover: #E0004F;
+  --color-success: #12B76A;
 }
 
 .text-gradient-pink {
@@ -38,10 +50,20 @@
   --soft-accent-bg: #1E293B;
   --border-color: #262626;
   color-scheme: dark;
+
+  /* Semantic tokens — dark. Real dark surfaces, not an inversion. */
+  --color-surface: #0F1115;
+  --color-surface-raised: #16181D;
+  --color-surface-sunken: #0A0B0E;
+  --color-line: #23262E;
+  --color-line-strong: #31353F;
+  --color-ink: #F4F6FB;
+  --color-ink-muted: #9AA3B4;
+  --color-success: #3DDC97;
 }
 
 * {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'DM Sans', sans-serif;
 }
 
 /* Snappy 250ms Theme Transition */
@@ -75,7 +97,8 @@ html, body {
   padding: 0;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -86,9 +109,18 @@ html, body {
   color: #FFFFFF;
 }
 
+/* Headings: Sora. Lightweight by design — a heading with no explicit weight
+   class inherits 400 (or 300 if `.font-light`). Existing components that set
+   `font-bold`/`font-black` keep their weight until their redesign phase; the
+   new design-system components use 300–500 deliberately. Hierarchy comes from
+   size + spacing + colour, not ink. */
 .font-heading {
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  letter-spacing: -0.02em;
+  font-family: 'Sora', 'DM Sans', sans-serif;
+  letter-spacing: -0.012em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', 'DM Sans', sans-serif;
+  letter-spacing: -0.012em;
 }
 
 /* Custom Scrollbar */

@@ -1,168 +1,96 @@
 import React from 'react';
 import { useVoucher } from '../context/VoucherContext';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { PearsonPTELogo, IELTSLogo, ETSToeflLogo, DuolingoTestLogo } from './OfficialBrandLogos';
+import { ArrowRight } from 'lucide-react';
+import { BrandLogoContainer } from './OfficialBrandLogos';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { SectionHeading, Badge, Button } from './ui';
+
+const CATEGORIES = [
+  { id: 'pte', searchKey: 'pte', name: 'PTE Voucher', fullName: 'Pearson PTE Academic & Core', desc: 'Save more on your PTE Academic & PTE Core exam booking.', validity: 'Valid 6 Months', badge: 'Most Popular', featured: true },
+  { id: 'ielts', searchKey: 'ielts', name: 'IELTS Voucher', fullName: 'IELTS Academic & General', desc: 'Exclusive discount codes for official IELTS test registration.', validity: 'Valid 12 Months', badge: 'Best Value' },
+  { id: 'toefl', searchKey: 'toefl', name: 'TOEFL Voucher', fullName: 'ETS TOEFL iBT Test', desc: 'Save on TOEFL iBT, accepted by universities worldwide.', validity: 'Valid 12 Months', badge: 'Max Discount' },
+  { id: 'duolingo', searchKey: 'duolingo', name: 'Duolingo Test Voucher', fullName: 'Duolingo English Test Coupon', desc: 'Fast digital delivery with instant coupon savings.', validity: 'Valid 90 Days', badge: 'Fast Results' },
+];
 
 export const ExamCategorySection = () => {
   const { setActiveTab, formatPrice, startCheckout, products } = useVoucher();
-
-  const categories = [
-    {
-      id: 'pte',
-      searchKey: 'pte',
-      name: 'PTE Voucher',
-      fullName: 'Pearson PTE Academic & Core',
-      desc: 'Save more on your PTE Academic & PTE Core exam booking.',
-      validity: 'Valid for 6 Months',
-      badge: 'MOST POPULAR',
-      featured: true,
-      logoComponent: <PearsonPTELogo inverted={true} />
-    },
-    {
-      id: 'ielts',
-      searchKey: 'ielts',
-      name: 'IELTS Voucher',
-      fullName: 'IELTS Academic & General',
-      desc: 'Get exclusive discount codes for official IELTS test registration.',
-      validity: 'Valid for 12 Months',
-      badge: 'BEST VALUE',
-      featured: false,
-      logoComponent: <IELTSLogo />
-    },
-    {
-      id: 'toefl',
-      searchKey: 'toefl',
-      name: 'TOEFL Voucher',
-      fullName: 'ETS TOEFL iBT Test',
-      desc: 'Save more on TOEFL iBT accepted by universities worldwide.',
-      validity: 'Valid for 12 Months',
-      badge: 'MAX DISCOUNT',
-      featured: false,
-      logoComponent: <ETSToeflLogo inverted={false} />
-    },
-    {
-      id: 'duolingo',
-      searchKey: 'duolingo',
-      name: 'Duolingo English Test Voucher',
-      fullName: 'Duolingo English Test Coupon',
-      desc: 'Fast digital delivery with instant coupon savings.',
-      validity: 'Valid for 90 Days',
-      badge: 'FAST RESULTS',
-      featured: false,
-      logoComponent: <DuolingoTestLogo inverted={false} />
-    }
-  ];
+  const { isDark } = useTheme();
 
   return (
-    <section id="choose-your-exam" className="py-16 sm:py-24 bg-white dark:bg-[#0A0A0A] border-b border-slate-200/80 dark:border-[#292929] transition-colors duration-300">
+    <section id="choose-your-exam" className="py-16 sm:py-24 bg-[var(--color-surface)] border-b border-[var(--color-line)] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-brand-pink bg-[#F0F7FF] dark:bg-[#1E293B] px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#292929]">
-            CHOOSE YOUR EXAM
-          </span>
-          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] dark:text-white tracking-tight mt-3">
-            Save on Your <span className="text-pink-highlight">English Test Booking.</span>
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400 font-medium text-base mt-3">
-            Select your English language test and get genuine vouchers at exclusive prices.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Choose your exam"
+          title="Save on your English test booking"
+          subtitle="Select your test and get genuine vouchers at exclusive prices."
+          className="mb-14"
+        />
 
-        {/* 4 Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {categories.map((cat) => {
-            const matchedProduct = products.find(p => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
+          {CATEGORIES.map((cat) => {
+            const matched = products?.find((p) => {
               const key = cat.searchKey;
-              const name = (p.name || '').toLowerCase();
-              const brand = (p.brand || '').toLowerCase();
-              const slug = (p.slug || '').toLowerCase();
-              return name.includes(key) || brand.includes(key) || slug.includes(key);
+              return (p.name || '').toLowerCase().includes(key)
+                || (p.brand || '').toLowerCase().includes(key)
+                || (p.slug || '').toLowerCase().includes(key);
             });
-
-            const displayPrice = matchedProduct ? matchedProduct.discountedPrice : 15499;
-            const displaySavings = matchedProduct ? matchedProduct.savings : 3401;
-            const productToCheckout = matchedProduct || products[0];
+            const price = matched?.discountedPrice ?? matched?.sellingPrice ?? 15499;
+            const savings = matched?.savings ?? Math.max(0, (matched?.originalPrice || 18900) - price);
+            const target = matched || products?.[0];
 
             return (
               <div
                 key={cat.id}
-                className={`relative rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between overflow-hidden ${
+                className={[
+                  'group relative flex flex-col rounded-2xl p-6 transition-all duration-200',
+                  'bg-[var(--color-surface)] border',
                   cat.featured
-                    ? 'bg-[#0F172A] text-white shadow-2xl border-2 border-brand-pink -translate-y-1.5'
-                    : 'bg-white dark:bg-[#161616] text-[#0F172A] dark:text-white border border-slate-200/80 dark:border-[#292929] hover:border-brand-pink hover:shadow-xl hover:-translate-y-1'
-                }`}
+                    ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/30 shadow-sm'
+                    : 'border-[var(--color-line)] hover:border-[var(--color-accent)]/45 hover:-translate-y-1',
+                ].join(' ')}
               >
-                {/* Top Badge */}
                 <div className="flex items-center justify-between mb-4">
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                    cat.featured ? 'bg-brand-pink text-white shadow-sm' : 'bg-slate-100 dark:bg-[#262626] text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {cat.badge}
-                  </span>
-                  <span className={`text-xs font-bold ${cat.featured ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {cat.validity}
-                  </span>
+                  <Badge tone={cat.featured ? 'accent' : 'neutral'}>{cat.badge}</Badge>
+                  <span className="text-[11px] font-normal text-[var(--color-ink-muted)]">{cat.validity}</span>
                 </div>
 
-                {/* Logo Area */}
-                <div className={`p-4 rounded-2xl mb-4 border flex items-center justify-center ${
-                  cat.featured 
-                    ? 'bg-slate-900 border-slate-800' 
-                    : 'bg-[#F0F7FF] dark:bg-[#1E293B] border-slate-200/80 dark:border-[#292929]'
-                }`}>
-                  {cat.logoComponent}
+                <div className="rounded-xl mb-4 h-20 flex items-center justify-center bg-[var(--color-surface-raised)] border border-[var(--color-line)]">
+                  <BrandLogoContainer brand={cat.searchKey} name={cat.fullName} className="h-9" inverted={isDark} />
                 </div>
 
-                {/* Card Title & Desc */}
-                <div className="space-y-2 mb-6">
-                  <h3 className={`font-heading font-black text-xl leading-snug ${cat.featured ? 'text-white' : 'text-[#0F172A] dark:text-white'}`}>
-                    {cat.name}
-                  </h3>
-                  <p className={`text-xs font-medium leading-relaxed ${cat.featured ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {cat.desc}
-                  </p>
-                </div>
+                <h3 className="font-heading font-normal text-lg leading-snug text-[var(--color-ink)]">{cat.name}</h3>
+                <p className="mt-1.5 text-xs font-normal leading-relaxed text-[var(--color-ink-muted)] flex-1">{cat.desc}</p>
 
-                {/* Pricing & CTA */}
-                <div className={`pt-4 border-t space-y-3 ${cat.featured ? 'border-slate-800' : 'border-slate-100 dark:border-[#292929]'}`}>
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <span className={`text-[10px] uppercase font-bold block ${cat.featured ? 'text-slate-400' : 'text-slate-400'}`}>
-                        Starting From
-                      </span>
-                      <span className={`font-heading font-black text-2xl ${cat.featured ? 'text-white' : 'text-[#0F172A] dark:text-white'}`}>
-                        {formatPrice(displayPrice)}
-                      </span>
+                <div className="mt-5 pt-4 border-t border-[var(--color-line)] space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="block text-[10px] uppercase tracking-[0.08em] font-medium text-[var(--color-ink-muted)]">Starting from</span>
+                      <span className="font-heading font-semibold text-xl text-[var(--color-ink)]">{formatPrice(price)}</span>
                     </div>
-
-                    <span className="px-2.5 py-1 rounded-md bg-[#10B981] text-white font-extrabold text-xs shadow-sm">
-                      Save {formatPrice(displaySavings)}
-                    </span>
+                    {savings > 0 && (
+                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-[var(--color-success)]/12 text-[var(--color-success)] border border-[var(--color-success)]/20 text-[11px] font-medium whitespace-nowrap">
+                        Save {formatPrice(savings)}
+                      </span>
+                    )}
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (cat.featured && productToCheckout) {
-                        startCheckout(productToCheckout);
-                      } else {
-                        setActiveTab('shop');
-                      }
-                    }}
-                    className="w-full btn-pink !py-3.5 !rounded-xl !text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  <Button
+                    variant={cat.featured ? 'primary' : 'secondary'}
+                    size="md"
+                    fullWidth
+                    onClick={() => (cat.featured && target ? startCheckout(target) : setActiveTab('shop'))}
                   >
-                    <span>View {cat.name}</span>
+                    View {cat.name}
                     <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
-
               </div>
             );
           })}
         </div>
-
       </div>
     </section>
   );
 };
+
+export default ExamCategorySection;
