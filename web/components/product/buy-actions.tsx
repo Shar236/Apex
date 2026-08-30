@@ -2,6 +2,7 @@
 
 import { ShoppingCart, Clock, Ticket, Lock } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
+import { useVoucher } from '@/components/voucher-provider';
 import { Button } from '@/components/ui';
 import type { Product } from '@/lib/types';
 
@@ -13,21 +14,15 @@ const isRequestOnly = (p: Product): boolean => {
   return Number(avail) <= 0;
 };
 
-/**
- * Buy Now / Add to Cart / Request Voucher — the only real interactivity on the
- * product detail page. Razorpay checkout isn't migrated yet (a later phase),
- * so "Buy Now" adds to cart and opens the drawer rather than starting payment.
- */
+/** Buy Now / Add to Cart / Request Voucher — the real interactivity on the product detail page. */
 export function BuyActions({ product, size = 'lg' }: { product: Product; size?: 'md' | 'lg' }) {
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart } = useCart();
+  const { startCheckout, startVoucherRequest } = useVoucher();
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
   const requestOnly = isRequestOnly(product);
   const canBuyNow = !isComingSoon && !requestOnly;
 
-  const buyNow = () => {
-    addToCart(product);
-    setIsCartOpen(true);
-  };
+  const buyNow = () => (requestOnly ? startVoucherRequest(product) : startCheckout(product));
 
   return (
     <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -55,15 +50,13 @@ export function BuyActions({ product, size = 'lg' }: { product: Product; size?: 
 
 /** Sticky mobile checkout bar. */
 export function StickyMobileBar({ product }: { product: Product }) {
-  const { formatPrice, addToCart, setIsCartOpen } = useCart();
+  const { formatPrice } = useCart();
+  const { startCheckout, startVoucherRequest } = useVoucher();
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
   const requestOnly = isRequestOnly(product);
   if (isComingSoon) return null;
 
-  const buyNow = () => {
-    addToCart(product);
-    setIsCartOpen(true);
-  };
+  const buyNow = () => (requestOnly ? startVoucherRequest(product) : startCheckout(product));
 
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">

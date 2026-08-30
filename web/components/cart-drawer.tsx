@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { ShoppingBag, X, Trash2, ArrowRight, Lock, Ticket } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
+import { useVoucher } from '@/components/voucher-provider';
 
 export function CartDrawer() {
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, formatPrice } = useCart();
+  const { startCheckout } = useVoucher();
 
   if (!isCartOpen) return null;
 
@@ -105,11 +107,17 @@ export function CartDrawer() {
               </div>
             </div>
 
-            <Link href="/exam-vouchers" onClick={() => setIsCartOpen(false)} className="w-full py-4 rounded-2xl btn-pink text-white font-black text-base shadow-xl flex items-center justify-center gap-2.5">
+            <button
+              onClick={() => {
+                setIsCartOpen(false);
+                startCheckout(cart);
+              }}
+              className="w-full py-4 rounded-2xl btn-pink text-white font-black text-base shadow-xl flex items-center justify-center gap-2.5 cursor-pointer"
+            >
               <Lock className="w-5 h-5" strokeWidth={2.5} />
               <span>Proceed to Secure Checkout</span>
               <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-            </Link>
+            </button>
 
             <p className="text-center text-[11px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1.5">
               <Ticket className="w-3.5 h-3.5 text-brand-pink" strokeWidth={2.5} />

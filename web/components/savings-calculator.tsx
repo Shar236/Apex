@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Zap, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
+import { useVoucher } from '@/components/voucher-provider';
 import { Button, SectionHeading } from '@/components/ui';
 import type { Product } from '@/lib/types';
 
 export function SavingsCalculator({ products }: { products: Product[] }) {
-  const { formatPrice, addToCart, setIsCartOpen } = useCart();
+  const { formatPrice } = useCart();
+  const { startCheckout } = useVoucher();
   const examOptions = products.filter((p) => p.category === 'Exam Voucher');
   const [selectedId, setSelectedId] = useState<string>(examOptions[0]?._id || products[0]?._id || '');
   const [quantity, setQuantity] = useState(1);
@@ -40,10 +42,7 @@ export function SavingsCalculator({ products }: { products: Product[] }) {
 
   if (!selectedProduct) return null;
 
-  const buyNow = () => {
-    addToCart(selectedProduct);
-    setIsCartOpen(true);
-  };
+  const buyNow = () => startCheckout(selectedProduct);
 
   return (
     <section id="savings-calculator" className="py-16 sm:py-24 bg-surface-raised border-b border-line relative transition-colors duration-300">

@@ -19,6 +19,7 @@ interface CartContextValue {
   clearCart: () => void;
   formatPrice: (amount: number | null | undefined, currency?: 'INR' | 'USD') => string;
   toastMessage: string | null;
+  showToast: (message: string) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -113,6 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         formatPrice: fmtPrice,
         toastMessage,
+        showToast,
       }}
     >
       {children}

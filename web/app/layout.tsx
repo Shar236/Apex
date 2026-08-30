@@ -3,9 +3,12 @@ import { DM_Sans, Sora } from 'next/font/google';
 import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { CartProvider } from '@/components/cart-provider';
+import { VoucherProvider } from '@/components/voucher-provider';
 import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 import { CartDrawer, CartToast } from '@/components/cart-drawer';
+import { CheckoutModal } from '@/components/checkout/checkout-modal';
+import { VoucherRequestModal } from '@/components/checkout/voucher-request-modal';
 import { siteConfig } from '@/lib/config';
 import { getWebsiteConfig } from '@/lib/website-config';
 import './globals.css';
@@ -61,21 +64,25 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
-              <Navbar
-                supportPhone={config.footerSettings.phone}
-                supportEmail={config.footerSettings.email}
-                announcementText={config.announcementSettings.text}
-                announcementEnabled={config.announcementSettings.enabled !== false}
-              />
-              <CartToast />
-              <main className="flex-1">{children}</main>
-              <Footer
-                description={config.footerSettings.description}
-                phone={config.footerSettings.phone}
-                email={config.footerSettings.email}
-                copyright={config.footerSettings.copyright}
-              />
-              <CartDrawer />
+              <VoucherProvider>
+                <Navbar
+                  supportPhone={config.footerSettings.phone}
+                  supportEmail={config.footerSettings.email}
+                  announcementText={config.announcementSettings.text}
+                  announcementEnabled={config.announcementSettings.enabled !== false}
+                />
+                <CartToast />
+                <main className="flex-1">{children}</main>
+                <Footer
+                  description={config.footerSettings.description}
+                  phone={config.footerSettings.phone}
+                  email={config.footerSettings.email}
+                  copyright={config.footerSettings.copyright}
+                />
+                <CartDrawer />
+                <CheckoutModal />
+                <VoucherRequestModal />
+              </VoucherProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

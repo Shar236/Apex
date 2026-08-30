@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Compass, Ticket } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
+import { useVoucher } from '@/components/voucher-provider';
 import { Button, StockBadge, PriceDisplay, DiscountBadge, ProviderLogo, ProductBenefits, DeliveryValidityBar } from '@/components/ui';
 import type { Product } from '@/lib/types';
 
@@ -17,6 +18,7 @@ const isRequestOnly = (p: Product): boolean => {
 /** The single voucher card used on every product surface (grids, best-sellers, related rows). */
 export function VoucherCard({ product }: { product: Product }) {
   const { formatPrice, addToCart } = useCart();
+  const { startCheckout, startVoucherRequest } = useVoucher();
   const detailHref = `/exam-vouchers/${product.slug || product._id || product.id}`;
 
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
@@ -80,13 +82,13 @@ export function VoucherCard({ product }: { product: Product }) {
             Coming Soon
           </Button>
         ) : requestOnly ? (
-          <Button as={Link} href={detailHref} variant="primary" size="md" fullWidth>
+          <Button variant="primary" size="md" fullWidth onClick={() => startVoucherRequest(product)}>
             <Ticket className="w-4 h-4" />
             Request Voucher
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         ) : (
-          <Button as={Link} href={detailHref} variant="primary" size="md" fullWidth>
+          <Button variant="primary" size="md" fullWidth onClick={() => startCheckout(product)}>
             <ShoppingCart className="w-4 h-4" />
             Buy Now
             <ArrowRight className="w-3.5 h-3.5" />
