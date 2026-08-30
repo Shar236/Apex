@@ -1,5 +1,6 @@
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
+import { FulfillmentRequest } from '../models/FulfillmentRequest.js';
 import { User } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -579,7 +580,35 @@ export const myVouchers = async (req, res, next) => {
   }
 };
 
-// ── Transfer Voucher ──────────────────────────────────────────────────────────
+// ── My Fulfillment Requests (paid orders awaiting manual voucher delivery) ────
+
+export const myFulfillments = async (req, res, next) => {
+  try {
+    const requests = await FulfillmentRequest.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    const sanitized = requests.map((r) => ({
+      id: r._id,
+      requestId: r.requestId,
+      productName: r.productName,
+      voucherType: r.voucherType,
+      quantity: r.quantity,
+      amountPaid: r.amountPaid,
+      currency: r.currency,
+      status: r.status,
+      orderNo: r.orderNo,
+      orderId: r.orderId,
+      voucherCode: r.voucherCode || null,
+      voucherId: r.voucherId || null,
+      deliveredAt: r.deliveredAt || null,
+      emailStatus: r.emailStatus || null,
+      createdAt: r.createdAt,
+    }));
+    res.json({ success: true, data: sanitized });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const transferVoucher = async (req, res, next) => {
   try {

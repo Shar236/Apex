@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES, FulfillmentRequest } from '../models/index.js';
 import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import {
   listVoucherRequests,
@@ -1642,6 +1642,52 @@ export const exportCSV = async (req, res, next) => {
         new Date(r.createdAt).toISOString(),
         r.readyForPaymentAt ? new Date(r.readyForPaymentAt).toISOString() : '',
         r.fulfilledAt ? new Date(r.fulfilledAt).toISOString() : '',
+      ]);
+      csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    } else if (resource === 'fulfillments') {
+      const { status, search, dateFrom, dateTo } = req.query;
+      const filter = {};
+      if (status && status !== 'All') filter.status = status;
+      if (search) {
+        const s = searchRegex(search);
+        filter.$or = [
+          { requestId: s },
+          { orderNo: s },
+          { customerName: s },
+          { customerEmail: s },
+          { productName: s },
+          { voucherType: s },
+          { voucherCode: s },
+        ];
+      }
+      if (dateFrom || dateTo) {
+        filter.createdAt = {};
+        if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+      }
+      const requests = await FulfillmentRequest.find(filter).sort({ createdAt: -1 }).lean();
+      const headers = [
+        'Request ID', 'Order No', 'Order ID', 'Customer Name', 'Customer Email',
+        'Product', 'Voucher Type', 'Quantity', 'Amount Paid', 'Currency',
+        'Payment ID', 'Status', 'Voucher Code', 'Email Status', 'Requested At', 'Delivered At',
+      ];
+      const rows = requests.map((r) => [
+        r.requestId,
+        `"${(r.orderNo || '').replace(/"/g, '""')}"`,
+        r.orderId ? String(r.orderId) : '',
+        `"${(r.customerName || '').replace(/"/g, '""')}"`,
+        `"${(r.customerEmail || '').replace(/"/g, '""')}"`,
+        `"${(r.productName || '').replace(/"/g, '""')}"`,
+        `"${(r.voucherType || '').replace(/"/g, '""')}"`,
+        r.quantity || 1,
+        r.amountPaid ?? '',
+        `"${(r.currency || 'INR').replace(/"/g, '""')}"`,
+        `"${(r.razorpayPaymentId || '').replace(/"/g, '""')}"`,
+        r.status,
+        `"${(r.voucherCode || '').replace(/"/g, '""')}"`,
+        `"${(r.emailStatus || '').replace(/"/g, '""')}"`,
+        new Date(r.createdAt).toISOString(),
+        r.deliveredAt ? new Date(r.deliveredAt).toISOString() : '',
       ]);
       csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     } else {

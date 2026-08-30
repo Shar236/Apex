@@ -213,6 +213,7 @@ export const VoucherProvider = ({ children }) => {
 
   const [products, setProducts] = useState(FALLBACK_PRODUCTS.map(adaptProduct));
   const [userVouchers, setUserVouchers] = useState([]);
+  const [userFulfillments, setUserFulfillments] = useState([]);
   const [accountOrders, setAccountOrders] = useState([]);
   const [accountStats, setAccountStats] = useState({});
   const [userVoucherRequests, setUserVoucherRequests] = useState([]);
@@ -365,18 +366,21 @@ export const VoucherProvider = ({ children }) => {
       return;
     }
     try {
-      const [vRes, oRes, sRes, rRes] = await Promise.all([
+      const [vRes, oRes, sRes, rRes, fRes] = await Promise.all([
         accountApi.vouchers(),
         accountApi.orders(),
         accountApi.stats(),
         voucherRequestApi.mine(),
+        accountApi.fulfillments(),
       ]);
       if (vRes.success) setUserVouchers(Array.isArray(vRes.data) ? vRes.data : []);
       if (oRes.success) setAccountOrders(Array.isArray(oRes.data) ? oRes.data : []);
       if (sRes.success) setAccountStats(sRes.data || {});
       if (rRes.success) setUserVoucherRequests(Array.isArray(rRes.data) ? rRes.data : []);
+      if (fRes.success) setUserFulfillments(Array.isArray(fRes.data) ? fRes.data : []);
     } catch {
       setUserVouchers([]);
+      setUserFulfillments([]);
       setAccountOrders([]);
       setAccountStats({});
       setUserVoucherRequests([]);
@@ -606,6 +610,7 @@ export const VoucherProvider = ({ children }) => {
       productsLoading,
       refreshProducts: loadProducts,
       userVouchers,
+      userFulfillments,
       accountOrders,
       accountStats,
       userVoucherRequests,
@@ -679,6 +684,7 @@ export const VoucherProvider = ({ children }) => {
       globalSEO,
       activePageSEOKey,
       userVouchers,
+      userFulfillments,
       accountOrders,
       accountStats,
       userVoucherRequests,

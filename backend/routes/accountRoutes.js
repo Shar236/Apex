@@ -11,6 +11,7 @@ import {
   logout,
   myOrders,
   myVouchers,
+  myFulfillments,
   dashboardStats,
   transferVoucher,
   markVoucherUsed,
@@ -35,6 +36,7 @@ r.post('/logout', logout);
 r.get('/stats', dashboardStats);
 r.get('/orders', myOrders);
 r.get('/vouchers', myVouchers);
+r.get('/fulfillments', myFulfillments);
 r.patch('/vouchers/:id/transfer', transferVoucher);
 r.patch('/vouchers/:id/used', markVoucherUsed);
 r.post('/validate-promo', validatePromotionEndpoint);

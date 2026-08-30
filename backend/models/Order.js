@@ -14,6 +14,7 @@ export const ORDER_STATUSES = [
 ];
 export const FULFILLMENT_STATUSES = [
   'PENDING',
+  'PROCESSING',
   'FULFILLED',
   'FAILED',
   'MISMATCH_BLOCKED',

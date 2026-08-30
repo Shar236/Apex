@@ -16,6 +16,7 @@ import {
 } from '../services/email.js';
 import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { markVoucherRequestFulfilled } from '../services/voucherRequestService.js';
+import { createFulfillmentRequestForOrder } from '../services/fulfillmentService.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
 import {
@@ -238,6 +239,12 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
     return { alreadyFulfilled: true, vouchers: await publicVoucherList(order), order };
   }
 
+  // Idempotency: already claimed for manual fulfillment.
+  if (order.paymentStatus === 'PAID' && order.fulfillmentStatus === 'PROCESSING') {
+    fx('fulfill:already-processing', order, { source });
+    return { alreadyFulfilled: true, pendingFulfillment: true, needsAllocation: true, vouchers: [], order };
+  }
+
   // Atomic claim: PENDING -> PAID. Only the first caller proceeds to allocate.
   const claimUpdate = {
     $set: {
@@ -298,25 +305,69 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
     }
   } catch (allocErr) {
     fx('fulfill:allocation-FAILED', working, { source, error: allocErr.message, code: allocErr.code });
-    working.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
-    working.fulfillmentStatus =
-      allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'MISMATCH_BLOCKED' : 'NEEDS_RESTOCK';
-    working.fulfillmentError = allocErr.message;
+
+    // MISMATCH_BLOCKED is a security event — keep the strict, human-review state.
+    if (allocErr.code === 'VOUCHER_MISMATCH_BLOCKED') {
+      working.orderStatus = 'PAYMENT_RECEIVED_NEEDS_ALLOCATION';
+      working.fulfillmentStatus = 'MISMATCH_BLOCKED';
+      working.fulfillmentError = allocErr.message;
+      await working.save().catch(() => {});
+      await AuditLog.create({
+        adminEmail: `${source}@apexvouchers.in`,
+        action: 'VOUCHER_MISMATCH_BLOCKED',
+        resourceType: 'Order',
+        resourceId: working._id.toString(),
+        details: { orderNo: working.orderNo, error: allocErr.message, code: allocErr.code },
+      }).catch(() => {});
+      try {
+        await sendAdminVoucherAssignmentFailureAlert(working, allocErr.message);
+      } catch {}
+      return { alreadyFulfilled: false, needsAllocation: true, vouchers: [], order: working, error: allocErr.message };
+    }
+
+    // OUT_OF_STOCK / other allocation failures → the customer PAID and keeps
+    // their order; the voucher now moves to manual fulfillment. The order is
+    // left PAID + PROCESSING and a FulfillmentRequest is created so the admin
+    // can source a code and deliver it. No "out of stock" wording reaches the
+    // customer — they are told their voucher is being processed.
+    working.orderStatus = 'PROCESSING';
+    working.fulfillmentStatus = 'PROCESSING';
+    working.fulfillmentError = null;
     await working.save().catch(() => {});
+
+    let fulfillmentRequest = null;
+    try {
+      fulfillmentRequest = await createFulfillmentRequestForOrder({
+        order: working,
+        user,
+        paymentId: razorpayPaymentId || null,
+      });
+    } catch (frErr) {
+      console.error(`[fulfillment:create-failed] order=${working.orderNo}: ${frErr.message}`);
+    }
 
     await AuditLog.create({
       adminEmail: `${source}@apexvouchers.in`,
-      action: allocErr.code === 'VOUCHER_MISMATCH_BLOCKED' ? 'VOUCHER_MISMATCH_BLOCKED' : 'ORDER_ALLOCATION_FAILED',
+      action: 'ORDER_AWAITING_FULFILLMENT',
       resourceType: 'Order',
       resourceId: working._id.toString(),
-      details: { orderNo: working.orderNo, error: allocErr.message, code: allocErr.code },
+      details: {
+        orderNo: working.orderNo,
+        error: allocErr.message,
+        code: allocErr.code,
+        fulfillmentRequestId: fulfillmentRequest?._id?.toString() || null,
+      },
     }).catch(() => {});
 
-    try {
-      await sendAdminVoucherAssignmentFailureAlert(working, allocErr.message);
-    } catch {}
-
-    return { alreadyFulfilled: false, needsAllocation: true, vouchers: [], order: working, error: allocErr.message };
+    return {
+      alreadyFulfilled: false,
+      pendingFulfillment: true,
+      needsAllocation: true,
+      fulfillmentRequestId: fulfillmentRequest?._id || null,
+      vouchers: [],
+      order: working,
+      error: allocErr.message,
+    };
   }
 
   const enriched = enrichVouchers(working, vouchers);
@@ -512,25 +563,11 @@ export const createPaymentOrder = async (req, res, next) => {
       return next(new AppError(`Maximum ${MAX_LINE_ITEMS} line items per order`, 400, 'TOO_MANY_ITEMS'));
     }
 
-    // 1. Trusted server-side pricing + product-specific stock check.
+    // 1. Trusted server-side pricing. NOTE: checkout is intentionally NOT
+    // blocked when inventory is empty — a paid order without available stock
+    // becomes a manual-fulfillment request (see fulfillVerifiedOrder) instead
+    // of turning the customer away.
     const lineItems = await getProductsWithPrices(items);
-    for (const it of lineItems) {
-      const availableStock = await VoucherCode.countDocuments({
-        productId: it.productId,
-        voucherType: it.voucherType,
-        status: 'AVAILABLE',
-        expiryDate: { $gt: new Date() },
-      });
-      if (availableStock < it.quantity) {
-        return next(
-          new AppError(
-            `Voucher code out of stock for ${it.productName}. Please try again later or contact support.`,
-            409,
-            'VOUCHER_OUT_OF_STOCK'
-          )
-        );
-      }
-    }
 
     const { subtotal, discountAmount, total, promoResult } = await computeOrderTotals({
       lineItems,
@@ -751,13 +788,17 @@ export const verifyPayment = async (req, res, next) => {
     fx('verify:done', result.order, { needsAllocation: !!result.needsAllocation, vouchers: (result.vouchers || []).length });
 
     if (result.needsAllocation) {
+      const isMismatch = result.order.fulfillmentStatus === 'MISMATCH_BLOCKED';
       return res.json({
         success: true,
         paymentStatus: 'PAID',
-        orderStatus: 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
+        orderStatus: result.order.orderStatus,
         needsAllocation: true,
+        pendingFulfillment: !!result.pendingFulfillment,
         fulfillmentStatus: result.order.fulfillmentStatus,
-        message: 'Payment received. Voucher allocation is pending a restock — support has been notified.',
+        message: isMismatch
+          ? 'Payment received. Voucher allocation is under review — support has been notified.'
+          : 'Payment received. Your voucher is being processed and will be delivered within 1–2 minutes.',
         data: result.order.toObject(),
         vouchers: [],
       });

@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { paymentApi } from '../lib/api';
 import { useVoucher } from '../context/VoucherContext';
 import { ApexLogo } from './ApexLogo';
-import { CheckCircle2, AlertCircle, ArrowRight, Ticket, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ArrowRight, Ticket, RefreshCw, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 /**
@@ -101,6 +101,9 @@ export const PaymentReturnPage = () => {
   const isPaid =
     statusData?.paymentStatus === 'PAID' &&
     (statusData?.orderStatus === 'FULFILLED' || statusData?.fulfillmentStatus === 'FULFILLED');
+  const isProcessing =
+    statusData?.paymentStatus === 'PAID' &&
+    (statusData?.orderStatus === 'PROCESSING' || statusData?.fulfillmentStatus === 'PROCESSING');
   const isPending = statusData?.paymentStatus === 'PENDING';
   const order = statusData?.data;
   const vouchers = statusData?.vouchers || [];
@@ -164,6 +167,34 @@ export const PaymentReturnPage = () => {
             >
               <Ticket className="w-4 h-4" />
               <span>Go to Candidate Vault</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        ) : isProcessing ? (
+          <div className="py-6 space-y-5">
+            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto shadow-md">
+              <Clock className="w-10 h-10" />
+            </div>
+            <div>
+              <span className="text-xs font-medium uppercase tracking-widest text-amber-600 block mb-1">
+                ORDER # {order?.orderNo || orderId}
+              </span>
+              <h2 className="font-heading font-medium text-3xl">Voucher Request Received ⏳</h2>
+              <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">
+                Your payment has been successfully received. You will receive your voucher by email
+                within 1–2 minutes. Your request is being processed.
+              </p>
+            </div>
+            <div className="mx-auto w-full max-w-xs grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted text-left">
+              <span>Payment</span><span className="text-success font-medium text-right">Paid</span>
+              <span>Voucher</span><span className="text-amber-600 dark:text-amber-400 font-medium text-right">Processing</span>
+            </div>
+            <button
+              onClick={() => navigate('/account')}
+              className="w-full py-4 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium text-sm shadow-xl flex items-center justify-center gap-2 transition-colors"
+            >
+              <Ticket className="w-4 h-4" />
+              <span>Track in Candidate Vault</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

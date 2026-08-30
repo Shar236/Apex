@@ -625,8 +625,12 @@ export const CheckoutModal = () => {
         ) : (
           (() => {
             const emailSent = completedOrder?.emailStatus === 'SENT';
+            const pendingFulfillment =
+              completedOrder?.fulfillmentStatus === 'PROCESSING' ||
+              completedOrder?.orderStatus === 'PROCESSING' ||
+              !!completedOrder?.pendingFulfillment;
             const needsAllocation =
-              completedOrder?.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION' ||
+              pendingFulfillment ||
               (completedVouchers.length === 0 && completedOrder?.paymentStatus === 'PAID');
             const goAccount = (tab) => {
               handleClose();
@@ -643,10 +647,14 @@ export const CheckoutModal = () => {
                 ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
               </span>
               <h2 className="font-heading font-medium text-3xl">
-                {needsAllocation ? 'Payment Received 🎉' : 'Congratulations! 🎉'}
+                {needsAllocation ? (pendingFulfillment ? 'Voucher Request Received ⏳' : 'Payment Received 🎉') : 'Congratulations! 🎉'}
               </h2>
               <p className="text-sm text-ink font-medium mt-1">
-                {needsAllocation ? 'Thank you for your purchase.' : 'Thank you for buying your voucher — your voucher is ready.'}
+                {needsAllocation
+                  ? pendingFulfillment
+                    ? 'Your payment has been successfully received. You will receive your voucher by email within 1–2 minutes. Your request is being processed.'
+                    : 'Thank you for your purchase.'
+                  : 'Thank you for buying your voucher — your voucher is ready.'}
               </p>
 
               {!needsAllocation && (
@@ -656,6 +664,13 @@ export const CheckoutModal = () => {
                   <span>Purchase date</span><span className="text-ink font-medium text-right">{new Date(completedOrder?.paidAt || Date.now()).toLocaleDateString()}</span>
                   <span>Payment</span><span className="text-success font-medium text-right">Paid</span>
                   <span>Voucher</span><span className="text-success font-medium text-right">Delivered</span>
+                </div>
+              )}
+              {needsAllocation && pendingFulfillment && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted max-w-xs mx-auto text-left">
+                  <span>Order number</span><span className="text-ink font-medium text-right">{completedOrder?.orderNo || '—'}</span>
+                  <span>Payment</span><span className="text-success font-medium text-right">Paid</span>
+                  <span>Voucher</span><span className="text-amber-600 dark:text-amber-400 font-medium text-right">Processing</span>
                 </div>
               )}
 
@@ -709,7 +724,9 @@ export const CheckoutModal = () => {
               </div>
             ) : (
               <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-xs font-normal text-amber-700 dark:text-amber-300">
-                {needsAllocation
+                {pendingFulfillment
+                  ? 'Your payment is confirmed. Your voucher is being processed and will be delivered to your email and account within 1–2 minutes.'
+                  : needsAllocation
                   ? 'Payment received. Your voucher is being finalized — it will appear in your Candidate Vault shortly and our team has been notified.'
                   : 'Your voucher codes are available in your Account → My Vouchers.'}
               </div>

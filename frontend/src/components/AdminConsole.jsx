@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { ApexLogo } from './ApexLogo';
 import { DynamicPTELogo, PearsonOfficialLogo } from './OfficialBrandLogos';
 import AwardsAdmin from './AwardsAdmin';
+import FulfillmentsAdmin from './FulfillmentsAdmin';
 import BlogAdmin from '../blogs/admin/BlogAdmin';
 
 const TABS = [
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'vouchers', label: 'Voucher Inventory', icon: <Ticket className="w-4 h-4" /> },
   { id: 'orders', label: 'Orders', icon: <ShoppingCart className="w-4 h-4" /> },
   { id: 'voucher-requests', label: 'Voucher Requests', icon: <Ticket className="w-4 h-4" /> },
+  { id: 'fulfillments', label: 'Fulfillment Requests', icon: <Clock className="w-4 h-4" /> },
   { id: 'pte-bookings', label: 'PTE Booking Requests', icon: <CalendarCheck className="w-4 h-4" /> },
   { id: 'users', label: 'Customers', icon: <Users className="w-4 h-4" /> },
   { id: 'promotions', label: 'Promo Coupons', icon: <Tag className="w-4 h-4" /> },
@@ -212,6 +214,7 @@ export default function AdminConsole({ initial = 'dashboard' }) {
         {tab === 'vouchers' && <VouchersAdmin />}
         {tab === 'orders' && <OrdersAdmin />}
         {tab === 'voucher-requests' && <VoucherRequestsAdmin />}
+        {tab === 'fulfillments' && <FulfillmentsAdmin />}
         {tab === 'pte-bookings' && <PTEBookingsAdmin />}
         {tab === 'users' && <UsersAdmin />}
         {tab === 'promotions' && <PromotionsAdmin />}

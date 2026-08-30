@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useVoucher } from '../context/VoucherContext';
-import { Ticket, Copy, Check, Send, RefreshCw, Clock, ShieldCheck, ExternalLink, HelpCircle, AlertCircle } from 'lucide-react';
+import { Ticket, Copy, Check, Send, RefreshCw, Clock, ShieldCheck, ExternalLink, HelpCircle, AlertCircle, Hourglass } from 'lucide-react';
 import { ApexLogo } from './ApexLogo';
 
 export const Dashboard = () => {
   const {
     userVouchers,
+    userFulfillments,
     formatPrice,
     transferVoucher,
     requestRefund,
@@ -89,6 +90,62 @@ export const Dashboard = () => {
             + Buy Another Voucher
           </button>
         </div>
+
+        {userFulfillments && userFulfillments.length > 0 && (
+          <div className="space-y-4 mb-8">
+            <h2 className="font-heading text-lg font-medium text-ink pt-1 flex items-center gap-2">
+              <Hourglass className="w-4 h-4 text-accent" />
+              Voucher Requests In Progress
+            </h2>
+            <div className="space-y-4">
+              {userFulfillments.map((f) => (
+                <div
+                  key={f.id}
+                  className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-lg"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-normal border border-line bg-surface-raised">
+                          <Clock className="w-3 h-3 text-accent" />
+                          {f.status === 'DELIVERED' ? 'Delivered' : 'Processing'}
+                        </span>
+                        <span className="text-xs text-ink-muted font-normal">Order #{f.orderNo}</span>
+                      </div>
+                      <h3 className="font-heading font-medium text-base text-ink">{f.productName}</h3>
+                      <p className="text-xs text-ink-muted font-normal">
+                        {f.status === 'PROCESSING'
+                          ? 'Your payment is confirmed. Your voucher is being processed and will appear here and in your email within 1–2 minutes.'
+                          : `Delivered on ${new Date(f.deliveredAt || f.updatedAt || Date.now()).toLocaleDateString()}.`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-ink font-heading font-medium text-lg">{formatPrice(f.amountPaid)}</div>
+                      <div className="text-[10px] text-ink-muted font-normal uppercase tracking-wider">Paid</div>
+                    </div>
+                  </div>
+                  {f.status === 'DELIVERED' && f.voucherCode && (
+                    <div className="mt-4 p-4 rounded-2xl bg-accent/8 border-2 border-dashed border-accent/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-accent uppercase tracking-wider">Your Voucher Code</span>
+                        <button
+                          onClick={() => handleCopyCode(f.id, f.voucherCode)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface text-accent font-medium text-xs border border-accent/40 shadow-sm hover:bg-accent hover:text-white transition-all cursor-pointer"
+                        >
+                          {copiedId === f.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === f.id ? 'Copied!' : 'Copy Code'}
+                        </button>
+                      </div>
+                      <div className="font-mono font-medium text-xl sm:text-2xl tracking-wider select-all break-all text-ink">
+                        {f.voucherCode}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {userVouchers && userVouchers.length > 0 ? (
           <div className="space-y-6">

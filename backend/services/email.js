@@ -218,7 +218,7 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
   const paymentRef = order.razorpayPaymentId || order.paymentReference || null;
   const totalQty = (order.items || []).reduce((s, i) => s + (i.quantity || 1), 0) || vouchers.length || 1;
 
-  const subject = `🎉 Congratulations! Your ${firstProductName} Order is Confirmed (#${order.orderNo})`;
+  const subject = `Your Voucher Is Ready 🎉 (#${order.orderNo})`;
 
   const itemRows = (order.items || [])
     .map(
@@ -340,6 +340,57 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
     to: targetEmail,
     subject,
     html: htmlWrap(subject, bodyHtml),
+  });
+};
+
+/**
+ * Internal Admin Alert: a PAID order needs manual voucher fulfillment.
+ * Sent when payment is captured but no inventory code is available — the
+ * admin must source a code and deliver it (admin → Fulfillment Requests).
+ */
+export const sendAdminFulfillmentRequestNotification = (request, order) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const amount = Number(request.amountPaid || order?.total || 0);
+  const maskedPayment = request.razorpayPaymentId
+    ? `${String(request.razorpayPaymentId).slice(0, 8)}…`
+    : '—';
+
+  const subject = `⏳ Voucher Fulfillment Needed — ${request.requestId} (${request.productName})`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px 0; color: #fbbf24;">⏳ VOUCHER FULFILLMENT REQUESTED</h2>
+    <p style="font-size: 14px; color: #e5e5e5; margin-bottom: 20px;">
+      A customer has paid in full, but no voucher code was available in inventory at
+      the time of allocation. Deliver a code from the admin dashboard to complete the order.
+    </p>
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Request ID:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${request.requestId}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Customer:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${request.customerName} (${request.customerEmail})</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Product:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${request.productName} (${request.voucherType}) × ${request.quantity}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${request.orderNo}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
+            <td align="right" style="font-size: 15px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${amount.toLocaleString('en-IN')}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Payment Reference:</td>
+            <td align="right" style="font-size: 12px; font-weight: 600; color: #cccccc; padding-bottom: 6px; font-family:'Courier New',monospace;">${maskedPayment}</td></tr>
+      </table>
+    </div>
+    <div style="text-align: center; margin-top: 28px;">
+      <a href="${clientUrl}/admin" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 900; font-size: 15px; text-decoration: none; padding: 16px 36px; border-radius: 14px;">
+        Open Fulfillment Requests →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: config.business.adminNotificationEmail,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+    tag: 'fulfillment-request',
   });
 };
 

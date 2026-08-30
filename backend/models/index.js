@@ -19,3 +19,7 @@ export {
   VOUCHER_REQUEST_STATUSES,
   OPEN_VOUCHER_REQUEST_STATUSES,
 } from './VoucherRequest.js';
+export {
+  FulfillmentRequest,
+  FULFILLMENT_REQUEST_STATUSES,
+} from './FulfillmentRequest.js';

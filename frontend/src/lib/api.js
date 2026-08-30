@@ -227,6 +227,7 @@ export const accountApi = {
   stats: () => request('/api/account/stats'),
   orders: () => request('/api/account/orders'),
   vouchers: () => request('/api/account/vouchers'),
+  fulfillments: () => request('/api/account/fulfillments'),
   transferVoucher: (id, targetEmail) =>
     request(`/api/account/vouchers/${id}/transfer`, { method: 'PATCH', body: JSON.stringify({ targetEmail }) }),
   markUsed: (id) => request(`/api/account/vouchers/${id}/used`, { method: 'PATCH' }),
@@ -452,6 +453,14 @@ export const adminApi = {
   getVoucherRequest: (id) => request(`/api/admin/voucher-requests/${id}`),
   updateVoucherRequest: (id, data) =>
     request(`/api/admin/voucher-requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  fulfillments: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/admin/fulfillments${qs ? `?${qs}` : ''}`);
+  },
+  deliverFulfillment: (id, code) =>
+    request(`/api/admin/fulfillments/${id}/deliver`, { method: 'POST', body: JSON.stringify({ code }) }),
+  cancelFulfillment: (id, reason = '') =>
+    request(`/api/admin/fulfillments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
 };
 
 export const pteBookingApi = {

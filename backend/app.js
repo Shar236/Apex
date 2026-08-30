@@ -25,6 +25,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 import pteBookingRoutes from './routes/pteBookingRoutes.js';
 import voucherRequestRoutes from './routes/voucherRequestRoutes.js';
+import fulfillmentRoutes from './routes/fulfillmentRoutes.js';
 import awardRoutes from './routes/awardRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import publicBlogRoutes from './routes/publicBlogRoutes.js';
@@ -178,6 +179,7 @@ app.use('/api/voucher-requests', voucherRequestRoutes);
 app.use('/api/awards', awardRoutes);
 app.use('/api/admin/blogs', blogRoutes);
 app.use('/api/blog', publicBlogRoutes);
+app.use('/api/admin/fulfillments', fulfillmentRoutes);
 
 
 app.use('/api/*', (req, res) => {
