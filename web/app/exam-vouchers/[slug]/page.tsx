@@ -20,7 +20,10 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
   if (!result) return buildMetadata({ title: 'Voucher Not Found', description: 'This voucher may have been removed or is no longer available.', path: `/exam-vouchers/${slug}`, noindex: true });
 
   const product = result.data;
-  const title = product.seo?.title || `${product.name} Voucher — Buy Online`;
+  // Several product names already end in "Voucher" (e.g. "ETS GRE Voucher") —
+  // avoid a doubled-up fallback title like "ETS GRE Voucher Voucher — Buy Online".
+  const nameHasVoucher = /\bvoucher\b/i.test(product.name);
+  const title = product.seo?.title || `${product.name}${nameHasVoucher ? '' : ' Voucher'} — Buy Online`;
   const description = product.seo?.description || product.shortDescription || product.description || `Buy the official ${product.name} voucher at a discounted price with instant delivery from Apex Vouchers.`;
 
   return buildMetadata({

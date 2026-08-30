@@ -89,7 +89,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
                 <StockBadge product={product} />
               </div>
 
-              <h1 className="font-heading font-normal text-2xl sm:text-3xl lg:text-4xl text-ink leading-tight">{product.name} Voucher</h1>
+              <h1 className="font-heading font-normal text-2xl sm:text-3xl lg:text-4xl text-ink leading-tight">{/\bvoucher\b/i.test(product.name) ? product.name : `${product.name} Voucher`}</h1>
 
               <p className="text-sm text-ink-muted font-normal leading-relaxed">{product.shortDescription || product.description || 'Official genuine exam voucher with instant digital delivery from Apex Vouchers.'}</p>
 
