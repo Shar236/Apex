@@ -11,7 +11,7 @@ export function LoginPageClient() {
   const { login, resendRegistrationOtp } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get('from') || '/account';
+  const fromParam = searchParams.get('from');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +30,18 @@ export function LoginPageClient() {
     const res = await login({ email, password });
     setLoading(false);
     if (res.success) {
-      router.replace(from);
+      // Route by the backend-provided role, never a hardcoded default. An admin
+      // landing on /login directly (no ?from=) must still go to /admin, not the
+      // customer dashboard. A ?from= that points at an area the user may not
+      // enter (e.g. a customer bounced off /admin) is corrected below.
+      const role = (res.user as { role?: string } | undefined)?.role;
+      const isAdmin = role === 'admin';
+      // Only same-origin absolute paths — reject "//host" / "/\host" open-redirects.
+      const safeFrom = fromParam && /^\/(?![/\\])/.test(fromParam) ? fromParam : null;
+      let target = safeFrom ?? (isAdmin ? '/admin' : '/account');
+      if (target.startsWith('/admin') && !isAdmin) target = '/account';
+      if (target.startsWith('/account') && isAdmin) target = '/admin';
+      router.replace(target);
     } else {
       setError(res.message || 'Login failed');
       setErrorCode(res.code || '');

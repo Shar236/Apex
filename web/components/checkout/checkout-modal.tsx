@@ -115,10 +115,11 @@ export function CheckoutModal() {
   if (!isCheckoutOpen || checkoutItems.length === 0) return null;
 
   const subtotal = checkoutItems.reduce(
-    (s, it) => s + Number(it.discountedPrice != null ? it.discountedPrice : it.sellingPrice || 0) * (it.quantity || 1),
+    (s, it) => s + Number(it.selectedDuration?.sellingPrice ?? (it.discountedPrice != null ? it.discountedPrice : (it.sellingPrice || 0))) * (it.quantity || 1),
     0
   );
-  const totalOriginal = checkoutItems.reduce((s, it) => s + Number(it.originalPrice || 0) * (it.quantity || 1), 0);
+
+  const totalOriginal = checkoutItems.reduce((s, it) => s + Number(it.selectedDuration?.originalPrice ?? (it.originalPrice || 0)) * (it.quantity || 1), 0);
   const totalSavings = Math.max(0, totalOriginal - subtotal);
   const finalPrice = Math.max(0, subtotal - promoDiscount);
 
@@ -245,7 +246,11 @@ export function CheckoutModal() {
     paymentHandledRef.current = false;
 
     const orderPayload = {
-      items: checkoutItems.map((it) => ({ productId: it._id || it.id, quantity: it.quantity || 1 })),
+      items: checkoutItems.map((it) => ({
+        productId: it._id || it.id,
+        quantity: it.quantity || 1,
+        ...(it.selectedDuration?.key ? { durationKey: it.selectedDuration.key } : {}),
+      })),
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
       paymentMethod,
       billing: { ...formData, email: formData.email || user?.email },
@@ -430,10 +435,13 @@ export function CheckoutModal() {
                     <div key={item.id || item._id || idx} className="flex justify-between items-center text-xs">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-accent">{item.quantity || 1}×</span>
-                        <span className="font-normal text-ink line-clamp-1">{item.name}</span>
+                        <span className="font-normal text-ink line-clamp-1">
+                          {item.name}
+                          {item.selectedDuration?.label ? <span className="text-[10px] font-bold text-accent"> ({item.selectedDuration.label})</span> : null}
+                        </span>
                       </div>
                       <span className="font-medium text-neutral-900 dark:text-white shrink-0">
-                        {formatPrice((item.discountedPrice != null ? item.discountedPrice : item.sellingPrice || 0) * (item.quantity || 1))}
+                        {formatPrice((item.selectedDuration?.sellingPrice ?? (item.discountedPrice != null ? item.discountedPrice : item.sellingPrice || 0)) * (item.quantity || 1))}
                       </span>
                     </div>
                   ))}
@@ -618,13 +626,11 @@ export function CheckoutModal() {
                 </div>
                 <div>
                   <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}</span>
-                  <h2 className="font-heading font-medium text-3xl">{needsAllocation ? (pendingFulfillment ? 'Voucher Request Received ⏳' : 'Payment Received 🎉') : 'Congratulations! 🎉'}</h2>
+                  <h2 className="font-heading font-medium text-3xl">Congratulations! 🎉</h2>
                   <p className="text-sm text-ink font-medium mt-1">
                     {needsAllocation
-                      ? pendingFulfillment
-                        ? 'Your payment has been successfully received. You will receive your voucher by email within 1–2 minutes. Your request is being processed.'
-                        : 'Thank you for your purchase.'
-                      : 'Thank you for buying your voucher — your voucher is ready.'}
+                      ? 'Your payment was successful. Your voucher is being prepared and will be delivered to your email and My Vouchers within 1–2 minutes.'
+                      : 'Your voucher has been delivered successfully. It has also been sent to your email and is available in My Vouchers.'}
                   </p>
 
                   {!needsAllocation && (
@@ -645,14 +651,14 @@ export function CheckoutModal() {
                       <span className="text-success font-medium text-right">Delivered</span>
                     </div>
                   )}
-                  {needsAllocation && pendingFulfillment && (
+                  {needsAllocation && (
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted max-w-xs mx-auto text-left">
                       <span>Order number</span>
                       <span className="text-ink font-medium text-right">{completedOrder?.orderNo || '—'}</span>
                       <span>Payment</span>
                       <span className="text-success font-medium text-right">Paid</span>
                       <span>Voucher</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-medium text-right">Processing</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-medium text-right">Being prepared</span>
                     </div>
                   )}
 
@@ -705,11 +711,9 @@ export function CheckoutModal() {
                   </div>
                 ) : (
                   <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-xs font-normal text-amber-700 dark:text-amber-300">
-                    {pendingFulfillment
-                      ? 'Your payment is confirmed. Your voucher is being processed and will be delivered to your email and account within 1–2 minutes.'
-                      : needsAllocation
-                        ? 'Payment received. Your voucher is being finalized — it will appear in your Candidate Vault shortly and our team has been notified.'
-                        : 'Your voucher codes are available in your Account → My Vouchers.'}
+                    {needsAllocation
+                      ? 'Your payment is confirmed. Your voucher is being prepared and will be delivered to your email and My Vouchers within 1–2 minutes — please keep this page or your inbox handy.'
+                      : 'Your voucher codes are available in your Account → My Vouchers.'}
                   </div>
                 )}
 

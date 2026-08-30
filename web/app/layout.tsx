@@ -8,7 +8,6 @@ import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 import { CartDrawer, CartToast } from '@/components/cart-drawer';
 import { CheckoutModal } from '@/components/checkout/checkout-modal';
-import { VoucherRequestModal } from '@/components/checkout/voucher-request-modal';
 import { siteConfig } from '@/lib/config';
 import { getWebsiteConfig } from '@/lib/website-config';
 import './globals.css';
@@ -81,7 +80,6 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
                 />
                 <CartDrawer />
                 <CheckoutModal />
-                <VoucherRequestModal />
               </VoucherProvider>
             </CartProvider>
           </AuthProvider>

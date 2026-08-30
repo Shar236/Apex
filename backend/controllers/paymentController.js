@@ -73,8 +73,31 @@ const getProductsWithPrices = async (lineItems) => {
     if (qtyRaw > MAX_LINE_ITEM_QUANTITY) {
       throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
     }
-    const unitPrice = Number(product.sellingPrice);
-    const originalPrice = Number(product.originalPrice);
+
+    // Duration variant pricing: when the buyer selected a duration (e.g. APS 1 Week),
+    // price from that enabled option; otherwise fall back to the product's base price.
+    const enabledDurations = Array.isArray(product.durationOptions)
+      ? product.durationOptions.filter((o) => o?.enabled !== false)
+      : [];
+    let unitPrice = Number(product.sellingPrice);
+    let originalPrice = Number(product.originalPrice);
+    let validityDays = Number(product.validityDays);
+    let durationKey = null;
+    let durationLabel = null;
+
+    const selectedKey = String(it.durationKey || '').toLowerCase();
+    if (selectedKey && enabledDurations.length > 0) {
+      const opt = enabledDurations.find((o) => String(o.key).toLowerCase() === selectedKey);
+      if (!opt) {
+        throw new AppError('The selected duration is not available for this product', 400, 'DURATION_UNAVAILABLE');
+      }
+      unitPrice = Number(opt.sellingPrice);
+      originalPrice = Number(opt.originalPrice) || Number(product.originalPrice) || unitPrice;
+      validityDays = Number(opt.validityDays) || Number(product.validityDays) || 7;
+      durationKey = String(opt.key).toLowerCase();
+      durationLabel = opt.label || '';
+    }
+
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
       throw new AppError(`${product.name} is not priced correctly. Please contact support.`, 400, 'PRODUCT_PRICE_INVALID');
     }
@@ -87,6 +110,9 @@ const getProductsWithPrices = async (lineItems) => {
       unitPrice,
       originalPrice: Number.isFinite(originalPrice) && originalPrice > 0 ? originalPrice : unitPrice,
       quantity: qtyRaw,
+      durationKey,
+      durationLabel,
+      validityDays,
     });
   }
   return items;

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import confetti from 'canvas-confetti';
-import { CheckCircle2, AlertCircle, ArrowRight, Ticket, RefreshCw, Clock } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ArrowRight, Ticket, RefreshCw } from 'lucide-react';
 import { ApexLogo } from '@/components/apex-logo';
 import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
@@ -142,24 +142,24 @@ export function PaymentReturnClient() {
             </button>
           </div>
         ) : isProcessing ? (
-          <div className="py-6 space-y-5">
-            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto shadow-md">
-              <Clock className="w-10 h-10" />
+          <div className="py-4 space-y-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-success flex items-center justify-center mx-auto shadow-md">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
-              <span className="text-xs font-medium uppercase tracking-widest text-amber-600 block mb-1">ORDER # {order?.orderNo || orderId}</span>
-              <h2 className="font-heading font-medium text-3xl">Voucher Request Received ⏳</h2>
-              <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">Your payment has been successfully received. You will receive your voucher by email within 1–2 minutes. Your request is being processed.</p>
+              <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">ORDER # {order?.orderNo || orderId}</span>
+              <h2 className="font-heading font-medium text-3xl">Congratulations! 🎉</h2>
+              <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">Your payment was successful. Your voucher is being prepared and will be delivered to your email and My Vouchers within 1–2 minutes. You can safely close this page.</p>
             </div>
             <div className="mx-auto w-full max-w-xs grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted text-left">
               <span>Payment</span>
               <span className="text-success font-medium text-right">Paid</span>
               <span>Voucher</span>
-              <span className="text-amber-600 dark:text-amber-400 font-medium text-right">Processing</span>
+              <span className="text-amber-600 dark:text-amber-400 font-medium text-right">Being prepared</span>
             </div>
-            <button onClick={() => router.push('/account')} className="w-full py-4 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium text-sm shadow-xl flex items-center justify-center gap-2 transition-colors cursor-pointer">
+            <button onClick={() => router.push('/account?tab=vouchers')} className="w-full py-4 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium text-sm shadow-xl flex items-center justify-center gap-2 transition-colors cursor-pointer">
               <Ticket className="w-4 h-4" />
-              <span>Track in Candidate Vault</span>
+              <span>View My Vouchers</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

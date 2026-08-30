@@ -102,6 +102,40 @@ const productSchema = new mongoose.Schema(
     currency: { type: String, default: 'INR', enum: ['INR', 'USD'] },
     validityDays: { type: Number, default: 180 },
     validityMonths: { type: Number, default: 6 },
+
+    // Duration-based pricing variants (e.g. APS Test: 1 Week / 1 Month / 3 Months).
+    // Each option overrides the base sellingPrice/originalPrice/validity for a
+    // purchase made with that duration selected. `sellingPrice`/`originalPrice`
+    // on the product remain the default (back-compat) when no option is chosen
+    // or no enabled options exist.
+    durationOptions: {
+      type: [
+        {
+          key: {
+            type: String,
+            required: true,
+            trim: true,
+            lowercase: true,
+            enum: ['1-week', '1-month', '3-months'],
+          },
+          label: { type: String, required: true, trim: true },
+          sellingPrice: {
+            type: Number,
+            required: true,
+            min: [0, 'Selling price must be >= 0'],
+          },
+          originalPrice: {
+            type: Number,
+            required: true,
+            min: [0, 'Original price must be >= 0'],
+          },
+          validityDays: { type: Number, min: 1, default: 7 },
+          enabled: { type: Boolean, default: true },
+        },
+      ],
+      default: undefined,
+    },
+
     badge: { type: String, default: '' },
     badgeEnabled: { type: Boolean, default: true },
     badgeType: { type: String, default: 'popular' },

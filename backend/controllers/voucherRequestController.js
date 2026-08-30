@@ -1,35 +1,17 @@
 import { AppError } from '../middleware/errorHandler.js';
-import {
-  createVoucherRequest,
-  listMyVoucherRequests,
-} from '../services/voucherRequestService.js';
+import { listMyVoucherRequests } from '../services/voucherRequestService.js';
 
 /**
- * POST /api/voucher-requests   (auth required)
- * Customer submits a request for a voucher that has zero available codes.
+ * POST /api/voucher-requests   — RETIRED.
+ *
+ * The storefront no longer has a pre-payment "Request Voucher" path. Every
+ * voucher is bought with the normal "Buy Now" → Razorpay flow; when inventory
+ * is empty the *paid* order is turned into a post-payment FulfillmentRequest
+ * automatically (see paymentController.fulfillVerifiedOrder). This endpoint is
+ * kept only to return a clear error to any stale client.
  */
-export const submitVoucherRequest = async (req, res, next) => {
-  try {
-    const { request, duplicate } = await createVoucherRequest(req.body || {}, req.user);
-    res.status(duplicate ? 200 : 201).json({
-      success: true,
-      duplicate,
-      message: duplicate
-        ? 'You already have a pending request for this voucher. Our team is processing it and you should receive it within 1–2 hours.'
-        : 'Request received. You will receive your voucher within 1–2 hours.',
-      data: {
-        id: request._id,
-        requestId: request.requestId,
-        status: request.status,
-        productId: request.productId,
-        productName: request.productName,
-        voucherType: request.voucherType,
-        createdAt: request.createdAt,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
+export const submitVoucherRequest = async (_req, _res, next) => {
+  next(new AppError('This request flow has been replaced — please buy the voucher directly.', 410, 'VOUCHER_REQUEST_RETIRED'));
 };
 
 /**

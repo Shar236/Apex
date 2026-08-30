@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ExternalLink, CheckCircle2, ImageOff, MessageCircle, Mail, Headphones } from 'lucide-react';
@@ -5,10 +8,10 @@ import { BrandLogoContainer } from '@/components/official-brand-logos';
 import { BuyActions, StickyMobileBar } from '@/components/product/buy-actions';
 import { FaqAccordion } from '@/components/product/faq-accordion';
 import { VoucherCard } from '@/components/voucher-card';
-import { Badge, StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar, SectionHeading } from '@/components/ui';
+import { StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar, SectionHeading } from '@/components/ui';
 import { getRedemptionGuide, getRedemptionSteps } from '@/lib/redemption-guides';
 import { formatPrice } from '@/lib/api';
-import type { Product } from '@/lib/types';
+import type { Product, DurationOption } from '@/lib/types';
 
 const DEFAULT_INCLUSIONS = ['Genuine Digital Voucher', 'Fast Delivery to Email', 'Clear Redemption Instructions', 'Official Provider Redemption', 'Customer Support', 'Transparent Pricing'];
 
@@ -30,6 +33,20 @@ const GuideScreenshotPlaceholder = () => (
 );
 
 export function ProductDetailPage({ product, related, supportPhone = '+91 9855926113', supportEmail = 'apexvouchers@gmail.com' }: { product: Product; related: Product[]; supportPhone?: string; supportEmail?: string }) {
+  const enabledDurations = useMemo(
+    () => (product.durationOptions || []).filter((o) => o.enabled !== false),
+    [product.durationOptions]
+  );
+  const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(enabledDurations.length > 0 ? enabledDurations[0] : null);
+
+  const currentPrice = selectedDuration?.sellingPrice ?? product.discountedPrice ?? product.sellingPrice ?? 0;
+  const originalPrice = selectedDuration?.originalPrice ?? product.originalPrice ?? 0;
+  const displayValidity = selectedDuration
+    ? selectedDuration.validityDays >= 30 && selectedDuration.validityDays % 30 === 0
+      ? `Valid ${selectedDuration.validityDays / 30} Month${selectedDuration.validityDays / 30 === 1 ? '' : 's'}`
+      : `Valid ${selectedDuration.validityDays} Days`
+    : null;
+
   const inclusions = Array.isArray(product.inclusions) && product.inclusions.length > 0 ? product.inclusions : DEFAULT_INCLUSIONS;
   const redemptionGuide = getRedemptionGuide(product);
   const redemptionSteps = getRedemptionSteps(product);
@@ -93,21 +110,36 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
 
               <p className="text-sm text-ink-muted font-normal leading-relaxed">{product.shortDescription || product.description || 'Official genuine exam voucher with instant digital delivery from Apex Vouchers.'}</p>
 
+              {enabledDurations.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs font-medium uppercase tracking-widest text-ink-muted">Choose your access period:</span>
+                  <div className="flex items-center gap-1 rounded-xl bg-neutral-100 dark:bg-[#262626] p-1">
+                    {enabledDurations.map((opt) => {
+                      const isActive = selectedDuration?.key === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          onClick={() => setSelectedDuration(opt)}
+                          className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            isActive ? 'bg-white dark:bg-[#161616] shadow-sm text-accent' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-end gap-4">
-                <PriceDisplay original={product.originalPrice || 0} current={product.discountedPrice ?? product.sellingPrice ?? 0} formatPrice={formatPrice} size="lg" emphasis="accent" showSaved />
-                <DiscountBadge percent={product.discountPercent || 0} savings={product.savings || 0} formatPrice={formatPrice} />
+                <PriceDisplay original={originalPrice} current={currentPrice} formatPrice={formatPrice} size="lg" emphasis="accent" showSaved />
+                <DiscountBadge percent={originalPrice > currentPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0} savings={Math.max(0, originalPrice - currentPrice)} formatPrice={formatPrice} />
               </div>
 
-              <DeliveryValidityBar product={product} className="max-w-xs" />
+              <DeliveryValidityBar product={displayValidity ? { ...product, validity: displayValidity } : product} className="max-w-xs" />
 
-              <BuyActions product={product} />
-
-              {product.availableStock !== undefined && product.availableStock !== null && Number(product.availableStock) <= 0 && !product.comingSoon && product.stockType !== 'UNLIMITED' && (
-                <p className="text-xs font-normal text-ink-muted flex items-center gap-1.5">
-                  <Badge tone="info">Available on Request</Badge>
-                  <span>Temporarily unavailable — request it and receive your voucher within 1–2 hours.</span>
-                </p>
-              )}
+              <BuyActions product={product} selectedDuration={selectedDuration} />
 
               {(product as { officialWebsiteUrl?: string; officialProductUrl?: string }).officialWebsiteUrl && (
                 <a href={(product as { officialWebsiteUrl?: string }).officialWebsiteUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-accent transition-colors">
@@ -260,7 +292,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
         All trademarks and logos belong to their respective owners. Apex Vouchers is an independent voucher/service provider unless otherwise stated.
       </p>
 
-      <StickyMobileBar product={product} />
+      <StickyMobileBar product={product} selectedDuration={selectedDuration} />
     </>
   );
 }

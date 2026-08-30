@@ -11,8 +11,8 @@ export function CartDrawer() {
 
   if (!isCartOpen) return null;
 
-  const totalAmount = cart.reduce((acc, item) => acc + (item.discountedPrice ?? item.sellingPrice ?? 0) * item.quantity, 0);
-  const totalOriginal = cart.reduce((acc, item) => acc + (item.originalPrice ?? 0) * item.quantity, 0);
+  const totalAmount = cart.reduce((acc, item) => acc + (item.selectedDuration?.sellingPrice ?? item.discountedPrice ?? item.sellingPrice ?? 0) * item.quantity, 0);
+  const totalOriginal = cart.reduce((acc, item) => acc + (item.selectedDuration?.originalPrice ?? item.originalPrice ?? 0) * item.quantity, 0);
   const totalSavings = totalOriginal - totalAmount;
 
   return (
@@ -42,16 +42,22 @@ export function CartDrawer() {
             <div className="space-y-3.5">
               {cart.map((item) => {
                 const id = (item._id || item.id) as string;
+                const unitPrice = item.selectedDuration?.sellingPrice ?? item.discountedPrice ?? item.sellingPrice ?? 0;
+                const unitOriginal = item.selectedDuration?.originalPrice ?? item.originalPrice ?? 0;
+                const unitSavings = Math.max(0, unitOriginal - unitPrice);
                 return (
-                  <div key={id} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
+                  <div key={`${id}${item.selectedDuration?.key ? `::${item.selectedDuration.key}` : ''}`} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                          Save {formatPrice(item.savings)}
+                          Save {formatPrice(unitSavings)}
                         </span>
                       </div>
-                      <h4 className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug mb-1 line-clamp-2">{item.name}</h4>
-                      <span className="font-heading font-black text-lg text-brand-pink leading-none">{formatPrice(item.discountedPrice ?? item.sellingPrice)}</span>
+                      <h4 className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug mb-1 line-clamp-2">
+                        {item.name}
+                        {item.selectedDuration?.label ? <span className="text-[11px] font-bold text-brand-pink"> — {item.selectedDuration.label}</span> : null}
+                      </h4>
+                      <span className="font-heading font-black text-lg text-brand-pink leading-none">{formatPrice(unitPrice)}</span>
                     </div>
 
                     <div className="flex flex-col items-end gap-2.5">

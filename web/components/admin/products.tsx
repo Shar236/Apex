@@ -47,7 +47,14 @@ interface AdminProduct {
   stockStatus?: string;
   lowStockThreshold?: number;
   archived?: boolean;
+  durationOptions?: Array<{ key: string; label: string; sellingPrice: number; originalPrice: number; validityDays: number; enabled: boolean }>;
 }
+
+const DURATION_KEYS = [
+  { key: '1-week', label: '1 Week', defaultDays: 7 },
+  { key: '1-month', label: '1 Month', defaultDays: 30 },
+  { key: '3-months', label: '3 Months', defaultDays: 90 },
+];
 
 const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const LOGO_MAX_SIZE = 5 * 1024 * 1024;
@@ -466,6 +473,71 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Duration-based pricing variants */}
+            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
+              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">Duration Options (variants with their own prices)</h4>
+              <p className="text-[11px] font-bold text-neutral-500 dark:text-[#B5B5B5] mb-4">When configured, the product card shows a duration selector. Each option overrides the base price for a purchase with that duration selected. The 3-month option appears in the &quot;Explore More&quot; detail page.</p>
+              {DURATION_KEYS.map((dkey) => {
+                const opt = Array.isArray(draft.durationOptions) ? draft.durationOptions.find((o) => o.key === dkey.key) : null;
+                const enabled = opt ? opt.enabled !== false : false;
+                return (
+                  <div key={dkey.key} className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] p-3 mb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black">{dkey.label}</span>
+                      <label className="inline-flex items-center gap-2 text-[10px] font-bold text-neutral-500">
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={(e) => {
+                            const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
+                            const idx = current.findIndex((o) => o.key === dkey.key);
+                            if (idx >= 0) {
+                              current[idx] = { ...current[idx], enabled: e.target.checked };
+                            } else {
+                              current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: dkey.defaultDays, enabled: e.target.checked });
+                            }
+                            setDraft({ ...draft, durationOptions: current });
+                          }}
+                        /> Active
+                      </label>
+                    </div>
+                    {enabled && (
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <Field label="Selling Price ₹" type="number" value={opt?.sellingPrice ?? 0} onChange={(v) => {
+                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
+                          const idx = current.findIndex((o) => o.key === dkey.key);
+                          if (idx >= 0) current[idx] = { ...current[idx], sellingPrice: Number(v) };
+                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: Number(v), originalPrice: 0, validityDays: dkey.defaultDays, enabled: true });
+                          setDraft({ ...draft, durationOptions: current });
+                        }} />
+                        <Field label="Original Price ₹" type="number" value={opt?.originalPrice ?? 0} onChange={(v) => {
+                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
+                          const idx = current.findIndex((o) => o.key === dkey.key);
+                          if (idx >= 0) current[idx] = { ...current[idx], originalPrice: Number(v) };
+                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: Number(v), validityDays: dkey.defaultDays, enabled: true });
+                          setDraft({ ...draft, durationOptions: current });
+                        }} />
+                        <Field label="Validity Days" type="number" value={opt?.validityDays ?? dkey.defaultDays} onChange={(v) => {
+                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
+                          const idx = current.findIndex((o) => o.key === dkey.key);
+                          if (idx >= 0) current[idx] = { ...current[idx], validityDays: Number(v) };
+                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: Number(v), enabled: true });
+                          setDraft({ ...draft, durationOptions: current });
+                        }} />
+                        <Field label="Label" value={opt?.label ?? dkey.label} onChange={(v) => {
+                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
+                          const idx = current.findIndex((o) => o.key === dkey.key);
+                          if (idx >= 0) current[idx] = { ...current[idx], label: String(v) || dkey.label };
+                          else current.push({ key: dkey.key, label: String(v) || dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: dkey.defaultDays, enabled: true });
+                          setDraft({ ...draft, durationOptions: current });
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">

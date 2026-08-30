@@ -13,6 +13,8 @@ export interface BlogImage {
 export interface BlogSeo {
   title?: string;
   description?: string;
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
   canonicalUrl?: string;
   ogTitle?: string;
   ogDescription?: string;
@@ -32,9 +34,11 @@ export interface BlogPost {
   content?: string;
   css?: string;
   coverImage?: string;
+  coverImagePublicId?: string;
   coverImageAlt?: string;
   coverImageTitle?: string;
   coverImageCaption?: string;
+  coverImageDescription?: string;
   images?: BlogImage[];
   author?: string;
   authorBio?: string;
@@ -44,9 +48,13 @@ export interface BlogPost {
   tags?: string[];
   featured?: boolean;
   faqs?: BlogFaq[];
+  relatedPosts?: (string | BlogPost)[];
   seo?: BlogSeo;
   contentSource?: 'cms' | 'code';
+  status?: 'draft' | 'scheduled' | 'published' | 'unpublished' | 'trash';
   readingTime?: number;
+  viewsCount?: number;
+  scheduledAt?: string | null;
   publishedAt?: string;
   createdAt?: string;
   updatedAt?: string;

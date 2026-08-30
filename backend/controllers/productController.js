@@ -1,5 +1,4 @@
 import { Product } from '../models/Product.js';
-import { VoucherCode } from '../models/VoucherCode.js';
 import { Campaign } from '../models/Campaign.js';
 import { Setting } from '../models/Setting.js';
 import { Redirect } from '../models/index.js';
@@ -11,33 +10,23 @@ import { resolveImageUrl } from '../utils/imageUrl.js';
 
 const baseUrl = () => config.siteUrl || config.business?.website || config.clientUrl || 'http://localhost:5173';
 
+/**
+ * Customer-facing product hydration.
+ *
+ * IMPORTANT: voucher-code inventory is NEVER exposed to customers. Every active
+ * product presents as purchasable ("Buy Now") regardless of how many codes are
+ * currently in stock — a paid order with no available code is turned into a
+ * post-payment fulfilment request by the payment pipeline, invisibly to the
+ * buyer. The only non-purchasable state is `comingSoon` (an explicit admin flag,
+ * also enforced in createPaymentOrder). Real stock counts stay in the admin
+ * console (adminController.aggregateVoucherStatsByProduct), not here.
+ */
 const applyAvailability = async (products) => {
   if (!products.length) return products;
-  const ids = products.map((p) => p._id);
-  const counts = await VoucherCode.aggregate([
-    { $match: { productId: { $in: ids }, status: 'AVAILABLE' } },
-    { $group: { _id: '$productId', total: { $sum: 1 } } },
-  ]);
-  const map = Object.fromEntries(counts.map((c) => [c._id.toString(), c.total]));
   return products.map((p) => {
     const raw = typeof p.toObject === 'function' ? p.toObject() : p;
-    const avail = map[raw._id.toString()] || 0;
-    const threshold = raw.lowStockThreshold || 10;
-    const isUnlimited = raw.stockType === 'UNLIMITED';
     const savings = Math.max(0, (raw.originalPrice || 0) - (raw.sellingPrice || 0));
-
-    let stockStatus;
-    let inStock;
-    if (raw.comingSoon) {
-      stockStatus = 'COMING SOON';
-      inStock = false;
-    } else if (isUnlimited) {
-      stockStatus = 'IN STOCK';
-      inStock = true;
-    } else {
-      stockStatus = avail > threshold ? 'IN STOCK' : avail > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
-      inStock = avail > 0;
-    }
+    const isComingSoon = !!raw.comingSoon;
 
     return {
       ...raw,
@@ -45,10 +34,12 @@ const applyAvailability = async (products) => {
       // is a Cloudinary asset; legacy/local paths pass through untouched.
       image: resolveImageUrl(raw.image),
       logo: resolveImageUrl(raw.logo),
-      availability: isUnlimited ? null : avail,
-      availableStock: isUnlimited ? null : avail,
-      inStock,
-      stockStatus,
+      // No inventory signal reaches the browser. `availability` / `availableStock`
+      // are nulled (kept only so old clients don't crash on a missing key).
+      availability: null,
+      availableStock: null,
+      inStock: !isComingSoon,
+      stockStatus: isComingSoon ? 'COMING SOON' : 'IN STOCK',
       discountedPrice: raw.sellingPrice,
       savings,
     };
@@ -59,7 +50,10 @@ const buildProductJsonLd = (product) => {
   if (!product) return null;
   const base = baseUrl().replace(/\/$/, '');
   const price = product.sellingPrice || product.discountedPrice || 0;
-  const availability = product.inStock && (product.availableStock == null || product.availableStock > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+  // Always InStock for search engines — the store fulfils every purchase (from
+  // inventory or via post-payment fulfilment). Only a "coming soon" product,
+  // which cannot be bought yet, is advertised as unavailable.
+  const availability = product.comingSoon ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock';
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',

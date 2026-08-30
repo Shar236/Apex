@@ -454,14 +454,6 @@ export const pteBookingApi = {
   mine: () => request('/api/pte-bookings/mine'),
 };
 
-export const voucherRequestApi = {
-  // Customer: request a voucher that currently has zero available codes.
-  submit: (productId: string) =>
-    request('/api/voucher-requests', { method: 'POST', body: JSON.stringify({ productId }) }),
-  // Customer: my own voucher requests.
-  mine: () => request('/api/voucher-requests/mine'),
-};
-
 export const videoApi = {
   list: () => request('/api/reels'),
   get: (id: string) => request(`/api/reels/${id}`),

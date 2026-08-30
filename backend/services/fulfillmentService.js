@@ -2,7 +2,11 @@ import { FulfillmentRequest, Order, VoucherCode, Product, AuditLog } from '../mo
 import { AppError } from '../middleware/errorHandler.js';
 import { generateFulfillmentRequestId, escapeRegex } from '../utils/index.js';
 import { normalizeVoucherType } from './voucherAllocation.js';
-import { sendOrderConfirmation, sendAdminFulfillmentRequestNotification } from './email.js';
+import {
+  sendOrderConfirmation,
+  sendAdminFulfillmentRequestNotification,
+  sendFulfillmentPendingConfirmation,
+} from './email.js';
 
 const log = (label, err) =>
   console.error(`[fulfillment:${label}] ${err?.message || err}`);
@@ -48,8 +52,15 @@ export const createFulfillmentRequestForOrder = async ({ order, user, paymentId 
     ],
   });
 
+  // Notify the admin (needs to source a code) and reassure the customer (their
+  // purchase succeeded and is being finalised). Both best-effort. `emailStatus`
+  // on the request tracks the VOUCHER-delivery email only, so it is left PENDING
+  // here — this confirmation is a separate message.
   sendAdminFulfillmentRequestNotification(request, order).catch((err) =>
     log('admin-notification', err)
+  );
+  sendFulfillmentPendingConfirmation(request, order).catch((err) =>
+    log('pending-confirmation', err)
   );
 
   return request;

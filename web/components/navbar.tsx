@@ -35,9 +35,10 @@ export function Navbar({
   const [scrolled, setScrolled] = useState(false);
   const [vouchersDropdownOpen, setVouchersDropdownOpen] = useState(false);
   const { cartCount, setIsCartOpen } = useCart();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const accountHref = isAdmin ? '/admin' : '/account';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -80,9 +81,9 @@ export function Navbar({
               </span>
             )}
             {isAuthenticated ? (
-              <button onClick={() => router.push('/account')} className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors cursor-pointer">
+              <button onClick={() => router.push(accountHref)} className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors cursor-pointer">
                 <User className="w-3.5 h-3.5 text-accent" />
-                <span>My Account ({user?.name?.split(' ')[0] || 'Dashboard'})</span>
+                <span>{isAdmin ? 'Admin Console' : `My Account (${user?.name?.split(' ')[0] || 'Dashboard'})`}</span>
               </button>
             ) : (
               <Link href="/login" className="flex items-center gap-1 hover:text-white font-normal text-xs transition-colors">

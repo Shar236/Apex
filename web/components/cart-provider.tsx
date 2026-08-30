@@ -63,19 +63,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback(
     (product: Product) => {
-      if (product.inStock === false) {
-        showToast(`⚠️ ${product.name} is currently unavailable.`);
-        return;
-      }
       const id = (product._id || product.id) as string;
+      const variantKey = product.selectedDuration?.key ? `${id}::${product.selectedDuration.key}` : id;
       setCart((prev) => {
-        const existing = prev.find((i) => (i._id || i.id) === id);
+        const existing = prev.find((i) => ((i._id || i.id) as string) === id && (i.selectedDuration?.key ? `${id}::${i.selectedDuration.key}` : id) === variantKey);
         if (existing) {
-          return prev.map((i) => ((i._id || i.id) === id ? { ...i, quantity: i.quantity + 1 } : i));
+          return prev.map((i) => ((i._id || i.id) as string) === id && (i.selectedDuration?.key ? `${id}::${i.selectedDuration.key}` : id) === variantKey ? { ...i, quantity: i.quantity + 1 } : i);
         }
         return [...prev, { ...product, quantity: 1 }];
       });
-      showToast(`Added ${product.name} to cart!`);
+      const suffix = product.selectedDuration?.label ? ` (${product.selectedDuration.label})` : '';
+      showToast(`Added ${product.name}${suffix} to cart!`);
     },
     [showToast]
   );

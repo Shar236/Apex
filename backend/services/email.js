@@ -344,6 +344,55 @@ export const sendOrderConfirmation = (user, order, vouchers = []) => {
 };
 
 /**
+ * Customer confirmation for a paid order that needs a moment before the voucher
+ * code is attached. Deliberately says nothing about stock / inventory / admins —
+ * from the customer's side this is a normal successful purchase that is being
+ * finalised. Sent once, right after the fulfilment request is created; the real
+ * voucher email follows when the code is delivered.
+ */
+export const sendFulfillmentPendingConfirmation = (request, order) => {
+  const clientUrl = config.clientUrl || 'http://localhost:5173';
+  const customerName = request.customerName || order?.customerSnapshot?.name || 'there';
+  const productName = request.productName || order?.items?.[0]?.productName || 'your exam voucher';
+  const amount = Number(request.amountPaid || order?.total || 0);
+  const orderNo = request.orderNo || order?.orderNo || '';
+  const subject = `🎉 Payment successful — your voucher is on its way (#${orderNo})`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 24px; font-weight: 900; margin: 0 0 12px 0; color: #ffffff;">Hi ${customerName},</h2>
+    <p style="font-size: 15px; line-height: 1.6; color: #dddddd; margin: 0 0 20px 0;">
+      🎉 <strong>Congratulations!</strong> Your payment for <strong>${productName}</strong> was successful.
+      Your voucher is being prepared and will be delivered to this email address and your
+      account within <strong>1–2 minutes</strong>. No further action is needed.
+    </p>
+    <div style="background-color: #1a1a1a; border: 1px solid #292929; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Order ID:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${orderNo}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Voucher:</td>
+            <td align="right" style="font-size: 13px; font-weight: 700; color: #ffffff; padding-bottom: 6px;">${productName}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999; padding-bottom: 6px;">Amount Paid:</td>
+            <td align="right" style="font-size: 16px; font-weight: 900; color: #FF005C; padding-bottom: 6px;">₹${amount.toLocaleString('en-IN')}</td></tr>
+        <tr><td style="font-size: 13px; color: #999999;">Payment:</td>
+            <td align="right" style="font-size: 12px; font-weight: 800; color: #34d399;">PAID</td></tr>
+      </table>
+    </div>
+    <div style="text-align: center; margin-top: 28px;">
+      <a href="${clientUrl}/account?tab=vouchers" style="display: inline-block; background-color: #FF005C; color: #ffffff; font-weight: 900; font-size: 15px; text-decoration: none; padding: 16px 36px; border-radius: 14px;">
+        View My Vouchers →
+      </a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: request.customerEmail || order?.customerSnapshot?.email,
+    subject,
+    html: htmlWrap(subject, bodyHtml),
+    tag: 'fulfillment-pending',
+  });
+};
+
+/**
  * Internal Admin Alert: a PAID order needs manual voucher fulfillment.
  * Sent when payment is captured but no inventory code is available — the
  * admin must source a code and deliver it (admin → Fulfillment Requests).

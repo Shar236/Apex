@@ -1,42 +1,26 @@
-import { Clock, Flame, Zap, CheckCircle2, Ticket } from 'lucide-react';
+import { Clock, Flame, CheckCircle2 } from 'lucide-react';
 import Badge from './badge';
 import type { Product } from '@/lib/types';
 
+/** A marketing badge must never leak an inventory state to the customer. */
+const STOCK_PHRASE = /out of stock|in stock|low stock|limited stock|sold out|unavailable|available on request|backorder|restock/i;
+
 /**
- * Derives a single status pill from a product. Priority:
- *   coming soon  →  request only (0 codes)  →  low stock  →  promo badge  →  in stock
+ * A single status/marketing pill for a product card.
  *
- * A product with zero available voucher codes is NEVER shown as "Out of
- * Stock" — it's a live product with temporarily empty inventory and gets a
- * neutral "Available on Request" pill instead.
+ * Inventory is NEVER surfaced here — there is no "Out of Stock", "Low Stock" or
+ * "Available on Request" state. Every active voucher shows the same consistent
+ * purchasable pill. Priority: coming soon → promo/marketing badge → "In Stock".
  */
 export default function StockBadge({ product, className = '' }: { product: Product; className?: string }) {
   const isComingSoon = product?.comingSoon || product?.stockStatus === 'COMING SOON';
-  const isUnlimited = product?.stockType === 'UNLIMITED';
-  const avail = product?.availableStock ?? product?.availability ?? (product?.inStock === false ? 0 : 1);
-  const isRequestOnly =
-    !isComingSoon &&
-    !isUnlimited &&
-    (Number(avail) <= 0 || String(product?.stockStatus || '').toUpperCase() === 'OUT OF STOCK' || product?.inStock === false);
-  const isLow = !isRequestOnly && product?.stockStatus === 'LOW STOCK';
-  const promo = (Array.isArray(product?.badges) && product.badges[0]) || (product?.badgeEnabled !== false && product?.badge) || '';
+  const rawPromo = (Array.isArray(product?.badges) && product.badges[0]) || (product?.badgeEnabled !== false && product?.badge) || '';
+  const promo = STOCK_PHRASE.test(String(rawPromo)) ? '' : rawPromo;
 
   if (isComingSoon)
     return (
       <Badge tone="info" icon={<Clock className="w-3 h-3" />} className={className}>
         Coming Soon
-      </Badge>
-    );
-  if (isRequestOnly)
-    return (
-      <Badge tone="info" icon={<Ticket className="w-3 h-3" />} className={className}>
-        Available on Request
-      </Badge>
-    );
-  if (isLow)
-    return (
-      <Badge tone="warn" icon={<Zap className="w-3 h-3" />} className={className}>
-        Limited Stock
       </Badge>
     );
 

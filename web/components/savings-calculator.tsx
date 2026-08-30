@@ -108,7 +108,7 @@ export function SavingsCalculator({ products }: { products: Product[] }) {
                   <span className="text-2xl">💰</span>
                 </div>
 
-                <Button onClick={buyNow} disabled={selectedProduct.inStock === false} variant="primary" size="md" fullWidth className="rounded-xl!">
+                <Button onClick={buyNow} variant="primary" size="md" fullWidth className="rounded-xl!">
                   <Zap className="w-4 h-4 fill-current" />
                   <span>Buy Now ({formatPrice(totalDiscounted)})</span>
                   <ArrowRight className="w-4 h-4" />

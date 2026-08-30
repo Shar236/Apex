@@ -294,6 +294,9 @@ const run = async () => {
   await FulfillmentRequest.deleteMany({ productId: product._id });
   await Order.deleteMany({ orderNo: /^TST-FUL-/ });
   await Product.deleteMany({ _id: product._id });
+  // Remove the throwaway fixture users so this suite never leaves a phantom
+  // admin/customer behind in the shared database.
+  await User.deleteMany({ email: /^test-fulfillment-(admin|customer|other)@apexvouchers\.in$/ });
 
   // ── Summary ──
   console.log(`\n=== FULFILLMENT SUITE COMPLETE: ${passed} passed, ${failed} failed ===\n`);

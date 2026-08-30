@@ -48,7 +48,7 @@ const TABS = [
   { id: 'profile', label: 'Personal Information', icon: UserIcon, mobileLabel: 'Profile' },
   { id: 'orders', label: 'My Orders', icon: ClipboardList, mobileLabel: 'Orders' },
   { id: 'vouchers', label: 'My Vouchers', icon: Ticket, mobileLabel: 'Vouchers' },
-  { id: 'voucher-requests', label: 'My Voucher Requests', icon: RotateCcw, mobileLabel: 'Requests' },
+  { id: 'preparing', label: 'Preparing Vouchers', icon: Clock, mobileLabel: 'Preparing' },
   { id: 'security', label: 'Security', icon: Shield, mobileLabel: 'Security' },
 ] as const;
 
@@ -61,7 +61,7 @@ const avatarUrl = (url?: string | null) => {
 export function AccountDashboard() {
   const { user, logout, updateAuthenticatedUser } = useAuth();
   const { formatPrice } = useCart();
-  const { accountStats, accountOrders, userVouchers, userVoucherRequests, transferVoucher, markVoucherUsed, requestRefund, loadAccountData, startCheckout } = useVoucher();
+  const { accountStats, accountOrders, userVouchers, userFulfillments, transferVoucher, markVoucherUsed, requestRefund, loadAccountData, startCheckout } = useVoucher();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -365,20 +365,19 @@ export function AccountDashboard() {
                 </div>
 
                 {(() => {
-                  const actionable = (userVoucherRequests || []).filter((r) => r.status === 'AWAITING_PAYMENT');
-                  const pending = (userVoucherRequests || []).filter((r) => r.status === 'PENDING' || r.status === 'PROCESSING');
-                  if (actionable.length === 0 && pending.length === 0) return null;
+                  const processing = (userFulfillments || []).filter((r) => r.status === 'PROCESSING');
+                  if (processing.length === 0) return null;
                   return (
-                    <button onClick={() => setTab('voucher-requests')} className="w-full text-left mb-4 rounded-3xl p-5 bg-brand-pink/5 border border-brand-pink/25 hover:border-brand-pink/50 transition-colors cursor-pointer flex items-center justify-between gap-3">
+                    <button onClick={() => setTab('preparing')} className="w-full text-left mb-4 rounded-3xl p-5 bg-brand-pink/5 border border-brand-pink/25 hover:border-brand-pink/50 transition-colors cursor-pointer flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
-                          <Ticket className="w-5 h-5" />
+                          <Clock className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="font-black text-sm text-neutral-900 dark:text-white">
-                            {actionable.length > 0 ? `${actionable.length} voucher ${actionable.length === 1 ? 'request is' : 'requests are'} ready for payment` : `${pending.length} voucher ${pending.length === 1 ? 'request' : 'requests'} in progress`}
+                            {processing.length} voucher {processing.length === 1 ? 'is' : 'are'} being prepared
                           </p>
-                          <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{actionable.length > 0 ? 'Complete payment to receive your voucher' : "We'll notify you within 1–2 hours"}</p>
+                          <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">Paid • Preparing — you&apos;ll receive your voucher within 1–2 minutes</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-brand-pink shrink-0" />
@@ -513,12 +512,12 @@ export function AccountDashboard() {
               </div>
             )}
 
-            {tab === 'voucher-requests' && (
+            {tab === 'preparing' && (
               <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <div>
-                    <h3 className="font-black text-xl text-neutral-900 dark:text-white">My Voucher Requests</h3>
-                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">Requests for vouchers that were temporarily unavailable. You&apos;ll be notified when each one is ready.</p>
+                    <h3 className="font-black text-xl text-neutral-900 dark:text-white">Preparing Vouchers</h3>
+                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">Paid vouchers that are being prepared and will be delivered within 1–2 minutes.</p>
                   </div>
                   <button onClick={() => loadAccountData()} className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer">
                     <RotateCcw className="w-4 h-4" /> Refresh
@@ -526,78 +525,48 @@ export function AccountDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  {(!userVoucherRequests || userVoucherRequests.length === 0) && (
-                    <EmptyState icon={<Ticket className="w-7 h-7 text-neutral-400" />} title="No voucher requests yet" desc={'If a voucher is temporarily unavailable, use "Request Voucher" and track it here.'} />
+                  {(!userFulfillments || userFulfillments.length === 0) && (
+                    <EmptyState icon={<Ticket className="w-7 h-7 text-neutral-400" />} title="Nothing being prepared" desc="Paid vouchers awaiting delivery will appear here." />
                   )}
 
-                  {userVoucherRequests?.map((r) => {
-                    const meta = VR_STATUS_META[r.status] || VR_STATUS_META.PENDING;
-                    const v = r.voucher as { code: string; expiryDate?: string } | undefined;
-                    const isRevealed = revealedCodes[r.id];
+                  {userFulfillments?.map((r) => {
+                    const isProcessing = r.status === 'PROCESSING';
                     return (
                       <div key={r.id} className="rounded-2xl p-5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-[#202020] pb-3">
                           <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-brand-pink">{r.requestId as string}</span>
-                            <span className="font-black text-neutral-900 dark:text-white text-sm">{r.productName as string}</span>
-                            <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${meta.cls}`}>{meta.label}</span>
+                            <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-brand-pink">{(r.requestId as string) || (r.orderNo as string) || '—'}</span>
+                            <span className="font-black text-neutral-900 dark:text-white text-sm">{(r.productName as string) || 'Voucher'}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${isProcessing ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400' : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
+                              {isProcessing ? 'Paid • Preparing' : 'Delivered'}
+                            </span>
                           </div>
-                          <div className="text-xs font-bold text-neutral-400">Requested {formatDate(r.createdAt as string)}</div>
+                          <div className="text-xs font-bold text-neutral-400">Ordered {formatDate(r.createdAt as string)}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-bold">
                           <div>
-                            <span className="text-[10px] uppercase text-neutral-400 block">Voucher Type</span>
-                            <span className="text-neutral-900 dark:text-white">{(r.voucherType as string) || '—'}</span>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Amount Paid</span>
+                            <span className="text-neutral-900 dark:text-white">{formatPrice(r.amountPaid as number)}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-neutral-400 block">Price</span>
-                            <span className="text-neutral-900 dark:text-white">{formatPrice((r.sellingPrice as number) ?? (r.priceSnapshot as number))}</span>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Order</span>
+                            <span className="text-neutral-900 dark:text-white">#{(r.orderNo as string) || '—'}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-neutral-400 block">Fulfilled</span>
-                            <span className="text-neutral-900 dark:text-white">{r.fulfilledAt ? formatDate(r.fulfilledAt as string) : '—'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase text-neutral-400 block">Status</span>
-                            <span className="text-neutral-900 dark:text-white">{meta.label}</span>
+                            <span className="text-[10px] uppercase text-neutral-400 block">Delivered</span>
+                            <span className="text-neutral-900 dark:text-white">{r.deliveredAt ? formatDate(r.deliveredAt as string) : '—'}</span>
                           </div>
                         </div>
 
-                        {r.status === 'PENDING' && (
-                          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                        {isProcessing && (
+                          <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900/40 text-[11px] font-bold text-sky-700 dark:text-sky-300 flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5" />
-                            Our team is sourcing this voucher. You&apos;ll receive it within 1–2 hours.
+                            Paid • Preparing — your voucher is being prepared and will be delivered within 1–2 minutes.
                           </div>
                         )}
 
-                        {r.status === 'AWAITING_PAYMENT' && (
-                          <div className="p-4 rounded-xl bg-brand-pink/5 border border-brand-pink/25 space-y-3">
-                            <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">Your voucher has been sourced. Complete payment to receive it instantly in your account.</p>
-                            <button
-                              onClick={() =>
-                                startCheckout(
-                                  {
-                                    _id: r.productId as string,
-                                    id: r.productId as string,
-                                    name: r.productName as string,
-                                    sellingPrice: (r.sellingPrice as number) ?? (r.priceSnapshot as number),
-                                    discountedPrice: (r.sellingPrice as number) ?? (r.priceSnapshot as number),
-                                    originalPrice: (r.originalPrice as number) ?? (r.sellingPrice as number) ?? (r.priceSnapshot as number),
-                                    quantity: 1,
-                                  } as never,
-                                  { voucherRequestId: r.id }
-                                )
-                              }
-                              className="btn-pink py-2.5! px-5! text-xs! font-black inline-flex items-center gap-1.5"
-                            >
-                              Pay {formatPrice((r.sellingPrice as number) ?? (r.priceSnapshot as number))} & Get Voucher
-                              <ArrowRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-
-                        {r.status === 'FULFILLED' && v && (
+                        {!isProcessing && r.voucherCode && (
                           <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
                             <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
                               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -605,30 +574,18 @@ export function AccountDashboard() {
                             </div>
                             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
                               <ShieldCheck className="w-5 h-5 text-[#6C3CE0] shrink-0" />
-                              <span className="font-mono font-black tracking-wider text-neutral-900 dark:text-white truncate text-sm">{isRevealed ? v.code : `${v.code?.slice(0, 4) || 'XXXX'}-XXXX-XXXX-XXXX`}</span>
+                              <span className="font-mono font-black tracking-wider text-neutral-900 dark:text-white truncate text-sm">{r.voucherCode}</span>
                               <div className="ml-auto flex items-center gap-2 shrink-0">
-                                <button onClick={() => toggleReveal(r.id)} className="p-1.5 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 text-[10px] font-black cursor-pointer">
-                                  {isRevealed ? 'HIDE' : 'REVEAL'}
-                                </button>
-                                <button onClick={() => copy(r.id, v.code)} className="p-2 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 cursor-pointer">
+                                <button onClick={() => copy(r.id, r.voucherCode as string)} className="p-2 rounded-lg bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-neutral-600 dark:text-neutral-300 cursor-pointer">
                                   {copiedId === r.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                                 </button>
                               </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
-                              {v.expiryDate && <span>Valid until {new Date(v.expiryDate).toLocaleDateString()}</span>}
-                              <button onClick={() => setTab('vouchers')} className="text-brand-pink hover:underline cursor-pointer">
-                                View in My Vouchers
-                              </button>
-                            </div>
+                            <button onClick={() => setTab('vouchers')} className="text-brand-pink hover:underline text-[11px] font-bold cursor-pointer">
+                              View in My Vouchers
+                            </button>
                           </div>
                         )}
-
-                        {r.adminNotes ? (
-                          <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 border-l-2 border-neutral-300 dark:border-[#333] pl-2.5">
-                            <strong>Note from our team:</strong> {r.adminNotes as string}
-                          </p>
-                        ) : null}
                       </div>
                     );
                   })}

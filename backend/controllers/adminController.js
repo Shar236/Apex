@@ -86,6 +86,35 @@ const normalizeProductPayload = (body) => {
   if (typeof payload.badges === 'string') {
     payload.badges = payload.badges.split(',').map((b) => b.trim()).filter(Boolean);
   }
+  // Duration variants — normalize to the schema shape { key, label, sellingPrice, originalPrice, validityDays, enabled }.
+  if (payload.durationOptions !== undefined) {
+    if (!Array.isArray(payload.durationOptions)) {
+      throw new AppError('durationOptions must be an array', 400, 'VALIDATION_ERROR');
+    }
+    const VALID_KEYS = ['1-week', '1-month', '3-months'];
+    payload.durationOptions = payload.durationOptions
+      .map((o) => {
+        if (!o || typeof o !== 'object') return null;
+        const key = String(o.key || '').toLowerCase().trim();
+        if (!VALID_KEYS.includes(key)) return null;
+        const sellingPrice = Number(o.sellingPrice);
+        const originalPrice = Number(o.originalPrice);
+        if (!Number.isFinite(sellingPrice) || sellingPrice < 0) return null;
+        if (!Number.isFinite(originalPrice) || originalPrice < 0) return null;
+        if (sellingPrice > originalPrice) {
+          throw new AppError(`Selling price for duration ${key} cannot exceed its original price`, 400, 'VALIDATION_ERROR');
+        }
+        return {
+          key,
+          label: String(o.label || key).trim() || key,
+          sellingPrice,
+          originalPrice,
+          validityDays: Number.isFinite(Number(o.validityDays)) && Number(o.validityDays) > 0 ? Number(o.validityDays) : 7,
+          enabled: o.enabled !== false,
+        };
+      })
+      .filter(Boolean);
+  }
   if (payload.displayOrder !== undefined && payload.displayOrder !== null && payload.displayOrder !== '') {
     if (Number.isNaN(Number(payload.displayOrder))) {
       throw new AppError('Display order must be numeric', 400, 'VALIDATION_ERROR');

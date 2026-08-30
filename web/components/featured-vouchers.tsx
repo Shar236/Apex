@@ -5,7 +5,8 @@ import type { Product } from '@/lib/types';
 
 const isPTE = (p: Product) => {
   const haystack = `${p.name || ''} ${p.brand || ''} ${p.provider || ''} ${p.category || ''}`.toLowerCase();
-  return haystack.includes('pte') && !haystack.includes('gre') && !haystack.includes('toefl');
+  const isPteFamily = haystack.includes('pte') || haystack.includes('aps test') || haystack.includes('ptai');
+  return isPteFamily && !haystack.includes('gre') && !haystack.includes('toefl');
 };
 
 const FEATURES = [
@@ -53,7 +54,7 @@ export function FeaturedVouchers({ products }: { products: Product[] }) {
           })}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-12 items-stretch">
           {pteProducts.map((product) => (
             <VoucherCard key={product._id || product.id} product={product} />
           ))}

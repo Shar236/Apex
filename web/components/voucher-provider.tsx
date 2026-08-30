@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useCart, type CartItem } from '@/components/cart-provider';
-import { accountApi, voucherRequestApi } from '@/lib/api';
+import { accountApi } from '@/lib/api';
 import type { Product } from '@/lib/types';
 
 export interface AccountVoucher {
@@ -63,12 +63,6 @@ export interface AccountStats {
   [key: string]: unknown;
 }
 
-export interface AccountVoucherRequest {
-  id: string;
-  status: string;
-  [key: string]: unknown;
-}
-
 export interface CheckoutMeta {
   voucherRequestId?: string;
   [key: string]: unknown;
@@ -81,7 +75,6 @@ interface VoucherContextValue {
   userFulfillments: AccountFulfillment[];
   accountOrders: AccountOrder[];
   accountStats: AccountStats;
-  userVoucherRequests: AccountVoucherRequest[];
   loadAccountData: () => Promise<void>;
   checkoutProduct: CheckoutProduct;
   checkoutMeta: CheckoutMeta | null;
@@ -92,10 +85,6 @@ interface VoucherContextValue {
   transferVoucher: (voucherId: string, targetEmail: string) => Promise<void>;
   markVoucherUsed: (voucherId: string) => Promise<void>;
   requestRefund: (voucherId: string) => Promise<void>;
-  voucherRequestProduct: Product | null;
-  isVoucherRequestOpen: boolean;
-  startVoucherRequest: (product: Product) => void;
-  closeVoucherRequest: () => void;
 }
 
 const VoucherContext = createContext<VoucherContextValue | null>(null);
@@ -108,14 +97,10 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
   const [userFulfillments, setUserFulfillments] = useState<AccountFulfillment[]>([]);
   const [accountOrders, setAccountOrders] = useState<AccountOrder[]>([]);
   const [accountStats, setAccountStats] = useState<AccountStats>({});
-  const [userVoucherRequests, setUserVoucherRequests] = useState<AccountVoucherRequest[]>([]);
 
   const [checkoutProduct, setCheckoutProduct] = useState<CheckoutProduct>(null);
   const [checkoutMeta, setCheckoutMeta] = useState<CheckoutMeta | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-
-  const [voucherRequestProduct, setVoucherRequestProduct] = useState<Product | null>(null);
-  const [isVoucherRequestOpen, setIsVoucherRequestOpen] = useState(false);
 
   const loadAccountData = useCallback(async () => {
     if (!isAuthenticated) {
@@ -123,28 +108,24 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
       setUserFulfillments([]);
       setAccountOrders([]);
       setAccountStats({});
-      setUserVoucherRequests([]);
       return;
     }
     try {
-      const [vRes, oRes, sRes, rRes, fRes] = await Promise.all([
+      const [vRes, oRes, sRes, fRes] = await Promise.all([
         accountApi.vouchers(),
         accountApi.orders(),
         accountApi.stats(),
-        voucherRequestApi.mine(),
         accountApi.fulfillments(),
       ]);
       if (vRes.success) setUserVouchers(Array.isArray(vRes.data) ? (vRes.data as AccountVoucher[]) : []);
       if (oRes.success) setAccountOrders(Array.isArray(oRes.data) ? (oRes.data as AccountOrder[]) : []);
       if (sRes.success) setAccountStats((sRes.data as AccountStats) || {});
-      if (rRes.success) setUserVoucherRequests(Array.isArray(rRes.data) ? (rRes.data as AccountVoucherRequest[]) : []);
       if (fRes.success) setUserFulfillments(Array.isArray(fRes.data) ? (fRes.data as AccountFulfillment[]) : []);
     } catch {
       setUserVouchers([]);
       setUserFulfillments([]);
       setAccountOrders([]);
       setAccountStats({});
-      setUserVoucherRequests([]);
     }
   }, [isAuthenticated]);
 
@@ -156,16 +137,6 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
     setCheckoutProduct(product);
     setCheckoutMeta(meta);
     setIsCheckoutOpen(true);
-  }, []);
-
-  const startVoucherRequest = useCallback((product: Product) => {
-    setVoucherRequestProduct(product);
-    setIsVoucherRequestOpen(true);
-  }, []);
-
-  const closeVoucherRequest = useCallback(() => {
-    setIsVoucherRequestOpen(false);
-    setVoucherRequestProduct(null);
   }, []);
 
   const transferVoucher = useCallback(
@@ -226,7 +197,6 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
       userFulfillments,
       accountOrders,
       accountStats,
-      userVoucherRequests,
       loadAccountData,
       checkoutProduct,
       checkoutMeta,
@@ -237,17 +207,12 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
       transferVoucher,
       markVoucherUsed,
       requestRefund,
-      voucherRequestProduct,
-      isVoucherRequestOpen,
-      startVoucherRequest,
-      closeVoucherRequest,
     }),
     [
       userVouchers,
       userFulfillments,
       accountOrders,
       accountStats,
-      userVoucherRequests,
       loadAccountData,
       checkoutProduct,
       checkoutMeta,
@@ -257,10 +222,6 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
       transferVoucher,
       markVoucherUsed,
       requestRefund,
-      voucherRequestProduct,
-      isVoucherRequestOpen,
-      startVoucherRequest,
-      closeVoucherRequest,
     ]
   );
 

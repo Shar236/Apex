@@ -13,6 +13,16 @@ export interface ProductSeo {
   nofollow?: boolean;
 }
 
+/** A selectable duration/plan variant of a product (e.g. APS Test: 1 Week / 1 Month). */
+export interface DurationOption {
+  key: '1-week' | '1-month' | '3-months' | string;
+  label: string;
+  sellingPrice: number;
+  originalPrice: number;
+  validityDays: number;
+  enabled?: boolean;
+}
+
 /** The hydrated product shape returned by the backend (backend/controllers/productController.js applyAvailability). */
 export interface Product {
   _id: string;
@@ -39,6 +49,7 @@ export interface Product {
   availableStock?: number | null;
   availability?: number | null;
   validityMonths?: number;
+  validityDays?: number;
   validity?: string;
   deliveryType?: string;
   badge?: string;
@@ -50,6 +61,9 @@ export interface Product {
   displayOrder?: number;
   active?: boolean;
   archived?: boolean;
+  durationOptions?: DurationOption[];
+  /** Selected duration variant (carried by the cart/checkout payload, not stored on the product). */
+  selectedDuration?: DurationOption | null;
   faqs?: Array<{ question: string; answer: string }>;
   relatedProducts?: string[] | Product[];
   seo?: ProductSeo;
