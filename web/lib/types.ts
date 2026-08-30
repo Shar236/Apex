@@ -53,4 +53,8 @@ export interface Product {
   faqs?: Array<{ question: string; answer: string }>;
   relatedProducts?: string[] | Product[];
   seo?: ProductSeo;
+  inclusions?: string[];
+  redemptionSteps?: string[];
+  officialWebsiteUrl?: string;
+  officialProductUrl?: string;
 }

@@ -12,6 +12,21 @@ export interface PageSeoInput {
 }
 
 /**
+ * Appends " | Apex Vouchers" unless the title already ends with the site
+ * name (CMS-authored titles, like the homepage's, sometimes already include
+ * it). Titles are built as complete strings here rather than relying on
+ * Next's layout-level title.template, which — despite the docs — did not
+ * apply consistently across statically vs. dynamically rendered routes in
+ * this app (verified in-browser: root "/" kept a single suffix while
+ * /exam-vouchers/[slug] got the template applied on top of an
+ * already-suffixed string, duplicating it).
+ */
+const withSiteSuffix = (title: string): string => {
+  const trimmed = title.trim();
+  return trimmed.endsWith(siteConfig.name) ? trimmed : `${trimmed} | ${siteConfig.name}`;
+};
+
+/**
  * Builds a Next.js Metadata object from CMS/API-supplied SEO fields, with a
  * consistent site-wide fallback. This is the single place page-level
  * generateMetadata() functions should go through — replaces the Vite app's
@@ -19,7 +34,7 @@ export interface PageSeoInput {
  * which no longer apply now that metadata renders server-side.
  */
 export function buildMetadata(input: PageSeoInput): Metadata {
-  const title = input.title?.trim() || siteConfig.defaultTitle;
+  const title = withSiteSuffix(input.title?.trim() || siteConfig.defaultTitle);
   const description = input.description?.trim() || siteConfig.defaultDescription;
   const url = `${siteConfig.siteUrl}${input.path}`;
   const image = input.ogImage || undefined;
