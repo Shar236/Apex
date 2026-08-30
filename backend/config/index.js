@@ -20,10 +20,12 @@ export const config = {
   port: process.env.PORT || 5000,
   nodeEnv: (process.env.NODE_ENV || 'development').toLowerCase(),
   isProduction: (process.env.NODE_ENV || '').toLowerCase() === 'production',
-  mongodbUri:
-    process.env.MONGODB_URI ||
-    'mongodb+srv://sharvandev28_db_user:Fjq9DDde0TfrkZME@apexcluster.adxjwp2.mongodb.net/apex_vouchers?retryWrites=true&w=majority&appName=apexcluster',
-  jwtSecret: process.env.JWT_SECRET || 'dev-only-change-me-in-production-super-secret',
+  mongodbUri: process.env.MONGODB_URI || '',
+  jwtSecret:
+    process.env.JWT_SECRET ||
+    ((process.env.NODE_ENV || '').toLowerCase() === 'production'
+      ? ''
+      : 'dev-only-change-me-in-production-super-secret'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   otpSecret: process.env.OTP_SECRET || `otp:${process.env.JWT_SECRET || 'dev-only-change-me-in-production-super-secret'}`,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
