@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Sora } from 'next/font/google';
 import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme-provider';
+import { AuthProvider } from '@/components/auth-provider';
+import { CartProvider } from '@/components/cart-provider';
+import { Navbar } from '@/components/navbar';
+import { Footer } from '@/components/footer';
+import { CartDrawer, CartToast } from '@/components/cart-drawer';
 import { siteConfig } from '@/lib/config';
+import { getWebsiteConfig } from '@/lib/website-config';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -39,7 +45,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function RootLayout({ children }: LayoutProps<'/'>) {
+  const config = await getWebsiteConfig();
+
   return (
     <html
       lang="en"
@@ -49,8 +57,28 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="antialiased min-h-screen">
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="antialiased min-h-screen flex flex-col">
+        <ThemeProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Navbar
+                supportPhone={config.footerSettings.phone}
+                supportEmail={config.footerSettings.email}
+                announcementText={config.announcementSettings.text}
+                announcementEnabled={config.announcementSettings.enabled !== false}
+              />
+              <CartToast />
+              <main className="flex-1">{children}</main>
+              <Footer
+                description={config.footerSettings.description}
+                phone={config.footerSettings.phone}
+                email={config.footerSettings.email}
+                copyright={config.footerSettings.copyright}
+              />
+              <CartDrawer />
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

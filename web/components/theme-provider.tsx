@@ -25,19 +25,26 @@ const readStoredTheme = (): Theme => {
 };
 
 /**
- * The initial theme class is applied before hydration by the blocking script
- * in app/layout.tsx (see THEME_INIT_SCRIPT). React Strict Mode's dev-only
- * remount resets <html> to only the attributes it manages from JSX, clearing
- * that class — so this also re-applies it in a useLayoutEffect (a no-op in
- * production, where the class is already correct).
+ * Initial state is always 'light' — matching what the server renders (no
+ * `window` there) — so hydration never mismatches. The real theme (already
+ * applied to <html> before paint by the blocking script in app/layout.tsx,
+ * see THEME_INIT_SCRIPT) is read and synced here in a useLayoutEffect, which
+ * runs before the browser paints, so there's still no visible flash. This
+ * also covers React Strict Mode's dev-only remount, which resets <html> to
+ * only the attributes it manages from JSX and clears the class otherwise.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(readStoredTheme);
+  const [theme, setThemeState] = useState<Theme>('light');
 
   useLayoutEffect(() => {
+    const real = readStoredTheme();
+    setThemeState(real);
     const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
+    if (real === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
+  }, []);
+
+  useLayoutEffect(() => {
     try {
       localStorage.setItem('apex_theme', theme);
     } catch {
@@ -47,17 +54,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = (next: Theme) => setThemeState(next);
 
+  const applyTheme = (next: Theme) => {
+    const root = document.documentElement;
+    if (next === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    setThemeState(next);
+  };
+
   const toggleTheme = () => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    const startViewTransition = (
-      document as Document & { startViewTransition?: (cb: () => void) => void }
-    ).startViewTransition;
-    if (startViewTransition) {
-      startViewTransition(() => setThemeState(next));
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
+    if (doc.startViewTransition) {
+      doc.startViewTransition(() => applyTheme(next));
     } else {
       const root = document.documentElement;
       root.classList.add('theme-transition');
-      setThemeState(next);
+      applyTheme(next);
       setTimeout(() => root.classList.remove('theme-transition'), 300);
     }
   };
