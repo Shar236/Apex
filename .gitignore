@@ -1,0 +1,169 @@
+# ============================================================
+# Apex — Root .gitignore
+# Covers: Next.js web frontend + Node.js backend
+# ============================================================
+
+
+# ── Secrets / Environment Variables ──────────────────────────
+# Never push real credentials
+.env*
+!.env.example
+!.env.example.*
+
+
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.pnpm-store/
+
+.yarn/install-state.gz
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+
+.npm/
+
+
+# ── Next.js (web/) ───────────────────────────────────────────
+web/.next/
+web/out/
+web/build/
+web/.vercel/
+web/tsconfig.tsbuildinfo
+web/next-env.d.ts
+
+.next/
+out/
+
+
+# ── Build Outputs (backend/) ─────────────────────────────────
+backend/dist/
+backend/build/
+backend/.wrangler/
+backend/public/uploads/
+
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+
+# ── Runtime / Cache ──────────────────────────────────────────
+.cache/
+.turbo/
+.parcel-cache/
+.tmp/
+tmp/
+temp/
+
+*.tsbuildinfo
+*.tmp
+*.temp
+
+
+# ── Testing ──────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+
+# ── Database / Local Data ────────────────────────────────────
+# Never commit local database dumps or exports
+*.dump
+*.bak
+*.backup
+*.db
+*.sqlite
+*.sqlite3
+
+dump/
+mongodb-dump/
+mongo-dump/
+
+
+# ── Local / Generated Uploads ────────────────────────────────
+uploads/
+
+# Temporary image files
+*.webp.tmp
+*.png.tmp
+*.jpg.tmp
+*.jpeg.tmp
+
+
+# ── Cloudinary / Migration Artifacts ─────────────────────────
+# Ignore locally generated migration logs/reports
+cloudinary-migration.log
+cloudinary-migration-report.*
+migration-output/
+migration-reports/
+
+
+# ── Credentials / Certificates ───────────────────────────────
+# Never commit private keys or certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+
+# ── IDE / Editor ─────────────────────────────────────────────
+.vscode/
+.idea/
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.kilo/
+
+
+# ── OS Junk ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ── Old / Scratch Directories ────────────────────────────────
+# Entire old/ folder — legacy code, scratch files, experiments
+old/
+
+
+# ── Miscellaneous Scratch / Report Files ─────────────────────
+SEO_MANAGER_IMPLEMENTATION_REPORT.md
+*_REPORT.md
+*_IMPLEMENTATION_REPORT.md
+
+
+# ── Cloudflare Wrangler Local State ──────────────────────────
+.wrangler/
+
+
+# ── MCP / Agent / AI Local Config ────────────────────────────
+.agents/
+.claude/
+.cursor/
+.codex/
+.ai/
+
+
+# ── Miscellaneous Generated Files ────────────────────────────
+*.orig
+*.rej
+*.swp
+*.swo
+*.pid
+*.seed
