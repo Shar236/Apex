@@ -15,18 +15,33 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import crypto from 'crypto';
-import mongoose from 'mongoose';
-import { connectDB } from '../config/db.js';
-import { config } from '../config/index.js';
-import { Product } from '../models/Product.js';
-import { VoucherCode } from '../models/VoucherCode.js';
-import { Order } from '../models/Order.js';
-import { User } from '../models/User.js';
-import { generateOrderNo } from '../utils/index.js';
-import { verifyPayment, getPaymentStatus, handleRazorpayWebhook, createPaymentOrder, reconcilePayment } from '../controllers/paymentController.js';
-import { myVouchers, myOrders } from '../controllers/accountController.js';
-import { getOrder } from '../controllers/orderController.js';
+// Disable transactional email BEFORE any app module reads config — otherwise
+// config/index.js loads the real SMTP credentials and this suite sends REAL
+// mail during tests (and T11b/T13b would see emailStatus=SENT, not FAILED).
+// (dotenv does not override an already-set key, and config/index.js loads next.)
+process.env.SMTP_HOST = '';
+process.env.SMTP_USER = '';
+process.env.SMTP_PASSWORD = '';
+process.env.SMTP_FROM = '';
+
+const crypto = (await import('crypto')).default;
+const mongoose = (await import('mongoose')).default;
+const { connectDB } = await import('../config/db.js');
+const { config } = await import('../config/index.js');
+const { Product } = await import('../models/Product.js');
+const { VoucherCode } = await import('../models/VoucherCode.js');
+const { Order } = await import('../models/Order.js');
+const { User } = await import('../models/User.js');
+const { generateOrderNo } = await import('../utils/index.js');
+const {
+  verifyPayment,
+  getPaymentStatus,
+  handleRazorpayWebhook,
+  createPaymentOrder,
+  reconcilePayment,
+} = await import('../controllers/paymentController.js');
+const { myVouchers, myOrders } = await import('../controllers/accountController.js');
+const { getOrder } = await import('../controllers/orderController.js');
 
 const SECRET = config.razorpay.keySecret || 'test_secret_fallback';
 const WEBHOOK_SECRET = config.razorpay.webhookSecret || SECRET;

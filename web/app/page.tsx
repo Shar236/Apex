@@ -15,6 +15,7 @@ import { FAQSection } from '@/components/faq-section';
 import { ExamGuidesSection } from '@/components/exam-guides-section';
 import { AboutApexVouchers } from '@/components/about-apex-vouchers';
 import { FinalCTASection } from '@/components/final-cta-section';
+import { VideoReelsCarousel } from '@/components/video-reels-carousel';
 import { getWebsiteConfig } from '@/lib/website-config';
 import { listPublicBlogPosts } from '@/lib/blog-api';
 import { buildMetadata, JsonLd } from '@/lib/seo';
@@ -60,6 +61,7 @@ export default async function HomePage() {
       <HowItWorks />
       <WhyApexVoucher />
       <VisualExplainerSection />
+      <VideoReelsCarousel />
       <RedemptionAndSecurity />
       <Testimonials />
       <FAQSection />

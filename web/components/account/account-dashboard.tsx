@@ -527,7 +527,7 @@ export function AccountDashboard() {
 
                 <div className="space-y-4">
                   {(!userVoucherRequests || userVoucherRequests.length === 0) && (
-                    <EmptyState icon={<Ticket className="w-7 h-7 text-neutral-400" />} title="No voucher requests yet" desc={'If a voucher is ever out of stock, use "Request Voucher" and track it here.'} />
+                    <EmptyState icon={<Ticket className="w-7 h-7 text-neutral-400" />} title="No voucher requests yet" desc={'If a voucher is temporarily unavailable, use "Request Voucher" and track it here.'} />
                   )}
 
                   {userVoucherRequests?.map((r) => {
