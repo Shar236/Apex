@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, LogOut, Bell, Crown, ArrowLeft,
+  LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, LogOut, Bell, Crown, ArrowLeft, Film, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -19,6 +19,10 @@ import { PTEBookingsAdmin } from '@/components/admin/pte-bookings';
 import { PromotionsAdmin } from '@/components/admin/promotions';
 import { AuditLogsAdmin } from '@/components/admin/audit-logs';
 import { NotificationsDrawer, useAdminNotifications } from '@/components/admin/notifications';
+import { SEOManager } from '@/components/admin/seo-manager';
+import { VideosAdmin } from '@/components/admin/videos-admin';
+import { AwardsAdmin } from '@/components/admin/awards-admin';
+import { WebsiteCMSAdmin } from '@/components/admin/website-cms-admin';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -30,6 +34,10 @@ const TABS = [
   { id: 'pte-bookings', label: 'PTE Booking Requests', icon: <CalendarCheck className="w-4 h-4" /> },
   { id: 'users', label: 'Customers', icon: <Users className="w-4 h-4" /> },
   { id: 'promotions', label: 'Promo Coupons', icon: <Tag className="w-4 h-4" /> },
+  { id: 'seo', label: 'SEO Manager', icon: <SearchIcon className="w-4 h-4" /> },
+  { id: 'videos', label: 'Videos & Reels', icon: <Film className="w-4 h-4" /> },
+  { id: 'awards-admin', label: 'Awards', icon: <Crown className="w-4 h-4" /> },
+  { id: 'cms', label: 'Website CMS', icon: <Megaphone className="w-4 h-4" /> },
   { id: 'audit-logs', label: 'Audit Logs', icon: <Clock className="w-4 h-4" /> },
 ];
 
@@ -124,6 +132,10 @@ export function AdminConsole() {
           {tab === 'pte-bookings' && <PTEBookingsAdmin />}
           {tab === 'users' && <UsersAdmin />}
           {tab === 'promotions' && <PromotionsAdmin />}
+          {tab === 'seo' && <SEOManager />}
+          {tab === 'videos' && <VideosAdmin />}
+          {tab === 'awards-admin' && <AwardsAdmin />}
+          {tab === 'cms' && <WebsiteCMSAdmin />}
           {tab === 'audit-logs' && <AuditLogsAdmin />}
         </main>
       </div>
