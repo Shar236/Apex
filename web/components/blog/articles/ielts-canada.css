@@ -1,0 +1,56 @@
+/*
+ * Article-specific styling for:
+ *   slug:    ielts-score-canada-8-7-7-7-rule-2026
+ *   wrapper: <article class="blog-article blog-ielts-canada">
+ *
+ * EVERY selector is prefixed with `.blog-ielts-canada`, so these rules cannot
+ * affect the navbar, footer, homepage, blog listing, other articles, the
+ * admin panel, or any global component.
+ */
+
+.blog-ielts-canada {
+  --ic-band: #0b7285;
+  --ic-canada: #d52b1e;
+}
+
+.blog-ielts-canada .ca-body { max-width: 48rem; }
+
+.blog-ielts-canada .ic-hero {
+  position: relative;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  border: 1px solid var(--ca-border);
+}
+.blog-ielts-canada .ic-hero .ca-figure { margin: 0; }
+.blog-ielts-canada .ic-hero .ca-figure img { border: 0; border-radius: 0; }
+
+.blog-ielts-canada .ca-body h2 {
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--ca-accent);
+  display: inline-block;
+}
+
+.blog-ielts-canada .ca-scorecard__value { color: var(--ic-band); }
+
+.blog-ielts-canada .ca-table thead th {
+  background: var(--ic-band);
+  color: #fff;
+}
+
+.blog-ielts-canada .ic-dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.9rem 0;
+}
+.blog-ielts-canada .ic-dual > div {
+  border: 1px solid var(--ca-border);
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--ca-surface);
+}
+.blog-ielts-canada .ic-dual h3 { margin-top: 0; }
+@media (max-width: 620px) {
+  .blog-ielts-canada .ic-dual { grid-template-columns: 1fr; }
+}

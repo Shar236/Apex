@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "apex-mongodb": {
+      "command": "npm",
+      "args": [
+        "run",
+        "mcp"
+      ],
+      "cwd": "D:\\Apex"
+    }
+  }
+}

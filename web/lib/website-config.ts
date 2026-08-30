@@ -1,0 +1,70 @@
+import { apiBase } from './api';
+import type { Product } from './types';
+import type { ActiveCampaign, BenefitCard, HeroSettings } from '@/components/hero/hero-section';
+
+export interface FooterSettings {
+  description?: string;
+  phone?: string;
+  email?: string;
+  copyright?: string;
+}
+
+export interface AnnouncementSettings {
+  enabled?: boolean;
+  text?: string;
+}
+
+export interface GlobalSeo {
+  websiteName?: string;
+  defaultSeoTitle?: string;
+  defaultMetaDescription?: string;
+  defaultOgImage?: string;
+  websiteUrl?: string;
+  organizationName?: string;
+  organizationLogo?: string;
+}
+
+export interface WebsiteConfig {
+  success: boolean;
+  activeCampaign: ActiveCampaign | null;
+  heroSettings: HeroSettings;
+  announcementSettings: AnnouncementSettings;
+  benefitCards: BenefitCard[];
+  footerSettings: FooterSettings;
+  globalSEO: GlobalSeo;
+  structuredData: { organization: Record<string, unknown>; website: Record<string, unknown> };
+  products: Product[];
+}
+
+const FALLBACK: WebsiteConfig = {
+  success: false,
+  activeCampaign: null,
+  heroSettings: {},
+  announcementSettings: { enabled: true, text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers' },
+  benefitCards: [],
+  footerSettings: {},
+  globalSEO: {},
+  structuredData: { organization: {}, website: {} },
+  products: [],
+};
+
+/**
+ * The storefront's single bootstrap fetch (backend/controllers/productController.js
+ * getWebsiteConfig) — hero/announcement/footer CMS settings, the active campaign,
+ * global SEO defaults, and the full live product catalog in one call. Used by both
+ * the root layout (Navbar/Footer settings) and the homepage; Next.js dedupes
+ * identical fetches within a single render pass, so this only hits the API once
+ * per request despite being called from two places.
+ */
+export async function getWebsiteConfig(): Promise<WebsiteConfig> {
+  try {
+    const res = await fetch(`${apiBase()}/api/products/website-config`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return FALLBACK;
+    const data = (await res.json()) as WebsiteConfig;
+    return { ...FALLBACK, ...data };
+  } catch {
+    return FALLBACK;
+  }
+}
