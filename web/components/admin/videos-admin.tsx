@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Eye, Crown, Play, CheckCircle2, Clock, Film, Save, Sparkles, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Eye, Crown, Play, CheckCircle2, Clock, Film, Sparkles } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { ApexLogo } from '@/components/apex-logo';
 import { StatCard, Pill, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';

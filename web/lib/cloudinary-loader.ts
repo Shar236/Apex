@@ -10,9 +10,22 @@ import { resolveImageSrc, isCloudinaryUrl } from './cloudinary';
  */
 export default function cloudinaryLoader({ src, width }: { src: string; width: number; quality?: number }): string {
   const resolved = resolveImageSrc(src);
-  if (!isCloudinaryUrl(resolved)) return resolved;
+  const w = Math.round(width);
 
-  const transform = `f_auto,q_auto,w_${Math.round(width)},c_limit`;
+  if (!isCloudinaryUrl(resolved)) {
+    // Unsplash serves its own width-aware CDN transform via the `w` param — honour
+    // `width` so next/image doesn't warn that the loader ignores it.
+    if (resolved.includes('images.unsplash.com/')) {
+      const u = new URL(resolved);
+      u.searchParams.set('w', String(w));
+      u.searchParams.set('auto', 'format');
+      u.searchParams.set('fit', 'crop');
+      return u.toString();
+    }
+    return resolved;
+  }
+
+  const transform = `f_auto,q_auto,w_${w},c_limit`;
   if (/\/upload\/[^/]*f_auto[^/]*\//.test(resolved)) {
     return resolved.replace(/\/upload\/[^/]*f_auto[^/]*\//, `/upload/${transform}/`);
   }

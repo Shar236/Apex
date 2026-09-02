@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
-import { ApexLogo } from '@/components/apex-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui';
 
@@ -98,8 +98,28 @@ export function Navbar({
       <nav className={`w-full transition-all duration-300 ${scrolled ? 'bg-surface/95 backdrop-blur-md shadow-sm py-2.5 border-b border-line' : 'bg-surface border-b border-line py-3.5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center text-left focus:outline-none cursor-pointer group shrink-0" aria-label="Go to Apex Vouchers Home">
-              <ApexLogo showTagline={false} />
+            <Link
+              href="/"
+              className="flex items-center shrink-0 rounded-lg py-1 pr-2 transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {/* Light navbar (default) */}
+              <Image
+                src="/apex-vouchers-logo.svg"
+                alt="Apex Vouchers"
+                width={244}
+                height={104}
+                priority
+                className="block h-9 w-auto sm:h-10 dark:hidden"
+              />
+              {/* Dark-theme fallback so the wordmark stays visible if the site is in dark mode */}
+              <Image
+                src="/apex-vouchers-logo-dark.svg"
+                alt="Apex Vouchers"
+                width={244}
+                height={104}
+                priority
+                className="hidden h-9 w-auto sm:h-10 dark:block"
+              />
             </Link>
 
             <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-ink-muted whitespace-nowrap">

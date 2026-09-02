@@ -13,6 +13,51 @@ export interface ProductSeo {
   nofollow?: boolean;
 }
 
+/** One redemption-step screenshot stored on the product (Cloudinary). */
+export interface RedemptionScreenshot {
+  url?: string;
+  publicId?: string;
+  alt?: string;
+  caption?: string;
+  width?: number;
+  height?: number;
+}
+
+/** One admin-authored redemption step for a specific product. */
+export interface RedemptionStep {
+  _id?: string;
+  order?: number;
+  title?: string;
+  description?: string;
+  screenshot?: RedemptionScreenshot;
+  importantNote?: string;
+  videoUrl?: string;
+}
+
+/** Product-specific "How to Redeem" content (data-driven, see redemption-guides.ts). */
+export interface RedemptionGuide {
+  enabled?: boolean;
+  providerLabel?: string;
+  officialUrl?: string;
+  buttonText?: string;
+  introduction?: string;
+  steps?: RedemptionStep[];
+  warnings?: string[];
+  lastUpdated?: string;
+}
+
+/** Product-specific long-form "About This Product" rich content. */
+export interface ProductContent {
+  enabled?: boolean;
+  heading?: string;
+  content?: string;
+}
+
+export interface InfoRow {
+  label?: string;
+  value?: string;
+}
+
 /** A selectable duration/plan variant of a product (e.g. APS Test: 1 Week / 1 Month). */
 export interface DurationOption {
   key: '1-week' | '1-month' | '3-months' | string;
@@ -68,7 +113,12 @@ export interface Product {
   relatedProducts?: string[] | Product[];
   seo?: ProductSeo;
   inclusions?: string[];
+  /** Legacy free-text redemption steps — fallback only; superseded by redemptionGuide. */
   redemptionSteps?: string[];
+  redemptionGuide?: RedemptionGuide;
+  productContent?: ProductContent;
+  importantInfo?: InfoRow[];
+  importantNotes?: string[];
   officialWebsiteUrl?: string;
   officialProductUrl?: string;
 }

@@ -1,8 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, RefreshCw, X, CheckCircle2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+
+const SEEN_KEY = 'apex.admin.seenNotifications';
+
+const readSeen = (): Set<string> => {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(SEEN_KEY) : null;
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const writeSeen = (ids: Set<string>) => {
+  try {
+    // keep the list bounded so it can't grow forever
+    window.localStorage.setItem(SEEN_KEY, JSON.stringify([...ids].slice(-200)));
+  } catch {
+    // storage unavailable — seen-tracking degrades to in-memory only
+  }
+};
 
 export interface AdminNotification {
   id?: string;
@@ -27,39 +47,75 @@ interface NotificationsData {
     sales?: number;
     stockAlerts?: number;
     voucherRequests?: number;
+    fulfillments?: number;
   };
 }
 
+const isActionable = (n: AdminNotification) =>
+  n.severity === 'critical' || n.severity === 'error' || n.type === 'FULFILLMENT_REQUEST' || n.type === 'VOUCHER_REQUEST';
+
 /**
  * Real-time admin notification feed — polls the live backend /api/admin/notifications
- * (real sold vouchers, stock alerts, mismatch events, voucher requests). Voucher codes
- * are masked server-side; nothing fake is generated here.
+ * (real sold vouchers, stock alerts, mismatch events, fulfillment + voucher requests).
+ * Voucher codes are masked server-side; nothing fake is generated here.
+ *
+ * `toasts` holds actionable notifications the admin has not seen yet (new since the
+ * last time the drawer was opened). Once acknowledged they never resurface.
  */
 export function useAdminNotifications() {
   const [notificationsData, setNotificationsData] = useState<NotificationsData>({ data: [], counts: {} });
   const [notifLoading, setNotifLoading] = useState(false);
+  const [toasts, setToasts] = useState<AdminNotification[]>([]);
+  const seenRef = useRef<Set<string>>(new Set());
 
-  const loadNotifications = async () => {
+  useEffect(() => {
+    seenRef.current = readSeen();
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
     try {
       const res = await adminApi.notifications();
       if (res?.success) {
-        setNotificationsData(res as unknown as NotificationsData);
+        const payload = res as unknown as NotificationsData;
+        setNotificationsData(payload);
+        const fresh = (payload.data || []).filter(
+          (n) => n.id && isActionable(n) && !seenRef.current.has(String(n.id))
+        );
+        if (fresh.length) setToasts((prev) => [...fresh, ...prev].slice(0, 4));
       }
     } catch {
       // silent — the feed refreshes again shortly
     } finally {
       setNotifLoading(false);
     }
-  };
+  }, []);
+
+  /** Mark everything currently in the feed as seen (called when the drawer opens). */
+  const acknowledgeAll = useCallback(() => {
+    for (const n of notificationsData.data || []) if (n.id) seenRef.current.add(String(n.id));
+    writeSeen(seenRef.current);
+    setToasts([]);
+  }, [notificationsData]);
+
+  const dismissToast = useCallback((id?: string) => {
+    if (id) {
+      seenRef.current.add(String(id));
+      writeSeen(seenRef.current);
+    }
+    setToasts((prev) => prev.filter((t) => String(t.id) !== String(id)));
+  }, []);
 
   useEffect(() => {
+    // Poll the admin notification feed on mount + every 15s. `loadNotifications`
+    // flips a loading flag before its awaited fetch (accepted polling pattern).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadNotifications();
     const timer = setInterval(loadNotifications, 15000);
     return () => clearInterval(timer);
-  }, []);
+  }, [loadNotifications]);
 
-  return { notificationsData, notifLoading, loadNotifications };
+  return { notificationsData, notifLoading, loadNotifications, toasts, acknowledgeAll, dismissToast };
 }
 
 export function NotificationsDrawer({
@@ -123,7 +179,7 @@ export function NotificationsDrawer({
               <div
                 key={n.id || idx}
                 className={`p-4 rounded-2xl border transition-all ${
-                  n.severity === 'critical' || n.type === 'MISMATCH_BLOCKED'
+                  n.severity === 'critical' || n.severity === 'error' || n.type === 'MISMATCH_BLOCKED' || n.type === 'FULFILLMENT_REQUEST'
                     ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60'
                     : n.type === 'OUT_OF_STOCK'
                     ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40'
@@ -172,6 +228,49 @@ export function NotificationsDrawer({
           <span>Auto-refreshes every 15s</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Corner toasts for new actionable alerts (paid orders awaiting a voucher,
+ * mismatch blocks, out-of-stock). Each toast is dismissible and, once dismissed
+ * or once the drawer is opened, never re-appears for that notification.
+ */
+export function NotificationToasts({
+  toasts,
+  onOpen,
+  onDismiss,
+}: {
+  toasts: AdminNotification[];
+  onOpen: () => void;
+  onDismiss: (id?: string) => void;
+}) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-4 right-4 z-60 w-full max-w-sm space-y-2">
+      {toasts.map((n, idx) => (
+        <div
+          key={n.id || idx}
+          className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-[#161616] shadow-2xl p-4 animate-in slide-in-from-right-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-black text-xs text-rose-600 dark:text-rose-400 mb-0.5">{n.title}</p>
+              <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300 leading-relaxed">{n.message}</p>
+            </div>
+            <button onClick={() => onDismiss(n.id)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-[#222] shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <button
+            onClick={() => { onOpen(); onDismiss(n.id); }}
+            className="mt-2 w-full py-2 rounded-xl bg-brand-pink text-white font-black text-[11px]"
+          >
+            Open notifications
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

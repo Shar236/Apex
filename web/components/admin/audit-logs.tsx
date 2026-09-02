@@ -27,6 +27,10 @@ export function AuditLogsAdmin() {
   }, []);
 
   useEffect(() => {
+    // Load the admin data once on mount. `refresh` flips a loading flag before
+    // its awaited fetch — an accepted data-fetching-in-effect pattern (this app
+    // has no server loader / React Compiler).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

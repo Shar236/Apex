@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Search, RefreshCw, Download, Mail, Plus, Ticket } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
-import { Th, Td, Empty, FormCard, Label, TextArea } from '@/components/admin/admin-ui';
+import { Th, Td, Empty, FormCard, Label } from '@/components/admin/admin-ui';
 
 interface VRRow {
   _id: string;
@@ -193,7 +193,7 @@ export function VoucherRequestsAdmin() {
       </div>
 
       {selected && (
-        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail} saving={saving}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5 space-y-4">
               <div>

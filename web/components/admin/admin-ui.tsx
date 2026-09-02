@@ -106,17 +106,17 @@ export function Check({ label, checked, onChange }: { label: string; checked: bo
   );
 }
 
-export function FormCard({ title, onClose, onSave, children }: { title: string; onClose: () => void; onSave: () => void; children: ReactNode }) {
+export function FormCard({ title, onClose, onSave, saving = false, children }: { title: string; onClose: () => void; onSave: () => void; saving?: boolean; children: ReactNode }) {
   return (
     <div className="mb-6 rounded-3xl p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-black text-lg">{title}</h3>
         <div className="flex items-center gap-2">
-          <button onClick={onClose} className="px-3 py-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+          <button onClick={onClose} disabled={saving} className="px-3 py-2 rounded-xl bg-neutral-100 dark:bg-[#262626] text-xs font-black text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5 disabled:opacity-50">
             <X className="w-4 h-4" /> Cancel
           </button>
-          <button onClick={onSave} className="px-4 py-2 rounded-xl btn-pink text-white font-black text-xs flex items-center gap-1.5 shadow-lg">
-            <Save className="w-4 h-4" /> Save Changes
+          <button onClick={onSave} disabled={saving} className="px-4 py-2 rounded-xl btn-pink text-white font-black text-xs flex items-center gap-1.5 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed">
+            <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>

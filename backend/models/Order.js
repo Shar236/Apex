@@ -121,7 +121,6 @@ const orderSchema = new mongoose.Schema(
       name: String,
     },
     paymentNotes: { type: String, default: null },
-    cashfreeOrderId: { type: String, default: null, index: true },
     paymentSessionId: { type: String, default: null },
     paymentMethod: { type: String, default: null },
     transactionId: { type: String, default: null },

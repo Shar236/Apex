@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Megaphone, RefreshCw, Plus, Save, ExternalLink, X, Trash2, HelpCircle, ShieldCheck, FileText, Info, Sparkles, CheckCircle2,
+  Megaphone, RefreshCw, Plus, Save, ExternalLink, X, Trash2, HelpCircle, ShieldCheck, FileText,
 } from 'lucide-react';
-import { adminApi, formatPrice } from '@/lib/api';
-import { Pill, Empty } from '@/components/admin/admin-ui';
+import { adminApi } from '@/lib/api';
 import type { Product } from '@/lib/types';
 
 interface Campaign {
@@ -68,7 +67,9 @@ const DEFAULT_POLICY = {
 };
 
 function CampaignFormModal({ campaign, products, onClose, onSave }: { campaign: Campaign | null; products: Product[]; onClose: () => void; onSave: (data: Record<string, unknown>) => void }) {
-  const [form, setForm] = useState({
+  // Lazy initializer — the `new Date()` defaults are computed once on mount, not
+  // on every render (keeps render pure).
+  const [form, setForm] = useState(() => ({
     name: campaign?.name || '',
     status: campaign?.status || 'ACTIVE',
     startDate: campaign?.startDate ? new Date(campaign.startDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -85,7 +86,7 @@ function CampaignFormModal({ campaign, products, onClose, onSave }: { campaign: 
     applicableProducts: campaign?.applicableProducts ? campaign.applicableProducts.map((p) => (typeof p === 'object' ? p._id : p)) : [] as string[],
     ctaText: campaign?.ctaText || 'Shop Independence Day Offer',
     showCountdown: campaign?.showCountdown !== false,
-  });
+  }));
 
   const inputCls = 'w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs';
 
@@ -233,10 +234,17 @@ export function WebsiteCMSAdmin() {
   }, []);
 
   useEffect(() => {
+    // Load campaigns + settings + products on mount; `loadCMSData` flips a
+    // loading flag before its awaited fetch (accepted data-fetch-in-effect).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCMSData();
   }, [loadCMSData]);
 
-  useEffect(() => {
+  // Seed the editable price grid once the product list arrives (render-time,
+  // not an effect — React's "adjust state when source data changes" pattern).
+  const [pricedFrom, setPricedFrom] = useState(products);
+  if (products !== pricedFrom) {
+    setPricedFrom(products);
     if (Array.isArray(products) && products.length > 0) {
       setProductPrices(
         products.map((p) => ({
@@ -249,7 +257,7 @@ export function WebsiteCMSAdmin() {
         }))
       );
     }
-  }, [products]);
+  }
 
   const handleSaveHeroSettings = async () => {
     setSavingSettings(true);

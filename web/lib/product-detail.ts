@@ -8,6 +8,7 @@ export interface ProductDetailResponse {
   structuredData: {
     product: Record<string, unknown> | null;
     breadcrumb: Record<string, unknown> | null;
+    faq?: Record<string, unknown> | null;
   };
 }
 

@@ -77,6 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Rehydrate auth from the stored token on mount (no `window` during SSR) and
+    // then revalidate against /api/auth/me. State-from-storage-plus-network is a
+    // legitimate effect; it cannot be a lazy initializer under SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     initAuth();
   }, [initAuth]);
 

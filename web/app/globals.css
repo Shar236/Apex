@@ -101,9 +101,14 @@ html, body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-weight: 400;
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scoped to the attribute Next.js sets on <html> so the router can suppress
+   smooth scrolling during route transitions (silences the Next 16 warning). */
+html[data-scroll-behavior="smooth"] {
+  scroll-behavior: smooth;
 }
 
 /* Never allow sideways scroll. `clip` (not `hidden`) so it doesn't create a

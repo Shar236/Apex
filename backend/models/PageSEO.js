@@ -21,9 +21,8 @@ const pageSEOSchema = new mongoose.Schema(
     pageKey: {
       type: String,
       required: [true, 'Page key is required'],
-      unique: true,
+      unique: true, // creates the (unique) index — no separate index needed
       trim: true,
-      index: true,
     },
     pageTitle: {
       type: String,
@@ -40,7 +39,5 @@ const pageSEOSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-pageSEOSchema.index({ pageKey: 1 });
 
 export const PageSEO = mongoose.model('PageSEO', pageSEOSchema);

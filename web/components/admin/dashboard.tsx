@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Sparkles, Clock, ShoppingCart, Package, Users, Ticket, Tag, AlertTriangle, RefreshCw,
-  CalendarCheck, FileSpreadsheet, Download, ShieldAlert, TrendingUp, TrendingDown,
+  CalendarCheck, FileSpreadsheet, Download, ShieldAlert,
 } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { StatCard, Empty } from '@/components/admin/admin-ui';
@@ -33,6 +33,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
   }, []);
 
   useEffect(() => {
+    // Re-fetch dashboard analytics when the period changes; `refresh` flips a
+    // loading flag before its awaited fetch (accepted pattern, no server loader).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh(period);
   }, [period, refresh]);
 

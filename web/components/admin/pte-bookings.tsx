@@ -64,7 +64,6 @@ export function PTEBookingsAdmin() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
   const [confirmedCentre, setConfirmedCentre] = useState('');
   const [confirmedDate, setConfirmedDate] = useState('');
@@ -96,12 +95,10 @@ export function PTEBookingsAdmin() {
     setConfirmedDate(row.confirmationDetails?.confirmedDate ? new Date(row.confirmationDetails.confirmedDate).toISOString().slice(0, 10) : '');
     setConfirmedTime(row.confirmationDetails?.confirmedTime || '');
     setInstructions(row.confirmationDetails?.importantInstructions || '');
-    setShowConfirmModal(false);
   };
 
   const closeDetail = () => {
     setSelected(null);
-    setShowConfirmModal(false);
   };
 
   const saveDetail = async () => {
@@ -202,7 +199,7 @@ export function PTEBookingsAdmin() {
       </div>
 
       {selected && (
-        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail} saving={saving}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5 space-y-4">
               <div>

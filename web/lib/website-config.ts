@@ -68,3 +68,35 @@ export async function getWebsiteConfig(): Promise<WebsiteConfig> {
     return FALLBACK;
   }
 }
+
+export interface LayoutConfig {
+  footerSettings: FooterSettings;
+  announcementSettings: AnnouncementSettings;
+}
+
+const LAYOUT_FALLBACK: LayoutConfig = {
+  footerSettings: FALLBACK.footerSettings,
+  announcementSettings: FALLBACK.announcementSettings,
+};
+
+/**
+ * The tiny nav/footer-only payload the root layout needs on every route
+ * (~1 KB) — instead of the full storefront bootstrap (getWebsiteConfig,
+ * ~30 KB with the whole product catalog + SEO + structured data). The
+ * homepage still calls getWebsiteConfig for hero/products/campaign.
+ */
+export async function getLayoutConfig(): Promise<LayoutConfig> {
+  try {
+    const res = await fetch(`${apiBase()}/api/products/layout-config`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return LAYOUT_FALLBACK;
+    const data = (await res.json()) as Partial<LayoutConfig>;
+    return {
+      footerSettings: { ...LAYOUT_FALLBACK.footerSettings, ...data.footerSettings },
+      announcementSettings: { ...LAYOUT_FALLBACK.announcementSettings, ...data.announcementSettings },
+    };
+  } catch {
+    return LAYOUT_FALLBACK;
+  }
+}

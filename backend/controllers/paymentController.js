@@ -125,18 +125,20 @@ const getProductsWithPrices = async (lineItems) => {
 const computeOrderTotals = async ({ lineItems, promoCode, userId }) => {
   const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
   const productIds = lineItems.map((it) => it.productId);
-
-  const promoResult = await applyPromotion(promoCode, subtotal, userId, productIds);
-  const promoDiscount = Math.max(0, promoResult.discount || 0);
-
   const now = new Date();
-  const activeCampaigns = await Campaign.find({
-    status: { $in: ['ACTIVE', 'SCHEDULED'] },
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-  })
-    .sort({ priority: -1, createdAt: -1 })
-    .lean();
+
+  // Promo validation and the active-campaign lookup are independent — run both together.
+  const [promoResult, activeCampaigns] = await Promise.all([
+    applyPromotion(promoCode, subtotal, userId, productIds),
+    Campaign.find({
+      status: { $in: ['ACTIVE', 'SCHEDULED'] },
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    })
+      .sort({ priority: -1, createdAt: -1 })
+      .lean(),
+  ]);
+  const promoDiscount = Math.max(0, promoResult.discount || 0);
 
   let campaignDiscount = 0;
   if (activeCampaigns.length > 0) {
@@ -399,18 +401,20 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   const enriched = enrichVouchers(working, vouchers);
   fx('fulfill:allocated', working, { source, voucherCount: enriched.length });
 
-  // One fulfillment event → customer email + admin sale notification.
-  // Both are best-effort and CANNOT change the PAID / FULFILLED state.
-  await notifyAdminSaleOnce(user, working, enriched);
-  await deliverOrderEmailSafe(user, working, enriched);
-
-  // Close out a "Request Voucher" request if this order was raised to fulfil one.
-  // Best-effort — never affects the PAID / FULFILLED state.
-  if (working.voucherRequestId) {
-    await markVoucherRequestFulfilled({ order: working, voucher: vouchers[0], user }).catch((err) =>
-      console.error(`[voucher-request:fulfill-hook] order=${working.orderNo}: ${err.message}`),
-    );
-  }
+  // One fulfillment event → customer email + admin sale notification +
+  // (if request-sourced) closing the VoucherRequest. All best-effort, none can
+  // change the PAID / FULFILLED state, and all independent — run them in
+  // parallel so the customer's confirmation email doesn't queue behind the
+  // admin notification's SMTP round trip.
+  await Promise.all([
+    notifyAdminSaleOnce(user, working, enriched),
+    deliverOrderEmailSafe(user, working, enriched),
+    working.voucherRequestId
+      ? markVoucherRequestFulfilled({ order: working, voucher: vouchers[0], user }).catch((err) =>
+          console.error(`[voucher-request:fulfill-hook] order=${working.orderNo}: ${err.message}`),
+        )
+      : Promise.resolve(),
+  ]);
 
   fx('fulfill:done', working, { source, emailStatus: working.emailStatus, adminNotified: !!working.adminNotifiedAt });
 

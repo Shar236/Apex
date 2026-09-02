@@ -9,7 +9,7 @@ import { Footer } from '@/components/footer';
 import { CartDrawer, CartToast } from '@/components/cart-drawer';
 import { CheckoutModal } from '@/components/checkout/checkout-modal';
 import { siteConfig } from '@/lib/config';
-import { getWebsiteConfig } from '@/lib/website-config';
+import { getLayoutConfig } from '@/lib/website-config';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -48,12 +48,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
-  const config = await getWebsiteConfig();
+  const config = await getLayoutConfig();
 
   return (
     <html
       lang="en"
       className={`${dmSans.variable} ${sora.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>

@@ -65,6 +65,14 @@ export function TableOfContents({ scope = '.ca-body', title = 'Table of Contents
   const [tree, setTree] = useState<TocSection[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Collapse the mobile menu when the scoped article changes — done during
+  // render (React's recommended pattern for "reset state on prop change").
+  const [prevScope, setPrevScope] = useState(scope);
+  if (scope !== prevScope) {
+    setPrevScope(scope);
+    setMobileOpen(false);
+  }
+
   useEffect(() => {
     const root = document.querySelector(scope);
     if (!root) return undefined;
@@ -72,10 +80,6 @@ export function TableOfContents({ scope = '.ca-body', title = 'Table of Contents
     scan();
     const t = setTimeout(scan, 250);
     return () => clearTimeout(t);
-  }, [scope]);
-
-  useEffect(() => {
-    setMobileOpen(false);
   }, [scope]);
 
   if (!tree.length) return null;

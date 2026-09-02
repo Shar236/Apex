@@ -22,6 +22,7 @@ import {
   uploadImage,
   isCloudinaryUrl,
 } from '../services/cloudinaryService.js';
+import { sanitizeRichHtml } from '../utils/richText.js';
 
 
 const PAID_ORDER_STATUSES = ['PAID', 'FULFILLED'];
@@ -81,7 +82,83 @@ const isValidHttpUrl = (value) => {
   }
 };
 
-const normalizeProductPayload = (body) => {
+/**
+ * Normalise + validate a product's redemption CMS block. Full-replace semantics
+ * (whatever the admin sends replaces the stored guide). Empty steps are dropped;
+ * partial steps are kept (an admin may save before finishing — spec §19). URLs
+ * are hard-validated. `order` is re-derived from array position so drag/move in
+ * the editor is the single source of truth for ordering.
+ */
+const normalizeRedemptionGuide = (guide) => {
+  if (guide === null || typeof guide !== 'object') {
+    return { enabled: false, providerLabel: '', officialUrl: '', buttonText: '', introduction: '', steps: [], warnings: [] };
+  }
+  const rawSteps = Array.isArray(guide.steps) ? guide.steps : [];
+  const steps = rawSteps
+    .map((s, i) => {
+      if (!s || typeof s !== 'object') return null;
+      const title = String(s.title || '').trim();
+      const description = String(s.description || '').trim();
+      const importantNote = String(s.importantNote || '').trim();
+      const videoUrl = String(s.videoUrl || '').trim();
+      const shot = s.screenshot && typeof s.screenshot === 'object' ? s.screenshot : {};
+      const screenshot = {
+        url: String(shot.url || '').trim(),
+        publicId: String(shot.publicId || '').trim(),
+        alt: String(shot.alt || '').trim(),
+        caption: String(shot.caption || '').trim(),
+        width: Number(shot.width) > 0 ? Number(shot.width) : undefined,
+        height: Number(shot.height) > 0 ? Number(shot.height) : undefined,
+      };
+      const isEmpty = !title && !description && !importantNote && !videoUrl && !screenshot.url;
+      if (isEmpty) return null;
+      if (videoUrl && !isValidHttpUrl(videoUrl)) {
+        throw new AppError(`Redemption step ${i + 1} video URL is not a valid URL`, 400, 'VALIDATION_ERROR');
+      }
+      return { title, description, screenshot, importantNote, videoUrl };
+    })
+    .filter(Boolean)
+    .map((s, i) => ({ ...s, order: i + 1 }));
+
+  const officialUrl = String(guide.officialUrl || '').trim();
+  if (officialUrl && !isValidHttpUrl(officialUrl)) {
+    throw new AppError('Redemption guide official URL is not a valid URL', 400, 'VALIDATION_ERROR');
+  }
+  const warnings = Array.isArray(guide.warnings)
+    ? guide.warnings.map((w) => String(w || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    enabled: !!guide.enabled,
+    providerLabel: String(guide.providerLabel || '').trim(),
+    officialUrl,
+    buttonText: String(guide.buttonText || '').trim(),
+    introduction: String(guide.introduction || '').trim(),
+    steps,
+    warnings,
+    lastUpdated: steps.length > 0 || guide.enabled ? new Date() : undefined,
+  };
+};
+
+/** Non-blocking pre-publish checks surfaced to the admin after a save (spec §19). */
+const collectRedemptionWarnings = (product) => {
+  const warnings = [];
+  const g = product?.redemptionGuide;
+  if (!product?.active || !g?.enabled) return warnings;
+  if (!g.steps || g.steps.length === 0) {
+    warnings.push('Redemption guide is enabled but has no steps yet.');
+  } else {
+    g.steps.forEach((s, i) => {
+      if (!s.title || !s.description) warnings.push(`Redemption step ${i + 1} is missing a title or description.`);
+    });
+  }
+  if (!g.officialUrl && !product.officialWebsiteUrl && !product.officialProductUrl) {
+    warnings.push('Redemption guide has no official / redemption URL set.');
+  }
+  return warnings;
+};
+
+const normalizeProductPayload = (body, { selfId } = {}) => {
   const payload = { ...body };
   if (typeof payload.badges === 'string') {
     payload.badges = payload.badges.split(',').map((b) => b.trim()).filter(Boolean);
@@ -127,6 +204,46 @@ const normalizeProductPayload = (body) => {
   if (!isValidHttpUrl(payload.officialProductUrl)) {
     throw new AppError('Official product URL is not a valid URL', 400, 'VALIDATION_ERROR');
   }
+
+  // ── Redemption CMS blocks ────────────────────────────────────────────────
+  if (payload.redemptionGuide !== undefined) {
+    payload.redemptionGuide = normalizeRedemptionGuide(payload.redemptionGuide);
+  }
+  if (payload.productContent !== undefined) {
+    const pc = payload.productContent && typeof payload.productContent === 'object' ? payload.productContent : {};
+    payload.productContent = {
+      enabled: !!pc.enabled,
+      heading: String(pc.heading || '').trim(),
+      content: sanitizeRichHtml(pc.content || ''),
+    };
+  }
+  if (payload.importantInfo !== undefined) {
+    payload.importantInfo = (Array.isArray(payload.importantInfo) ? payload.importantInfo : [])
+      .map((r) => ({ label: String(r?.label || '').trim(), value: String(r?.value || '').trim() }))
+      .filter((r) => r.label || r.value);
+  }
+  if (payload.importantNotes !== undefined) {
+    payload.importantNotes = (Array.isArray(payload.importantNotes) ? payload.importantNotes : [])
+      .map((n) => String(n || '').trim())
+      .filter(Boolean);
+  }
+  if (payload.faqs !== undefined) {
+    payload.faqs = (Array.isArray(payload.faqs) ? payload.faqs : [])
+      .map((f) => ({ question: String(f?.question || '').trim(), answer: String(f?.answer || '').trim() }))
+      .filter((f) => f.question && f.answer);
+  }
+  if (payload.relatedProducts !== undefined) {
+    const seen = new Set();
+    payload.relatedProducts = (Array.isArray(payload.relatedProducts) ? payload.relatedProducts : [])
+      .map((r) => (r && typeof r === 'object' && r._id ? String(r._id) : String(r || '')))
+      .filter((rid) => {
+        if (!isValidObjectId(rid) || seen.has(rid)) return false;
+        if (selfId && rid === String(selfId)) return false;
+        seen.add(rid);
+        return true;
+      });
+  }
+
   return payload;
 };
 
@@ -695,7 +812,7 @@ export const createProduct = async (req, res, next) => {
       originalPrice: product.originalPrice,
     });
 
-    res.status(201).json({ success: true, data: product });
+    res.status(201).json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
   } catch (err) {
     next(err);
   }
@@ -714,7 +831,7 @@ export const updateProduct = async (req, res, next) => {
       return next(new AppError('Selling price cannot exceed original price', 400));
     }
 
-    const updatePayload = normalizeProductPayload(req.body);
+    const updatePayload = normalizeProductPayload(req.body, { selfId: id });
     const product = await Product.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
 
     // If the primary image was swapped for a different Cloudinary asset, clean up
@@ -726,6 +843,16 @@ export const updateProduct = async (req, res, next) => {
       product.imagePublicId !== oldImagePublicId
     ) {
       await deleteProductImageIfUnused(oldImagePublicId, product._id);
+    }
+
+    // Redemption screenshots that were removed / replaced during this edit:
+    // best-effort delete from Cloudinary when nothing else references them.
+    const screenshotIds = (steps) =>
+      new Set((steps || []).map((s) => s?.screenshot?.publicId).filter(Boolean));
+    const oldScreens = screenshotIds(oldProduct.redemptionGuide?.steps);
+    const newScreens = screenshotIds(product.redemptionGuide?.steps);
+    for (const pid of oldScreens) {
+      if (!newScreens.has(pid)) await deleteRedemptionScreenshotIfUnused(pid, product._id);
     }
 
     const diffs = {};
@@ -743,7 +870,7 @@ export const updateProduct = async (req, res, next) => {
       diffs,
     });
 
-    res.json({ success: true, data: product });
+    res.json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
   } catch (err) {
     next(err);
   }
@@ -1008,6 +1135,59 @@ const deleteProductImageIfUnused = async (publicId, exceptProductId) => {
   }
 };
 
+/**
+ * Upload a single redemption-guide step screenshot to Cloudinary
+ * (apex_products/redemption). Same 502-on-failure contract as uploadProductImage
+ * — the admin keeps the previous screenshot rather than persisting a broken ref.
+ */
+export const uploadProductScreenshot = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file || !file.buffer) return next(new AppError('No screenshot file uploaded', 400));
+
+    let result;
+    try {
+      result = await uploadImage(file.buffer, { folder: 'apex_products/redemption' });
+    } catch (cloudErr) {
+      console.error('[Upload] Product screenshot Cloudinary upload failed:', cloudErr.message);
+      return next(new AppError('Screenshot upload to Cloudinary failed. Please try again.', 502));
+    }
+
+    res.json({
+      success: true,
+      url: result.url,
+      publicId: result.publicId,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Best-effort delete a redemption screenshot from Cloudinary, but only when no
+ * other product's redemption step references the same public_id and it is not
+ * in use as any product's primary image. Never throws.
+ */
+const deleteRedemptionScreenshotIfUnused = async (publicId, exceptProductId) => {
+  try {
+    if (!publicId) return;
+    const [usedInGuide, usedAsImage] = await Promise.all([
+      Product.exists({
+        _id: { $ne: exceptProductId },
+        'redemptionGuide.steps.screenshot.publicId': publicId,
+      }),
+      Product.exists({ imagePublicId: publicId }),
+    ]);
+    if (usedInGuide || usedAsImage) return;
+    await deleteCloudinaryAsset(publicId, 'image');
+  } catch (err) {
+    console.warn(`[Cloudinary] Redemption screenshot cleanup skipped for ${publicId}:`, err.message);
+  }
+};
+
 export const reorderProducts = async (req, res, next) => {
   try {
     const { items } = req.body; // Array of { id, order }
@@ -1182,31 +1362,39 @@ export const getVoucherCodeUnmasked = async (req, res, next) => {
 
 export const getAdminNotifications = async (req, res, next) => {
   try {
-    // 1. Recently Sold Vouchers (Last 20)
-    const recentlySold = await VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
-      .populate('productId', 'name brand voucherType')
-      .populate('orderId', 'orderNo total')
-      .populate('userId', 'name email')
-      .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
-      .limit(15)
-      .lean();
+    // Polled every 15s by every open admin tab — fan the independent reads out
+    // in parallel rather than six sequential Atlas round trips.
+    const [recentlySold, mismatchLogs, openVoucherRequests, openFulfillments, products] = await Promise.all([
+      // 1. Recently sold vouchers
+      VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
+        .populate('productId', 'name brand voucherType')
+        .populate('orderId', 'orderNo total')
+        .populate('userId', 'name email')
+        .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
+        .limit(15)
+        .lean(),
+      // 2. Mismatch alerts / failures from AuditLog
+      AuditLog.find({
+        action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED', 'ORDER_AWAITING_FULFILLMENT', 'PAID_ORDER_NOT_COLLECTABLE'] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean(),
+      // 2b. Open voucher requests (legacy pre-payment flow — kept for historical rows)
+      VoucherRequest.find({ status: { $in: ['PENDING', 'PROCESSING'] } })
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .lean(),
+      // 2c. Open fulfillment requests — PAID orders awaiting a manually-sourced
+      // voucher code because inventory ran out. Highest-priority action item.
+      FulfillmentRequest.find({ status: 'PROCESSING' })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+      // 3. Active products (for stock alerts)
+      Product.find({ active: true }).lean(),
+    ]);
 
-    // 2. Mismatch Alerts / Failures from AuditLog
-    const mismatchLogs = await AuditLog.find({
-      action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED', 'PAID_ORDER_NOT_COLLECTABLE'] },
-    })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean();
-
-    // 2b. Open voucher requests (customer asked for an out-of-stock voucher)
-    const openVoucherRequests = await VoucherRequest.find({ status: { $in: ['PENDING', 'PROCESSING'] } })
-      .sort({ createdAt: -1 })
-      .limit(15)
-      .lean();
-
-    // 3. Low stock and out-of-stock products
-    const products = await Product.find({ active: true }).lean();
     const productIds = products.map((p) => p._id);
     const stockStats = await aggregateVoucherStatsByProduct(productIds);
 
@@ -1252,7 +1440,7 @@ export const getAdminNotifications = async (req, res, next) => {
             details: log.details,
           };
         }
-        if (log.action === 'ORDER_ALLOCATION_FAILED') {
+        if (log.action === 'ORDER_ALLOCATION_FAILED' || log.action === 'ORDER_AWAITING_FULFILLMENT') {
           return {
             id: log._id,
             type: 'ALLOCATION_FAILED',
@@ -1274,6 +1462,24 @@ export const getAdminNotifications = async (req, res, next) => {
         };
       }),
       ...stockAlerts,
+      ...openFulfillments.map((r) => ({
+        id: `fr_${r._id}`,
+        type: 'FULFILLMENT_REQUEST',
+        severity: 'critical',
+        title: '🎟️ Paid order — voucher needs sourcing',
+        message: `${r.customerName} paid ${r.currency || 'INR'} ${r.amountPaid} for ${r.productName} (${r.voucherType}) — no stock. Deliver a code in Fulfillment Requests.`,
+        product: { _id: r.productId, name: r.productName, voucherType: r.voucherType },
+        timestamp: r.createdAt,
+        data: {
+          requestId: r.requestId,
+          orderNo: r.orderNo,
+          productName: r.productName,
+          voucherType: r.voucherType,
+          customerEmail: r.customerEmail,
+          amountPaid: r.amountPaid,
+          status: r.status,
+        },
+      })),
       ...openVoucherRequests.map((r) => ({
         id: `vr_${r._id}`,
         type: 'VOUCHER_REQUEST',
@@ -1318,6 +1524,7 @@ export const getAdminNotifications = async (req, res, next) => {
         sales: recentlySold.length,
         stockAlerts: stockAlerts.length,
         voucherRequests: openVoucherRequests.length,
+        fulfillments: openFulfillments.length,
       },
     });
   } catch (err) {
@@ -2344,9 +2551,15 @@ export const sendTestEmail = async (req, res, next) => {
     const result = await sendEmail({
       to,
       tag: 'admin-test',
-      subject: `Apex Vouchers — email delivery test (${stamp})`,
+      subject: `Apex Vouchers — Email Delivery Test`,
       text: `This is a diagnostic email from the Apex Vouchers admin console.\nIf you received it, transactional email delivery is working.\nSent: ${stamp}`,
-      html: `<p>This is a diagnostic email from the <b>Apex Vouchers</b> admin console.</p><p>If you received it, transactional email delivery is working.</p><p style="color:#888">Sent: ${stamp}</p>`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#FFFFFF;color:#1A1A2E;max-width:520px;margin:0 auto;padding:24px;border:1px solid #ECECF1;border-radius:12px;">
+        <div style="font-size:18px;font-weight:800;color:#1A1A2E;">APEX<span style="color:#FF005C;">&#8599;</span>&nbsp;<span style="color:#FF005C;">VOUCHERS</span></div>
+        <div style="height:3px;width:44px;background:#FF005C;border-radius:3px;margin:8px 0 16px;"></div>
+        <p style="font-size:14px;line-height:1.6;margin:0 0 10px;">This is a diagnostic email from the <b>Apex Vouchers</b> admin console.</p>
+        <p style="font-size:14px;line-height:1.6;margin:0 0 10px;">If you received it, transactional email delivery is working.</p>
+        <p style="font-size:12px;color:#55607A;margin:0;">Sent: ${stamp}</p>
+      </div>`,
     });
     return res.json({
       success: result.sent,

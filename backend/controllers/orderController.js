@@ -113,7 +113,7 @@ export const getOrder = async (req, res, next) => {
     // Ownership enforced in the query — a non-owner (or wrong id) gets 404,
     // never another customer's order or voucher code.
     const order = await Order.findOne({ ...q, userId: req.user.id })
-      .select('-processedEventIds -webhookStatus -paymentSessionId -cashfreeOrderId -__v')
+      .select('-processedEventIds -webhookStatus -paymentSessionId -__v')
       .lean();
     if (!order) return next(new AppError('Order not found', 404));
     const vouchers = await VoucherCode.find({ orderId: order._id, userId: req.user.id })

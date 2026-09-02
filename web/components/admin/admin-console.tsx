@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, LogOut, Bell, Crown, ArrowLeft, Film, Megaphone, PencilRuler,
+  LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, LogOut, Bell, Crown, ArrowLeft, Film, Megaphone, PencilRuler, ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -18,12 +18,13 @@ import { VoucherRequestsAdmin } from '@/components/admin/voucher-requests';
 import { PTEBookingsAdmin } from '@/components/admin/pte-bookings';
 import { PromotionsAdmin } from '@/components/admin/promotions';
 import { AuditLogsAdmin } from '@/components/admin/audit-logs';
-import { NotificationsDrawer, useAdminNotifications } from '@/components/admin/notifications';
+import { NotificationsDrawer, NotificationToasts, useAdminNotifications } from '@/components/admin/notifications';
 import { SEOManager } from '@/components/admin/seo-manager';
 import { VideosAdmin } from '@/components/admin/videos-admin';
 import { AwardsAdmin } from '@/components/admin/awards-admin';
 import { WebsiteCMSAdmin } from '@/components/admin/website-cms-admin';
 import { BlogAdmin } from '@/components/admin/blog-admin';
+import { AdminSecurity } from '@/components/admin/admin-security';
 
 const TABS = [
   { id: 'dashboard', label: 'Overview & Analytics', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -40,6 +41,7 @@ const TABS = [
   { id: 'videos', label: 'Videos & Reels', icon: <Film className="w-4 h-4" /> },
   { id: 'awards-admin', label: 'Awards', icon: <Crown className="w-4 h-4" /> },
   { id: 'cms', label: 'Website CMS', icon: <Megaphone className="w-4 h-4" /> },
+  { id: 'security', label: 'Security & Account', icon: <ShieldCheck className="w-4 h-4" /> },
   { id: 'audit-logs', label: 'Audit Logs', icon: <Clock className="w-4 h-4" /> },
 ];
 
@@ -47,10 +49,22 @@ export function AdminConsole() {
   const [tab, setTab] = useState('dashboard');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { notificationsData, notifLoading, loadNotifications } = useAdminNotifications();
+  const { notificationsData, notifLoading, loadNotifications, toasts, acknowledgeAll, dismissToast } = useAdminNotifications();
 
   const criticalCount = notificationsData?.counts?.critical || 0;
   const salesCount = notificationsData?.counts?.sales || 0;
+  const fulfillmentCount = notificationsData?.counts?.fulfillments || 0;
+  const voucherRequestCount = notificationsData?.counts?.voucherRequests || 0;
+  const tabBadges: Record<string, number> = {
+    'fulfillments': fulfillmentCount,
+    'voucher-requests': voucherRequestCount,
+  };
+
+  const openNotifications = () => {
+    setNotificationsOpen(true);
+    loadNotifications();
+    acknowledgeAll();
+  };
 
   return (
     <AdminGuard>
@@ -61,7 +75,7 @@ export function AdminConsole() {
               <ApexLogo className="h-7" />
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { setNotificationsOpen(!notificationsOpen); loadNotifications(); }}
+                  onClick={() => (notificationsOpen ? setNotificationsOpen(false) : openNotifications())}
                   className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#202020] text-neutral-700 dark:text-neutral-200 hover:text-brand-pink transition"
                   title="Notifications"
                 >
@@ -95,6 +109,11 @@ export function AdminConsole() {
                 >
                   {t.icon}
                   {t.label}
+                  {tabBadges[t.id] > 0 && (
+                    <span className={`ml-auto min-w-5 h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${tab === t.id ? 'bg-white text-brand-pink' : 'bg-rose-600 text-white'}`}>
+                      {tabBadges[t.id]}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -124,6 +143,11 @@ export function AdminConsole() {
             loading={notifLoading}
             onRefresh={loadNotifications}
           />
+          <NotificationToasts
+            toasts={toasts}
+            onOpen={() => { openNotifications(); setTab('fulfillments'); }}
+            onDismiss={dismissToast}
+          />
 
           {tab === 'dashboard' && <Dashboard onNavigate={setTab} />}
           {tab === 'products' && <ProductsAdmin onNavigate={setTab} />}
@@ -139,6 +163,7 @@ export function AdminConsole() {
           {tab === 'videos' && <VideosAdmin />}
           {tab === 'awards-admin' && <AwardsAdmin />}
           {tab === 'cms' && <WebsiteCMSAdmin />}
+          {tab === 'security' && <AdminSecurity />}
           {tab === 'audit-logs' && <AuditLogsAdmin />}
         </main>
       </div>

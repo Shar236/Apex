@@ -45,6 +45,9 @@ export function PromotionsAdmin() {
   }, []);
 
   useEffect(() => {
+    // Data-fetch on mount; `refresh` flips a loading flag before its awaited
+    // fetch (accepted data-fetching-in-effect pattern, no server loader here).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

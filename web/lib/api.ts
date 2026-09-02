@@ -296,6 +296,21 @@ export const adminApi = {
     }
     return { success: true, ...data };
   },
+  uploadProductScreenshot: async (file: File): Promise<ApiResponse> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/products/screenshot-upload`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.success === false) {
+      return { success: false, message: data?.message || `Upload failed (${resp.status})` };
+    }
+    return { success: true, ...data };
+  },
   vouchers: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);
@@ -443,10 +458,26 @@ export const adminApi = {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/fulfillments${qs ? `?${qs}` : ''}`);
   },
-  deliverFulfillment: (id: string, code: string) =>
-    request(`/api/admin/fulfillments/${id}/deliver`, { method: 'POST', body: JSON.stringify({ code }) }),
+  deliverFulfillment: (id: string, code: string, adminNotes = '') =>
+    request(`/api/admin/fulfillments/${id}/deliver`, { method: 'POST', body: JSON.stringify({ code, adminNotes }) }),
   cancelFulfillment: (id: string, reason = '') =>
     request(`/api/admin/fulfillments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  resendFulfillmentEmail: (id: string) =>
+    request(`/api/admin/fulfillments/${id}/resend-email`, { method: 'POST' }),
+  updateFulfillmentNotes: (id: string, adminNotes: string) =>
+    request(`/api/admin/fulfillments/${id}/notes`, { method: 'PATCH', body: JSON.stringify({ adminNotes }) }),
+  security: {
+    me: () => request('/api/admin/security/me'),
+    sendEmailOtp: (newEmail: string) =>
+      request('/api/admin/security/email/send-otp', { method: 'POST', body: JSON.stringify({ newEmail }) }),
+    verifyEmailOtp: (otp: string) =>
+      request('/api/admin/security/email/verify-otp', { method: 'POST', body: JSON.stringify({ otp }) }),
+    changePassword: (currentPassword: string, newPassword: string, confirmNewPassword: string) =>
+      request('/api/admin/security/password/change', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword }),
+      }),
+  },
 };
 
 export const pteBookingApi = {

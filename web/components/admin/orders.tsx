@@ -34,6 +34,13 @@ const maskCode = (code: string) => {
   return `${c.slice(0, 2)}••••${c.slice(-2)}`;
 };
 
+const F = ({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) => (
+  <div>
+    <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">{label}</div>
+    <div className={`text-xs font-bold text-neutral-800 dark:text-neutral-200 break-all ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
+  </div>
+);
+
 function OrderDetailPanel({ order }: { order: AdminOrder }) {
   const [detail, setDetail] = useState<{ data?: AdminOrder; vouchers?: Array<{ _id: string; code: string; status?: string; voucherType?: string; productId?: { name?: string } | null }> } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,18 +56,14 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
     return () => {
       alive = false;
     };
+    // Keyed on the id only — `order` is used purely as a fallback snapshot and
+    // must not retrigger the fetch when the parent re-renders with a new object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order._id]);
 
   if (loading) return <div className="p-4 text-xs font-bold text-neutral-400 animate-pulse">Loading order details…</div>;
   const o = detail?.data || order;
   const vouchers = detail?.vouchers || [];
-
-  const F = ({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) => (
-    <div>
-      <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">{label}</div>
-      <div className={`text-xs font-bold text-neutral-800 dark:text-neutral-200 break-all ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
-    </div>
-  );
 
   return (
     <div className="p-4 bg-neutral-50 dark:bg-[#0E0E0E] border-t border-[#EAEAEA] dark:border-[#292929] space-y-4">
@@ -133,6 +136,9 @@ export function OrdersAdmin() {
   }, [status]);
 
   useEffect(() => {
+    // Data-fetch on mount / when the status filter changes; `refresh` flips a
+    // loading flag before its awaited fetch (accepted pattern, no server loader).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

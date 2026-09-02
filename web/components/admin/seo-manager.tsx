@@ -139,10 +139,15 @@ export function SEOManager() {
   }, []);
 
   useEffect(() => {
+    // Lazy-load each sub-tab's data the first time it's shown. Each loader flips
+    // its own loading flag before an awaited fetch (accepted data-fetching-in-
+    // effect pattern — no server loader / React Compiler in this app).
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (subTab === 'overview') loadOverview();
     if (subTab === 'pages') loadPages();
     if (subTab === 'redirects') loadRedirects();
     if (subTab === 'global') loadGlobal();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [subTab, loadOverview, loadPages, loadRedirects, loadGlobal]);
 
   useEffect(() => {

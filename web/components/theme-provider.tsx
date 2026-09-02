@@ -37,7 +37,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
 
   useLayoutEffect(() => {
+    // SSR renders 'light' (no `window`); the real stored/system theme is read and
+    // applied here BEFORE paint. This setState is the whole point of the pattern
+    // (see the block comment above) — it cannot be a lazy initializer without a
+    // hydration mismatch.
     const real = readStoredTheme();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThemeState(real);
     const root = document.documentElement;
     if (real === 'dark') root.classList.add('dark');
