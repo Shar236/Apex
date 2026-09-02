@@ -33,6 +33,15 @@ export const metadata: Metadata = {
     absolute: siteConfig.defaultTitle,
   },
   description: siteConfig.defaultDescription,
+  icons: {
+    icon: [
+      { url: '/favicon-32x32.png?v=circle1', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.ico?v=circle1', sizes: 'any' },
+      { url: '/favicon-16x16.png?v=circle1', type: 'image/png', sizes: '16x16' },
+    ],
+    shortcut: '/favicon.ico?v=circle1',
+    apple: '/apple-touch-icon.png?v=circle1',
+  },
   openGraph: {
     type: 'website',
     siteName: siteConfig.name,
@@ -58,6 +67,9 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" href="/favicon-32x32.png?v=circle1" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/favicon.ico?v=circle1" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=circle1" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="antialiased min-h-screen flex flex-col">
