@@ -203,7 +203,20 @@ export const getProduct = async (req, res, next) => {
       product = await Product.findById(id);
     }
     if (!product) {
-      product = await Product.findOne({ slug: String(id).toLowerCase() });
+      const normId = String(id).toLowerCase();
+      const baseClean = normId.replace(/^ets-/, '').replace(/(-voucher|-exam|-test)$/, '');
+      product = await Product.findOne({
+        $or: [
+          { slug: normId },
+          { slug: `${normId}-voucher` },
+          { slug: normId.replace(/-voucher$/, '') },
+          { slug: `ets-${baseClean}-voucher` },
+          { slug: `${baseClean}-exam-voucher` },
+          { slug: `${baseClean}-voucher` },
+          { slug: `${baseClean}-exam` },
+          { slug: baseClean },
+        ],
+      });
     }
     if (!product) {
       const asPath = `/exam-vouchers/${String(id).toLowerCase()}`;
