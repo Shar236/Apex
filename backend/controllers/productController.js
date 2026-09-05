@@ -10,6 +10,56 @@ import { resolveImageUrl } from '../utils/imageUrl.js';
 
 const baseUrl = () => config.siteUrl || config.business?.website || config.clientUrl || 'http://localhost:5173';
 
+// Shared CMS defaults — used by both getWebsiteConfig (full storefront bootstrap)
+// and getLayoutConfig (the tiny nav/footer-only payload the root layout needs).
+const DEFAULT_ANNOUNCEMENT = {
+  enabled: true,
+  text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers',
+  link: '/#vouchers',
+  overrideWithCampaign: true,
+};
+
+const DEFAULT_FOOTER = {
+  description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.',
+  phone: '+91 9855926113',
+  email: 'apexvouchers@gmail.com',
+  copyright: '© 2026 Apex Vouchers. All rights reserved.',
+  usefulLinks: [
+    { label: 'About Us', url: '/#about' },
+    { label: 'Exam Vouchers', url: '/#vouchers' },
+    { label: 'How It Works', url: '/#how-it-works' },
+    { label: 'FAQ', url: '/#faq' },
+    { label: 'Privacy Policy', url: '/#privacy' },
+    { label: 'Terms of Service', url: '/#terms' },
+  ],
+};
+
+/**
+ * GET /api/products/layout-config
+ * The minimal payload the Next.js root layout needs on EVERY route (Navbar +
+ * Footer + announcement bar). Two Setting reads, ~1 KB response — vs
+ * getWebsiteConfig's full catalog + all SEO + structured data (~30 KB).
+ */
+export const getLayoutConfig = async (_req, res, next) => {
+  try {
+    const rows = await Setting.find({ key: { $in: ['footerSettings', 'announcementSettings'] } }).lean();
+    const S = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const footer = S.footerSettings || DEFAULT_FOOTER;
+    res.json({
+      success: true,
+      footerSettings: {
+        description: footer.description || DEFAULT_FOOTER.description,
+        phone: footer.phone || DEFAULT_FOOTER.phone,
+        email: footer.email || DEFAULT_FOOTER.email,
+        copyright: footer.copyright || DEFAULT_FOOTER.copyright,
+      },
+      announcementSettings: S.announcementSettings || DEFAULT_ANNOUNCEMENT,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 /**
  * Customer-facing product hydration.
  *
@@ -28,8 +78,29 @@ const applyAvailability = async (products) => {
     const savings = Math.max(0, (raw.originalPrice || 0) - (raw.sellingPrice || 0));
     const isComingSoon = !!raw.comingSoon;
 
+    // Deliver each guide-step screenshot through the same Cloudinary
+    // f_auto,q_auto transform as the primary image.
+    const resolveGuideSteps = (steps) =>
+      (steps || []).map((s) => ({
+        ...s,
+        screenshot:
+          s && s.screenshot && s.screenshot.url
+            ? { ...s.screenshot, url: resolveImageUrl(s.screenshot.url) }
+            : s?.screenshot,
+      }));
+    const redemptionGuide =
+      raw.redemptionGuide && typeof raw.redemptionGuide === 'object'
+        ? { ...raw.redemptionGuide, steps: resolveGuideSteps(raw.redemptionGuide.steps) }
+        : raw.redemptionGuide;
+    const purchaseGuide =
+      raw.purchaseGuide && typeof raw.purchaseGuide === 'object'
+        ? { ...raw.purchaseGuide, steps: resolveGuideSteps(raw.purchaseGuide.steps) }
+        : raw.purchaseGuide;
+
     return {
       ...raw,
+      redemptionGuide,
+      purchaseGuide,
       // Deliver every image through Cloudinary's f_auto,q_auto transform when it
       // is a Cloudinary asset; legacy/local paths pass through untouched.
       image: resolveImageUrl(raw.image),
@@ -86,6 +157,27 @@ const buildProductJsonLd = (product) => {
   };
 };
 
+/**
+ * FAQPage structured data from a product's admin-authored FAQs. Returns null
+ * when the product has no configured FAQs (the page then renders generated
+ * fallback FAQs, which are intentionally not advertised to search engines).
+ */
+const buildFaqJsonLd = (product) => {
+  const faqs = Array.isArray(product?.faqs)
+    ? product.faqs.filter((f) => f && f.question && f.answer)
+    : [];
+  if (faqs.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  };
+};
+
 export const listProducts = async (req, res, next) => {
   try {
     const { category, brand, provider, featured, search, all } = req.query;
@@ -136,8 +228,13 @@ export const getProduct = async (req, res, next) => {
 
     let related = [];
     if (hydrated.relatedProducts && hydrated.relatedProducts.length > 0) {
-      const rel = await Product.find({ _id: { $in: hydrated.relatedProducts }, active: true }).select('name slug brand provider image sellingPrice originalPrice badge badgeType seo featured').lean();
-      related = await applyAvailability(rel);
+      // "Explore More" — admin-curated list. Preserve the admin's ordering
+      // ($in does not) and silently drop any now-inactive/deleted picks.
+      const orderedIds = hydrated.relatedProducts.map((x) => String(x));
+      const rel = await Product.find({ _id: { $in: orderedIds }, active: true }).select('name slug brand provider image sellingPrice originalPrice badge badgeType seo featured').lean();
+      const byId = new Map(rel.map((r) => [String(r._id), r]));
+      const orderedRel = orderedIds.map((rid) => byId.get(rid)).filter(Boolean);
+      related = await applyAvailability(orderedRel);
     } else if (hydrated.brand || hydrated.provider) {
       const rel = await Product.find({
         _id: { $ne: hydrated._id },
@@ -166,6 +263,7 @@ export const getProduct = async (req, res, next) => {
       structuredData: {
         product: jsonLd,
         breadcrumb: breadcrumbJsonLd,
+        faq: buildFaqJsonLd(hydrated),
       },
     });
   } catch (err) {
@@ -177,38 +275,55 @@ export const getWebsiteConfig = async (req, res, next) => {
   try {
     const now = new Date();
 
-    await Campaign.updateMany(
-      { endDate: { $lt: now }, status: { $in: ['ACTIVE', 'SCHEDULED'] } },
-      { $set: { status: 'EXPIRED' } }
-    ).catch(() => {});
+    // One round trip for every CMS/SEO setting instead of 14 (5 sequential +
+    // a Promise.all of 9). Campaign housekeeping, the active-campaign lookup and
+    // the product catalog all run in parallel with it.
+    const SETTING_KEYS = [
+      'heroSettings', 'announcementSettings', 'benefitCards', 'footerSettings', 'policySettings',
+      'seo_siteName', 'seo_defaultTitle', 'seo_defaultDescription', 'seo_defaultOgImage',
+      'seo_siteUrl', 'seo_orgName', 'seo_orgLogo', 'seo_gscVerification', 'seo_gaMeasurementId',
+    ];
 
-    const activeCampaigns = await Campaign.find({
-      status: { $in: ['ACTIVE', 'SCHEDULED'] },
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-    })
-      .sort({ priority: -1, createdAt: -1 })
-      .populate('applicableProducts', 'name brand sellingPrice originalPrice')
-      .lean();
+    const [settingRows, activeCampaigns, products] = await Promise.all([
+      Setting.find({ key: { $in: SETTING_KEYS } }).lean(),
+      Campaign.updateMany(
+        { endDate: { $lt: now }, status: { $in: ['ACTIVE', 'SCHEDULED'] } },
+        { $set: { status: 'EXPIRED' } }
+      )
+        .catch(() => {})
+        .then(() =>
+          Campaign.find({
+            status: { $in: ['ACTIVE', 'SCHEDULED'] },
+            startDate: { $lte: now },
+            endDate: { $gte: now },
+          })
+            .sort({ priority: -1, createdAt: -1 })
+            .populate('applicableProducts', 'name brand sellingPrice originalPrice')
+            .lean()
+        ),
+      Product.find({ active: true, archived: { $ne: true } })
+        .sort({ displayOrder: 1, featured: -1, createdAt: -1 })
+        .lean(),
+    ]);
+
+    const S = Object.fromEntries(settingRows.map((row) => [row.key, row.value]));
+    const settingValue = (key) => (S[key] !== undefined ? { value: S[key] } : null);
+    const heroSettingDoc = settingValue('heroSettings');
+    const announcementDoc = settingValue('announcementSettings');
+    const benefitCardsDoc = settingValue('benefitCards');
+    const footerDoc = settingValue('footerSettings');
+    const policySettingsDoc = settingValue('policySettings');
+    const siteName = settingValue('seo_siteName');
+    const defaultTitle = settingValue('seo_defaultTitle');
+    const defaultDesc = settingValue('seo_defaultDescription');
+    const defaultOgImage = settingValue('seo_defaultOgImage');
+    const siteUrl = settingValue('seo_siteUrl');
+    const orgName = settingValue('seo_orgName');
+    const orgLogo = settingValue('seo_orgLogo');
+    const gscCode = settingValue('seo_gscVerification');
+    const gaId = settingValue('seo_gaMeasurementId');
 
     const activeCampaign = activeCampaigns.length > 0 ? activeCampaigns[0] : null;
-
-    const heroSettingDoc = await Setting.findOne({ key: 'heroSettings' }).lean();
-    const announcementDoc = await Setting.findOne({ key: 'announcementSettings' }).lean();
-    const benefitCardsDoc = await Setting.findOne({ key: 'benefitCards' }).lean();
-    const footerDoc = await Setting.findOne({ key: 'footerSettings' }).lean();
-    const policySettingsDoc = await Setting.findOne({ key: 'policySettings' }).lean();
-    const [siteName, defaultTitle, defaultDesc, defaultOgImage, siteUrl, orgName, orgLogo, gscCode, gaId] = await Promise.all([
-      Setting.findOne({ key: 'seo_siteName' }).lean(),
-      Setting.findOne({ key: 'seo_defaultTitle' }).lean(),
-      Setting.findOne({ key: 'seo_defaultDescription' }).lean(),
-      Setting.findOne({ key: 'seo_defaultOgImage' }).lean(),
-      Setting.findOne({ key: 'seo_siteUrl' }).lean(),
-      Setting.findOne({ key: 'seo_orgName' }).lean(),
-      Setting.findOne({ key: 'seo_orgLogo' }).lean(),
-      Setting.findOne({ key: 'seo_gscVerification' }).lean(),
-      Setting.findOne({ key: 'seo_gaMeasurementId' }).lean(),
-    ]);
 
     const heroSettings = heroSettingDoc?.value || {
       headingLine1: 'Your Exam. Your Dream.',
@@ -219,12 +334,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       ctaLink: '/#vouchers',
     };
 
-    const announcementSettings = announcementDoc?.value || {
-      enabled: true,
-      text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers',
-      link: '/#vouchers',
-      overrideWithCampaign: true,
-    };
+    const announcementSettings = announcementDoc?.value || DEFAULT_ANNOUNCEMENT;
 
     const benefitCards = benefitCardsDoc?.value || [
       { id: 1, title: 'Best Prices', sub: 'Guaranteed', icon: '🏷️' },
@@ -233,20 +343,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       { id: 4, title: 'Secure Payments', sub: '& Safe Checkout', icon: '🔒' },
     ];
 
-    const footerSettings = footerDoc?.value || {
-      description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.',
-      phone: '+91 9855926113',
-      email: 'apexvouchers@gmail.com',
-      copyright: '© 2026 Apex Vouchers. All rights reserved.',
-      usefulLinks: [
-        { label: 'About Us', url: '/#about' },
-        { label: 'Exam Vouchers', url: '/#vouchers' },
-        { label: 'How It Works', url: '/#how-it-works' },
-        { label: 'FAQ', url: '/#faq' },
-        { label: 'Privacy Policy', url: '/#privacy' },
-        { label: 'Terms of Service', url: '/#terms' },
-      ],
-    };
+    const footerSettings = footerDoc?.value || DEFAULT_FOOTER;
 
     const globalSEO = {
       websiteName: siteName?.value || 'Apex Vouchers',
@@ -288,9 +385,6 @@ export const getWebsiteConfig = async (req, res, next) => {
       },
     };
 
-    const products = await Product.find({ active: true, archived: { $ne: true } })
-      .sort({ displayOrder: 1, featured: -1, createdAt: -1 })
-      .lean();
     const hydratedProducts = await applyAvailability(products);
 
     const policySettings = policySettingsDoc?.value || {

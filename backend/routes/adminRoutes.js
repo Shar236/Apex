@@ -57,6 +57,7 @@ import {
   uploadMedia,
   uploadProductLogo,
   uploadProductImage,
+  uploadProductScreenshot,
   listVoucherRequestsAdmin,
   getVoucherRequestAdmin,
   updateVoucherRequestAdmin,
@@ -96,6 +97,7 @@ r.get('/products', listAdminProducts);
 r.patch('/products/reorder', reorderProducts);
 r.post('/products/logo-upload', productLogoUpload.single('logo'), uploadProductLogo);
 r.post('/products/image-upload', productImageUpload.single('image'), uploadProductImage);
+r.post('/products/screenshot-upload', productImageUpload.single('image'), uploadProductScreenshot);
 r.get('/products/:id', getAdminProduct);
 r.post('/products', createProduct);
 r.patch('/products/:id', updateProduct);

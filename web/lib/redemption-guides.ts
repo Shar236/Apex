@@ -1,15 +1,35 @@
-import type { Product } from './types';
+import type { Product, GuideScreenshot } from './types';
 
 /**
- * Provider-specific redemption guide content. Matches a product to its exam
- * provider family and returns generic-but-accurate redemption steps for that
- * provider's official portal. A product's own admin-entered `redemptionSteps`
- * (from the database) always takes priority — see getRedemptionSteps().
+ * Redemption-guide resolver. The content is DATA-DRIVEN and product-specific:
+ *
+ *   1. product.redemptionGuide (admin CMS)  — structured steps + screenshots
+ *   2. product.redemptionSteps (legacy)     — free-text steps, no screenshots
+ *   3. provider-family fallback below        — generic-but-accurate steps
+ *
+ * There is deliberately NO `if (product.name === 'PTE')` logic anywhere — the
+ * provider-family fallback (step 3) only ever applies when a product has no
+ * configured guide at all, and its steps are generic guidance, never fabricated
+ * product-specific instructions.
  */
 
-interface GuideStep {
+export interface GuideStep {
   title: string;
   description: string;
+  screenshot?: GuideScreenshot;
+  importantNote?: string;
+  videoUrl?: string;
+}
+
+export interface ResolvedGuide {
+  /** 'structured' = admin CMS, 'legacy' = redemptionSteps[], 'provider' = fallback family. */
+  source: 'structured' | 'legacy' | 'provider';
+  providerLabel: string;
+  officialUrl: string;
+  buttonText: string;
+  introduction: string;
+  steps: GuideStep[];
+  warnings: string[];
 }
 
 interface ProviderGuide {
@@ -17,7 +37,7 @@ interface ProviderGuide {
   match: (p: Product) => boolean;
   providerLabel: string;
   officialUrl: string;
-  steps: GuideStep[];
+  steps: Array<{ title: string; description: string }>;
 }
 
 const PROVIDER_GUIDES: ProviderGuide[] = [
@@ -88,7 +108,7 @@ const PROVIDER_GUIDES: ProviderGuide[] = [
   },
 ];
 
-const GENERIC_GUIDE: Omit<ProviderGuide, 'match'> = {
+const GENERIC_PROVIDER: Omit<ProviderGuide, 'match'> = {
   id: 'generic',
   providerLabel: 'the official provider',
   officialUrl: '',
@@ -101,18 +121,75 @@ const GENERIC_GUIDE: Omit<ProviderGuide, 'match'> = {
   ],
 };
 
-export const getRedemptionGuide = (product: Partial<Product> = {}) => {
-  const found = PROVIDER_GUIDES.find((g) => g.match(product as Product));
-  const guide = found || GENERIC_GUIDE;
-  const officialUrl = (product as { officialWebsiteUrl?: string; officialProductUrl?: string }).officialWebsiteUrl || (product as { officialProductUrl?: string }).officialProductUrl || guide.officialUrl || '';
-  const providerLabel = product.provider || product.brand || guide.providerLabel;
-  return { ...guide, officialUrl, providerLabel };
+const cleanSteps = (product: Partial<Product>) =>
+  (product.redemptionGuide?.steps || []).filter(
+    (s) => (s?.title && s.title.trim()) || (s?.description && s.description.trim()),
+  );
+
+/** True when the product carries an admin-configured, enabled redemption guide with ≥1 real step. */
+export const hasStructuredGuide = (product: Partial<Product> = {}): boolean =>
+  !!product.redemptionGuide?.enabled && cleanSteps(product).length > 0;
+
+const providerFamily = (product: Partial<Product>) =>
+  PROVIDER_GUIDES.find((g) => g.match(product as Product)) || GENERIC_PROVIDER;
+
+/**
+ * Resolve the complete guide for a product: metadata + ordered steps + source.
+ * `officialUrl` / `providerLabel` / `buttonText` prefer the product's own admin
+ * values, then its official links, then the provider-family default.
+ */
+export const getRedemptionGuide = (product: Partial<Product> = {}): ResolvedGuide => {
+  const family = providerFamily(product);
+  const officialLink =
+    (product as { officialWebsiteUrl?: string }).officialWebsiteUrl ||
+    (product as { officialProductUrl?: string }).officialProductUrl ||
+    '';
+
+  if (hasStructuredGuide(product)) {
+    const g = product.redemptionGuide!;
+    return {
+      source: 'structured',
+      providerLabel: g.providerLabel?.trim() || product.provider || product.brand || family.providerLabel,
+      officialUrl: g.officialUrl?.trim() || officialLink || family.officialUrl || '',
+      buttonText: g.buttonText?.trim() || '',
+      introduction: g.introduction?.trim() || '',
+      steps: cleanSteps(product).map((s, i) => ({
+        title: s.title?.trim() || `Step ${i + 1}`,
+        description: s.description?.trim() || '',
+        screenshot: s.screenshot?.url ? s.screenshot : undefined,
+        importantNote: s.importantNote?.trim() || undefined,
+        videoUrl: s.videoUrl?.trim() || undefined,
+      })),
+      warnings: (product.redemptionGuide?.warnings || []).map((w) => w.trim()).filter(Boolean),
+    };
+  }
+
+  const providerLabel = product.provider || product.brand || family.providerLabel;
+  const officialUrl = officialLink || family.officialUrl || '';
+
+  if (Array.isArray(product.redemptionSteps) && product.redemptionSteps.length > 0) {
+    return {
+      source: 'legacy',
+      providerLabel,
+      officialUrl,
+      buttonText: '',
+      introduction: '',
+      steps: product.redemptionSteps.map((text, i) => ({ title: `Step ${i + 1}`, description: text })),
+      warnings: [],
+    };
+  }
+
+  return {
+    source: 'provider',
+    providerLabel,
+    officialUrl,
+    buttonText: '',
+    introduction: '',
+    steps: family.steps.map((s) => ({ ...s })),
+    warnings: [],
+  };
 };
 
-/** Prefers the product's own admin-entered redemptionSteps (real DB data); falls back to the generic provider-family steps. */
-export const getRedemptionSteps = (product: Partial<Product> & { redemptionSteps?: string[] } = {}): GuideStep[] => {
-  if (Array.isArray(product.redemptionSteps) && product.redemptionSteps.length > 0) {
-    return product.redemptionSteps.map((text, i) => ({ title: `Step ${i + 1}`, description: text }));
-  }
-  return getRedemptionGuide(product).steps;
-};
+/** Ordered steps for the product (richer shape — carries screenshot / note / video when present). */
+export const getRedemptionSteps = (product: Partial<Product> = {}): GuideStep[] =>
+  getRedemptionGuide(product).steps;

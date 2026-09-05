@@ -299,6 +299,21 @@ export const adminApi = {
     }
     return { success: true, ...data };
   },
+  uploadProductScreenshot: async (file: File): Promise<ApiResponse> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = getToken();
+    const resp = await fetch(`${apiBase()}/api/admin/products/screenshot-upload`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.success === false) {
+      return { success: false, message: data?.message || `Upload failed (${resp.status})` };
+    }
+    return { success: true, ...data };
+  },
   vouchers: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);

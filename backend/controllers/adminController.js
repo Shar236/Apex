@@ -29,6 +29,7 @@ import {
   uploadImage,
   isCloudinaryUrl,
 } from '../services/cloudinaryService.js';
+import { sanitizeRichHtml } from '../utils/richText.js';
 
 
 const PAID_ORDER_STATUSES = ['PAID', 'FULFILLED'];
@@ -88,7 +89,124 @@ const isValidHttpUrl = (value) => {
   }
 };
 
-const normalizeProductPayload = (body) => {
+const normalizeGuideScreenshot = (shot) => {
+  const s = shot && typeof shot === 'object' ? shot : {};
+  return {
+    url: String(s.url || '').trim(),
+    publicId: String(s.publicId || '').trim(),
+    alt: String(s.alt || '').trim(),
+    caption: String(s.caption || '').trim(),
+    width: Number(s.width) > 0 ? Number(s.width) : undefined,
+    height: Number(s.height) > 0 ? Number(s.height) : undefined,
+  };
+};
+
+/**
+ * Normalise + validate a product's redemption CMS block. Full-replace semantics
+ * (whatever the admin sends replaces the stored guide). Empty steps are dropped;
+ * partial steps are kept (an admin may save before finishing — spec §19). URLs
+ * are hard-validated. `order` is re-derived from array position so drag/move in
+ * the editor is the single source of truth for ordering.
+ */
+const normalizeRedemptionGuide = (guide) => {
+  if (guide === null || typeof guide !== 'object') {
+    return { enabled: false, providerLabel: '', officialUrl: '', buttonText: '', introduction: '', steps: [], warnings: [] };
+  }
+  const rawSteps = Array.isArray(guide.steps) ? guide.steps : [];
+  const steps = rawSteps
+    .map((s, i) => {
+      if (!s || typeof s !== 'object') return null;
+      const title = String(s.title || '').trim();
+      const description = String(s.description || '').trim();
+      const importantNote = String(s.importantNote || '').trim();
+      const videoUrl = String(s.videoUrl || '').trim();
+      const screenshot = normalizeGuideScreenshot(s.screenshot);
+      const isEmpty = !title && !description && !importantNote && !videoUrl && !screenshot.url;
+      if (isEmpty) return null;
+      if (videoUrl && !isValidHttpUrl(videoUrl)) {
+        throw new AppError(`Redemption step ${i + 1} video URL is not a valid URL`, 400, 'VALIDATION_ERROR');
+      }
+      return { title, description, screenshot, importantNote, videoUrl };
+    })
+    .filter(Boolean)
+    .map((s, i) => ({ ...s, order: i + 1 }));
+
+  const officialUrl = String(guide.officialUrl || '').trim();
+  if (officialUrl && !isValidHttpUrl(officialUrl)) {
+    throw new AppError('Redemption guide official URL is not a valid URL', 400, 'VALIDATION_ERROR');
+  }
+  const warnings = Array.isArray(guide.warnings)
+    ? guide.warnings.map((w) => String(w || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    enabled: !!guide.enabled,
+    providerLabel: String(guide.providerLabel || '').trim(),
+    officialUrl,
+    buttonText: String(guide.buttonText || '').trim(),
+    introduction: String(guide.introduction || '').trim(),
+    steps,
+    warnings,
+    lastUpdated: steps.length > 0 || guide.enabled ? new Date() : undefined,
+  };
+};
+
+/**
+ * Normalise + validate a product's "How to Purchase" CMS block. Same
+ * full-replace / partial-step-keeping semantics as normalizeRedemptionGuide.
+ */
+const normalizePurchaseGuide = (guide) => {
+  if (guide === null || typeof guide !== 'object') {
+    return { enabled: false, eyebrow: '', title: '', description: '', steps: [] };
+  }
+  const rawSteps = Array.isArray(guide.steps) ? guide.steps : [];
+  const steps = rawSteps
+    .map((s, i) => {
+      if (!s || typeof s !== 'object') return null;
+      const title = String(s.title || '').trim();
+      const description = String(s.description || '').trim();
+      const ctaText = String(s.ctaText || '').trim();
+      const ctaUrl = String(s.ctaUrl || '').trim();
+      const screenshot = normalizeGuideScreenshot(s.screenshot);
+      const isEmpty = !title && !description && !ctaText && !ctaUrl && !screenshot.url;
+      if (isEmpty) return null;
+      if (ctaUrl && !isValidHttpUrl(ctaUrl)) {
+        throw new AppError(`Purchase step ${i + 1} CTA URL is not a valid URL`, 400, 'VALIDATION_ERROR');
+      }
+      return { title, description, screenshot, ctaText, ctaUrl };
+    })
+    .filter(Boolean)
+    .map((s, i) => ({ ...s, order: i + 1 }));
+
+  return {
+    enabled: !!guide.enabled,
+    eyebrow: String(guide.eyebrow || '').trim(),
+    title: String(guide.title || '').trim(),
+    description: String(guide.description || '').trim(),
+    steps,
+    lastUpdated: steps.length > 0 || guide.enabled ? new Date() : undefined,
+  };
+};
+
+/** Non-blocking pre-publish checks surfaced to the admin after a save (spec §19). */
+const collectRedemptionWarnings = (product) => {
+  const warnings = [];
+  const g = product?.redemptionGuide;
+  if (!product?.active || !g?.enabled) return warnings;
+  if (!g.steps || g.steps.length === 0) {
+    warnings.push('Redemption guide is enabled but has no steps yet.');
+  } else {
+    g.steps.forEach((s, i) => {
+      if (!s.title || !s.description) warnings.push(`Redemption step ${i + 1} is missing a title or description.`);
+    });
+  }
+  if (!g.officialUrl && !product.officialWebsiteUrl && !product.officialProductUrl) {
+    warnings.push('Redemption guide has no official / redemption URL set.');
+  }
+  return warnings;
+};
+
+const normalizeProductPayload = (body, { selfId } = {}) => {
   const payload = { ...body };
   if (typeof payload.badges === 'string') {
     payload.badges = payload.badges.split(',').map((b) => b.trim()).filter(Boolean);
@@ -134,6 +252,49 @@ const normalizeProductPayload = (body) => {
   if (!isValidHttpUrl(payload.officialProductUrl)) {
     throw new AppError('Official product URL is not a valid URL', 400, 'VALIDATION_ERROR');
   }
+
+  // ── Guide CMS blocks ─────────────────────────────────────────────────────
+  if (payload.redemptionGuide !== undefined) {
+    payload.redemptionGuide = normalizeRedemptionGuide(payload.redemptionGuide);
+  }
+  if (payload.purchaseGuide !== undefined) {
+    payload.purchaseGuide = normalizePurchaseGuide(payload.purchaseGuide);
+  }
+  if (payload.productContent !== undefined) {
+    const pc = payload.productContent && typeof payload.productContent === 'object' ? payload.productContent : {};
+    payload.productContent = {
+      enabled: !!pc.enabled,
+      heading: String(pc.heading || '').trim(),
+      content: sanitizeRichHtml(pc.content || ''),
+    };
+  }
+  if (payload.importantInfo !== undefined) {
+    payload.importantInfo = (Array.isArray(payload.importantInfo) ? payload.importantInfo : [])
+      .map((r) => ({ label: String(r?.label || '').trim(), value: String(r?.value || '').trim() }))
+      .filter((r) => r.label || r.value);
+  }
+  if (payload.importantNotes !== undefined) {
+    payload.importantNotes = (Array.isArray(payload.importantNotes) ? payload.importantNotes : [])
+      .map((n) => String(n || '').trim())
+      .filter(Boolean);
+  }
+  if (payload.faqs !== undefined) {
+    payload.faqs = (Array.isArray(payload.faqs) ? payload.faqs : [])
+      .map((f) => ({ question: String(f?.question || '').trim(), answer: String(f?.answer || '').trim() }))
+      .filter((f) => f.question && f.answer);
+  }
+  if (payload.relatedProducts !== undefined) {
+    const seen = new Set();
+    payload.relatedProducts = (Array.isArray(payload.relatedProducts) ? payload.relatedProducts : [])
+      .map((r) => (r && typeof r === 'object' && r._id ? String(r._id) : String(r || '')))
+      .filter((rid) => {
+        if (!isValidObjectId(rid) || seen.has(rid)) return false;
+        if (selfId && rid === String(selfId)) return false;
+        seen.add(rid);
+        return true;
+      });
+  }
+
   return payload;
 };
 
@@ -702,7 +863,7 @@ export const createProduct = async (req, res, next) => {
       originalPrice: product.originalPrice,
     });
 
-    res.status(201).json({ success: true, data: product });
+    res.status(201).json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
   } catch (err) {
     next(err);
   }
@@ -721,7 +882,7 @@ export const updateProduct = async (req, res, next) => {
       return next(new AppError('Selling price cannot exceed original price', 400));
     }
 
-    const updatePayload = normalizeProductPayload(req.body);
+    const updatePayload = normalizeProductPayload(req.body, { selfId: id });
     // Derived/computed fields are owned by the server, never the client: the
     // edit form round-trips stale list-row snapshots, and findByIdAndUpdate
     // (unlike save()) skips the pre-save hook that recomputes them. Writing a
@@ -750,6 +911,22 @@ export const updateProduct = async (req, res, next) => {
       await deleteProductImageIfUnused(oldImagePublicId, product._id);
     }
 
+    // Guide screenshots that were removed / replaced during this edit:
+    // best-effort delete from Cloudinary when nothing else references them.
+    const screenshotIds = (steps) =>
+      new Set((steps || []).map((s) => s?.screenshot?.publicId).filter(Boolean));
+    const oldGuideScreens = new Set([
+      ...screenshotIds(oldProduct.redemptionGuide?.steps),
+      ...screenshotIds(oldProduct.purchaseGuide?.steps),
+    ]);
+    const newGuideScreens = new Set([
+      ...screenshotIds(product.redemptionGuide?.steps),
+      ...screenshotIds(product.purchaseGuide?.steps),
+    ]);
+    for (const pid of oldGuideScreens) {
+      if (!newGuideScreens.has(pid)) await deleteGuideScreenshotIfUnused(pid, product._id);
+    }
+
     const diffs = {};
     if (oldProduct.sellingPrice !== product.sellingPrice) {
       diffs.oldPrice = oldProduct.sellingPrice;
@@ -765,7 +942,7 @@ export const updateProduct = async (req, res, next) => {
       diffs,
     });
 
-    res.json({ success: true, data: product });
+    res.json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
   } catch (err) {
     next(err);
   }
@@ -1027,6 +1204,64 @@ const deleteProductImageIfUnused = async (publicId, exceptProductId) => {
     await deleteCloudinaryAsset(publicId, 'image');
   } catch (err) {
     console.warn(`[Cloudinary] Product image cleanup skipped for ${publicId}:`, err.message);
+  }
+};
+
+/**
+ * Upload a single guide-step screenshot (Purchase or Redemption guide) to
+ * Cloudinary (apex_products/guides). Same 502-on-failure contract as
+ * uploadProductImage — the admin keeps the previous screenshot rather than
+ * persisting a broken ref.
+ */
+export const uploadProductScreenshot = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file || !file.buffer) return next(new AppError('No screenshot file uploaded', 400));
+
+    let result;
+    try {
+      result = await uploadImage(file.buffer, { folder: 'apex_products/guides' });
+    } catch (cloudErr) {
+      console.error('[Upload] Product screenshot Cloudinary upload failed:', cloudErr.message);
+      return next(new AppError('Screenshot upload to Cloudinary failed. Please try again.', 502));
+    }
+
+    res.json({
+      success: true,
+      url: result.url,
+      publicId: result.publicId,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Best-effort delete a guide screenshot from Cloudinary, but only when no
+ * other product's purchase/redemption step references the same public_id and
+ * it is not in use as any product's primary image. Never throws.
+ */
+const deleteGuideScreenshotIfUnused = async (publicId, exceptProductId) => {
+  try {
+    if (!publicId) return;
+    const [usedInRedemption, usedInPurchase, usedAsImage] = await Promise.all([
+      Product.exists({
+        _id: { $ne: exceptProductId },
+        'redemptionGuide.steps.screenshot.publicId': publicId,
+      }),
+      Product.exists({
+        _id: { $ne: exceptProductId },
+        'purchaseGuide.steps.screenshot.publicId': publicId,
+      }),
+      Product.exists({ imagePublicId: publicId }),
+    ]);
+    if (usedInRedemption || usedInPurchase || usedAsImage) return;
+    await deleteCloudinaryAsset(publicId, 'image');
+  } catch (err) {
+    console.warn(`[Cloudinary] Guide screenshot cleanup skipped for ${publicId}:`, err.message);
   }
 };
 

@@ -1,218 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Search, Plus, Edit2, Trash2, Copy, RefreshCw, GripVertical, ChevronUp, ChevronDown,
-  Package, CheckCircle2, X, AlertTriangle, Clock, Ticket, AlertOctagon, Image as ImageIcon,
+  Package, CheckCircle2, X, AlertTriangle, Clock, Ticket, AlertOctagon,
 } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
-import { StatCard, Pill, Th, Td, Empty, FormCard, Field, TextArea, Check, Label } from '@/components/admin/admin-ui';
+import { StatCard, Pill, Th, Td, Empty } from '@/components/admin/admin-ui';
+import { ProductEditor, type AdminProduct } from '@/components/admin/product-editor';
 import { ErrorState } from '@/components/ui/data-table';
 import { notify } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/use-confirm';
-
-interface AdminProduct {
-  _id: string;
-  name?: string;
-  provider?: string;
-  providerShortName?: string;
-  brand?: string;
-  category?: string;
-  shortDescription?: string;
-  description?: string;
-  logo?: string;
-  image?: string;
-  imagePublicId?: string;
-  originalPrice?: number;
-  sellingPrice?: number;
-  validityDays?: number;
-  validityMonths?: number;
-  badge?: string;
-  badgeEnabled?: boolean;
-  badges?: string[];
-  officialWebsiteUrl?: string;
-  officialProductUrl?: string;
-  sku?: string;
-  productCode?: string;
-  stockType?: string;
-  deliveryType?: string;
-  comingSoon?: boolean;
-  featured?: boolean;
-  active?: boolean;
-  displayOrder?: number;
-  seoTitle?: string;
-  seoDescription?: string;
-  slug?: string;
-  inclusions?: string[] | string;
-  redemptionSteps?: string[] | string;
-  cta?: string;
-  availableVouchers?: number | null;
-  stockStatus?: string;
-  lowStockThreshold?: number;
-  archived?: boolean;
-  durationOptions?: Array<{ key: string; label: string; sellingPrice: number; originalPrice: number; validityDays: number; enabled: boolean }>;
-}
-
-const DURATION_KEYS = [
-  { key: '1-week', label: '1 Week', defaultDays: 7 },
-  { key: '1-month', label: '1 Month', defaultDays: 30 },
-  { key: '3-months', label: '3 Months', defaultDays: 90 },
-];
-
-const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const LOGO_MAX_SIZE = 5 * 1024 * 1024;
-
-function ProductLogoUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState('');
-  const [preview, setPreview] = useState(value || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setPreview(value || '');
-  }, [value]);
-
-  const handleFile = (file?: File) => {
-    if (!file || uploading) return;
-    setError('');
-    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
-      setError('Unsupported format. Use JPG, PNG, or WebP.');
-      return;
-    }
-    if (file.size > LOGO_MAX_SIZE) {
-      setError('File too large. Maximum size is 5MB.');
-      return;
-    }
-    setPreview(URL.createObjectURL(file));
-    setUploading(true);
-    setProgress(0);
-    adminApi.uploadProductLogo(file).then((res) => {
-      setUploading(false);
-      if (res.success) {
-        onChange(res.url as string);
-        setPreview(res.url as string);
-      } else {
-        setError((res.message as string) || 'Upload failed');
-      }
-    });
-  };
-
-  return (
-    <div>
-      <Label>Product Logo</Label>
-      <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center overflow-hidden shrink-0">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Logo preview" className="w-full h-full object-contain" />
-          ) : (
-            <ImageIcon className="w-6 h-6 text-neutral-300" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          {uploading ? (
-            <div>
-              <div className="text-xs font-bold text-neutral-500 mb-1">Uploading... {progress}%</div>
-              <div className="h-2 rounded-full bg-neutral-200 dark:bg-[#292929] overflow-hidden">
-                <div className="h-full bg-brand-pink transition-all" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black">
-                {preview ? 'Replace Logo' : 'Upload Logo'}
-              </button>
-              {preview && (
-                <button type="button" onClick={() => { onChange(''); setPreview(''); setError(''); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[11px] font-black">
-                  Remove
-                </button>
-              )}
-            </div>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
-          {error && <p className="text-[11px] font-bold text-rose-500 mt-1.5">{error}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductImageUploader({ value, onChange }: { value: string; onChange: (url: string, publicId?: string) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
-  const [preview, setPreview] = useState(value || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setPreview(value || '');
-  }, [value]);
-
-  const handleFile = (file?: File) => {
-    if (!file || uploading) return;
-    setError('');
-    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
-      setError('Unsupported format. Use JPG, PNG, or WebP.');
-      return;
-    }
-    if (file.size > LOGO_MAX_SIZE) {
-      setError('File too large. Maximum size is 5MB.');
-      return;
-    }
-    setPreview(URL.createObjectURL(file));
-    setUploading(true);
-    adminApi.uploadProductImage(file).then((res) => {
-      setUploading(false);
-      if (res.success) {
-        onChange(res.url as string, (res.publicId as string) || '');
-        setPreview(res.url as string);
-      } else {
-        setError((res.message as string) || 'Upload failed');
-      }
-    });
-  };
-
-  return (
-    <div>
-      <Label>Product Image</Label>
-      <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex items-center justify-center overflow-hidden shrink-0">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Product image preview" className="w-full h-full object-cover" />
-          ) : (
-            <ImageIcon className="w-6 h-6 text-neutral-300" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          {uploading ? (
-            <div className="text-xs font-bold text-neutral-500">Uploading…</div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[11px] font-black">
-                {preview ? 'Replace Image' : 'Upload Image'}
-              </button>
-              {preview && (
-                <button type="button" onClick={() => { onChange('', ''); setPreview(''); setError(''); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[11px] font-black">
-                  Remove
-                </button>
-              )}
-            </div>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
-          {error && <p className="text-[11px] font-bold text-rose-500 mt-1.5">{error}</p>}
-        </div>
-      </div>
-      <input
-        type="text"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value, '')}
-        placeholder="…or paste an image URL"
-        className="mt-2 w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
-      />
-    </div>
-  );
-}
 
 export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const confirm = useConfirm();
@@ -227,7 +25,6 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
 
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [draft, setDraft] = useState<Record<string, unknown>>({});
 
   const [quickPriceId, setQuickPriceId] = useState<string | null>(null);
   const [quickPrices, setQuickPrices] = useState({ sellingPrice: 0, originalPrice: 0 });
@@ -268,63 +65,16 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
   useEffect(() => {
     const t = setTimeout(() => refresh(1), 300);
     return () => clearTimeout(t);
+    // `refresh` is intentionally omitted: it also closes over `page`, and this
+    // debounced "filters changed → jump to page 1" fetch must NOT re-fire on
+    // pagination. It only ever needs the filter values below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, categoryFilter, providerFilter]);
 
-  const startCreate = () => {
-    setDraft({
-      name: '', provider: 'Pearson', providerShortName: 'PTE', brand: 'Pearson PTE', category: 'English Language Test',
-      shortDescription: '', description: '', logo: '', image: '', imagePublicId: '',
-      originalPrice: 18900, sellingPrice: 15499, validityDays: 180, validityMonths: 6,
-      badge: 'MOST POPULAR', badgeEnabled: true, badgeType: 'popular', badges: '',
-      officialWebsiteUrl: '', officialProductUrl: '', sku: '', productCode: '',
-      stockType: 'LIMITED', deliveryType: 'Instant Delivery', comingSoon: false, featured: false, active: true, displayOrder: 0,
-      seoTitle: '', seoDescription: '', slug: '',
-      inclusions: ['Official Exam Voucher Code', '10-Second Digital Delivery', 'Valid for 6 Months', 'Free Support'],
-      redemptionSteps: ['Login to test provider website', 'Select test center & date', 'Apply voucher code at checkout'],
-    });
-    setEditing(null);
-    setIsCreating(true);
-  };
-
-  const startEdit = (p: AdminProduct) => {
-    setEditing(p);
-    setIsCreating(false);
-    setDraft({
-      ...p,
-      inclusions: Array.isArray(p.inclusions) ? (p.inclusions as string[]).join('\n') : p.inclusions || '',
-      redemptionSteps: Array.isArray(p.redemptionSteps) ? (p.redemptionSteps as string[]).join('\n') : p.redemptionSteps || '',
-      badges: Array.isArray(p.badges) ? (p.badges as string[]).join(', ') : p.badges || '',
-    });
-  };
-
-  const saveProduct = async () => {
-    if (!draft.name || !draft.provider || (draft.sellingPrice as number) < 0 || (draft.originalPrice as number) < 0) {
-      notify.error('Product name, provider, and valid non-negative prices are required.');
-      return;
-    }
-    if (Number(draft.sellingPrice) > Number(draft.originalPrice)) {
-      notify.error('Selling price cannot be higher than original price.');
-      return;
-    }
-    const payload = {
-      ...draft,
-      originalPrice: Number(draft.originalPrice),
-      sellingPrice: Number(draft.sellingPrice),
-      validityDays: Number(draft.validityDays) || 180,
-      validityMonths: Number(draft.validityMonths) || 6,
-      displayOrder: Number(draft.displayOrder) || 0,
-      inclusions: typeof draft.inclusions === 'string' ? draft.inclusions.split('\n').map((s) => s.trim()).filter(Boolean) : draft.inclusions,
-      redemptionSteps: typeof draft.redemptionSteps === 'string' ? draft.redemptionSteps.split('\n').map((s) => s.trim()).filter(Boolean) : draft.redemptionSteps,
-    };
-    const res = isCreating
-      ? await adminApi.createProduct(payload)
-      : await adminApi.updateProduct(editing?._id || '', payload);
-    if (res.success) {
-      setIsCreating(false);
-      setEditing(null);
-      refresh();
-    } else notify.error((res.message as string) || 'Failed to save product');
-  };
+  const startCreate = () => { setEditing(null); setIsCreating(true); };
+  const startEdit = (p: AdminProduct) => { setIsCreating(false); setEditing(p); };
+  const closeEditor = () => { setIsCreating(false); setEditing(null); };
+  const editorOpen = isCreating || editing !== null;
 
   const handleQuickPriceSave = async (id: string) => {
     if (Number(quickPrices.sellingPrice) > Number(quickPrices.originalPrice)) {
@@ -387,6 +137,16 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
     else notify.error((res.message as string) || 'Failed to reorder products');
   };
   const moveProduct = (index: number, direction: number) => reorderTo(index, index + direction);
+
+  if (editorOpen) {
+    return (
+      <ProductEditor
+        productId={editing?._id}
+        onClose={closeEditor}
+        onSaved={() => { closeEditor(); refresh(); }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -455,187 +215,6 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
         </div>
       </div>
 
-      {(isCreating || editing) && (
-        <FormCard
-          title={isCreating ? '➕ Add New Exam Voucher Product' : `✏️ Edit Product: ${editing?.name}`}
-          onClose={() => { setIsCreating(false); setEditing(null); }}
-          onSave={saveProduct}
-        >
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">1. Basic Information</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field label="Product Name *" value={draft.name as string} onChange={(v) => setDraft({ ...draft, name: v })} placeholder="e.g. PTE Academic Voucher" />
-                <Field label="Exam Provider *" value={draft.provider as string} onChange={(v) => setDraft({ ...draft, provider: v, brand: v })} placeholder="Pearson / ETS / Duolingo" />
-                <Field label="Provider Short Name" value={draft.providerShortName as string} onChange={(v) => setDraft({ ...draft, providerShortName: v })} placeholder="PTE / GRE / TOEFL" />
-                <Field label="Category *" value={draft.category as string} onChange={(v) => setDraft({ ...draft, category: v })} placeholder="PTE / English Language Test" />
-                <Field label="Display Order (Rank)" type="number" value={draft.displayOrder as number} onChange={(v) => setDraft({ ...draft, displayOrder: v })} placeholder="0" />
-                <Field label="CTA Button Text" value={(draft.cta as string) || 'Buy Now'} onChange={(v) => setDraft({ ...draft, cta: v })} />
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">2. Pricing & Discounts (Single Source of Truth)</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field label="Original Price (MRP ₹) *" type="number" value={draft.originalPrice as number} onChange={(v) => setDraft({ ...draft, originalPrice: v })} />
-                <Field label="Selling Price (Final ₹) *" type="number" value={draft.sellingPrice as number} onChange={(v) => setDraft({ ...draft, sellingPrice: v })} />
-                <div>
-                  <Label>Calculated Discount</Label>
-                  <div className="px-4 py-3 rounded-xl bg-neutral-100 dark:bg-[#0E0E0E] font-black text-sm text-emerald-600 dark:text-emerald-400">
-                    Save {formatPrice(Math.max(0, (Number(draft.originalPrice) || 0) - (Number(draft.sellingPrice) || 0)))} (
-                    {draft.originalPrice && Number(draft.originalPrice) > 0 ? Math.round(((Number(draft.originalPrice) - Number(draft.sellingPrice)) / Number(draft.originalPrice)) * 100) : 0}% OFF)
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Duration-based pricing variants */}
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">Duration Options (variants with their own prices)</h4>
-              <p className="text-[11px] font-bold text-neutral-500 dark:text-[#B5B5B5] mb-4">When configured, the product card shows a duration selector. Each option overrides the base price for a purchase with that duration selected. The 3-month option appears in the &quot;Explore More&quot; detail page.</p>
-              {DURATION_KEYS.map((dkey) => {
-                const opt = Array.isArray(draft.durationOptions) ? draft.durationOptions.find((o) => o.key === dkey.key) : null;
-                const enabled = opt ? opt.enabled !== false : false;
-                return (
-                  <div key={dkey.key} className="rounded-2xl border border-[#EAEAEA] dark:border-[#292929] p-3 mb-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black">{dkey.label}</span>
-                      <label className="inline-flex items-center gap-2 text-[10px] font-bold text-neutral-500">
-                        <input
-                          type="checkbox"
-                          checked={enabled}
-                          onChange={(e) => {
-                            const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
-                            const idx = current.findIndex((o) => o.key === dkey.key);
-                            if (idx >= 0) {
-                              current[idx] = { ...current[idx], enabled: e.target.checked };
-                            } else {
-                              current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: dkey.defaultDays, enabled: e.target.checked });
-                            }
-                            setDraft({ ...draft, durationOptions: current });
-                          }}
-                        /> Active
-                      </label>
-                    </div>
-                    {enabled && (
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <Field label="Selling Price ₹" type="number" value={opt?.sellingPrice ?? 0} onChange={(v) => {
-                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
-                          const idx = current.findIndex((o) => o.key === dkey.key);
-                          if (idx >= 0) current[idx] = { ...current[idx], sellingPrice: Number(v) };
-                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: Number(v), originalPrice: 0, validityDays: dkey.defaultDays, enabled: true });
-                          setDraft({ ...draft, durationOptions: current });
-                        }} />
-                        <Field label="Original Price ₹" type="number" value={opt?.originalPrice ?? 0} onChange={(v) => {
-                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
-                          const idx = current.findIndex((o) => o.key === dkey.key);
-                          if (idx >= 0) current[idx] = { ...current[idx], originalPrice: Number(v) };
-                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: Number(v), validityDays: dkey.defaultDays, enabled: true });
-                          setDraft({ ...draft, durationOptions: current });
-                        }} />
-                        <Field label="Validity Days" type="number" value={opt?.validityDays ?? dkey.defaultDays} onChange={(v) => {
-                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
-                          const idx = current.findIndex((o) => o.key === dkey.key);
-                          if (idx >= 0) current[idx] = { ...current[idx], validityDays: Number(v) };
-                          else current.push({ key: dkey.key, label: dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: Number(v), enabled: true });
-                          setDraft({ ...draft, durationOptions: current });
-                        }} />
-                        <Field label="Label" value={opt?.label ?? dkey.label} onChange={(v) => {
-                          const current = Array.isArray(draft.durationOptions) ? [...draft.durationOptions] : [];
-                          const idx = current.findIndex((o) => o.key === dkey.key);
-                          if (idx >= 0) current[idx] = { ...current[idx], label: String(v) || dkey.label };
-                          else current.push({ key: dkey.key, label: String(v) || dkey.label, sellingPrice: 0, originalPrice: 0, validityDays: dkey.defaultDays, enabled: true });
-                          setDraft({ ...draft, durationOptions: current });
-                        }} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">3. Customer Card Badges & Branding</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field label="Card Badge Text (legacy, first shown)" value={(draft.badge as string) || ''} onChange={(v) => setDraft({ ...draft, badge: v })} placeholder="e.g. MOST POPULAR" />
-                <div className="md:col-span-2">
-                  <Field label="Badges (comma separated)" value={(draft.badges as string) || ''} onChange={(v) => setDraft({ ...draft, badges: v })} placeholder="Best Seller, Canada, Study Abroad" />
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {['Best Seller', 'Most Popular', 'Featured', 'New', 'Limited Offer', 'Top Pick', 'Canada', 'UK', 'Australia', 'Study Abroad'].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => {
-                          const current = String(draft.badges || '').split(',').map((s) => s.trim()).filter(Boolean);
-                          if (!current.includes(preset)) setDraft({ ...draft, badges: [...current, preset].join(', ') });
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-600 dark:text-neutral-300 text-[10px] font-black hover:bg-brand-pink/10 hover:text-brand-pink transition-colors"
-                      >
-                        + {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Field label="Validity (Months)" type="number" value={draft.validityMonths as number} onChange={(v) => setDraft({ ...draft, validityMonths: v })} />
-                <Field label="Validity (Days)" type="number" value={draft.validityDays as number} onChange={(v) => setDraft({ ...draft, validityDays: v })} />
-                <Field label="Delivery Type" value={(draft.deliveryType as string) || ''} onChange={(v) => setDraft({ ...draft, deliveryType: v })} placeholder="Instant Delivery" />
-                <ProductLogoUploader value={(draft.logo as string) || ''} onChange={(url) => setDraft({ ...draft, logo: url })} />
-                <ProductImageUploader
-                  value={(draft.image as string) || ''}
-                  onChange={(url, publicId) => setDraft({ ...draft, image: url, imagePublicId: publicId ?? draft.imagePublicId })}
-                />
-                <div>
-                  <Label>Stock Type</Label>
-                  <select value={(draft.stockType as string) || 'LIMITED'} onChange={(e) => setDraft({ ...draft, stockType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-bold focus:outline-none focus:border-brand-pink">
-                    <option value="LIMITED">Limited (tracked via voucher inventory)</option>
-                    <option value="UNLIMITED">Unlimited (always in stock)</option>
-                  </select>
-                  {draft.stockType === 'UNLIMITED' && (
-                    <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1.5">
-                      ⚠ &quot;Unlimited&quot; only affects the storefront display — voucher delivery still requires real codes in inventory. Keep this product&apos;s voucher inventory stocked or checkout will succeed without a voucher to deliver.
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 pt-6 flex-wrap">
-                  <Check label="Show Badge on Card" checked={!!draft.badgeEnabled} onChange={(v) => setDraft({ ...draft, badgeEnabled: v })} />
-                  <Check label="Featured Product" checked={!!draft.featured} onChange={(v) => setDraft({ ...draft, featured: v })} />
-                  <Check label="Active & Visible" checked={!!draft.active} onChange={(v) => setDraft({ ...draft, active: v })} />
-                  <Check label="Coming Soon" checked={!!draft.comingSoon} onChange={(v) => setDraft({ ...draft, comingSoon: v })} />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">3B. Official Links & Identifiers</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Official Website URL" value={(draft.officialWebsiteUrl as string) || ''} onChange={(v) => setDraft({ ...draft, officialWebsiteUrl: v })} placeholder="https://www.pearsonpte.com/" />
-                <Field label="Official Product Page URL" value={(draft.officialProductUrl as string) || ''} onChange={(v) => setDraft({ ...draft, officialProductUrl: v })} placeholder="https://www.pearsonpte.com/pte-academic/" />
-                <Field label="SKU" value={(draft.sku as string) || ''} onChange={(v) => setDraft({ ...draft, sku: v })} placeholder="Optional internal SKU" />
-                <Field label="Product Code" value={(draft.productCode as string) || ''} onChange={(v) => setDraft({ ...draft, productCode: v })} placeholder="Optional internal code" />
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">4. Descriptions & Bullet Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <TextArea label="Short Description (Shown on Card)" value={(draft.shortDescription as string) || ''} onChange={(v) => setDraft({ ...draft, shortDescription: v })} rows={2} />
-                <TextArea label="Full Description (Shown in Modal)" value={(draft.description as string) || ''} onChange={(v) => setDraft({ ...draft, description: v })} rows={2} />
-                <TextArea label="Inclusions (One per line)" value={Array.isArray(draft.inclusions) ? (draft.inclusions as string[]).join('\n') : ((draft.inclusions as string) || '')} onChange={(v) => setDraft({ ...draft, inclusions: v })} rows={3} />
-                <TextArea label="Redemption Steps (One per line)" value={Array.isArray(draft.redemptionSteps) ? (draft.redemptionSteps as string[]).join('\n') : ((draft.redemptionSteps as string) || '')} onChange={(v) => setDraft({ ...draft, redemptionSteps: v })} rows={3} />
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#EAEAEA] dark:border-[#292929]">
-              <h4 className="text-xs font-black text-brand-pink uppercase tracking-wider mb-3">5. SEO Configuration</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field label="SEO Slug (URL identifier)" value={(draft.slug as string) || ''} onChange={(v) => setDraft({ ...draft, slug: v })} placeholder="pte-academic-voucher" />
-                <Field label="SEO Title" value={(draft.seoTitle as string) || ''} onChange={(v) => setDraft({ ...draft, seoTitle: v })} placeholder="Discounted PTE Voucher..." />
-                <Field label="SEO Description" value={(draft.seoDescription as string) || ''} onChange={(v) => setDraft({ ...draft, seoDescription: v })} placeholder="Buy discounted exam vouchers..." />
-              </div>
-            </div>
-          </div>
-        </FormCard>
-      )}
 
       {filtersActive && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-700 dark:text-amber-400">
