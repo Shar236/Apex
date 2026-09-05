@@ -1,28 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, RefreshCw, X, CheckCircle2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Bell, RefreshCw, X, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-
-const SEEN_KEY = 'apex.admin.seenNotifications';
-
-const readSeen = (): Set<string> => {
-  try {
-    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(SEEN_KEY) : null;
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-};
-
-const writeSeen = (ids: Set<string>) => {
-  try {
-    // keep the list bounded so it can't grow forever
-    window.localStorage.setItem(SEEN_KEY, JSON.stringify([...ids].slice(-200)));
-  } catch {
-    // storage unavailable — seen-tracking degrades to in-memory only
-  }
-};
 
 export interface AdminNotification {
   id?: string;
@@ -31,6 +11,8 @@ export interface AdminNotification {
   title?: string;
   message?: string;
   timestamp?: string;
+  /** Console tab this alert should open. Sent by the backend for newer types. */
+  tab?: string;
   data?: {
     codeMasked?: string;
     voucherType?: string;
@@ -39,83 +21,87 @@ export interface AdminNotification {
   };
 }
 
-interface NotificationsData {
-  data?: AdminNotification[];
-  counts?: {
-    total?: number;
-    critical?: number;
-    sales?: number;
-    stockAlerts?: number;
-    voucherRequests?: number;
-    fulfillments?: number;
-  };
+export interface AdminNotificationCounts {
+  total?: number;
+  critical?: number;
+  sales?: number;
+  stockAlerts?: number;
+  voucherRequests?: number;
+  pendingFulfillments?: number;
 }
 
-const isActionable = (n: AdminNotification) =>
-  n.severity === 'critical' || n.severity === 'error' || n.type === 'FULFILLMENT_REQUEST' || n.type === 'VOUCHER_REQUEST';
+interface NotificationsData {
+  data?: AdminNotification[];
+  counts?: AdminNotificationCounts;
+}
+
+/**
+ * Where each alert type lives in the console, so every notification is a real
+ * link rather than a dead card. The backend may also send `tab` explicitly,
+ * which wins over this fallback map.
+ */
+const TAB_FOR_TYPE: Record<string, string> = {
+  FULFILLMENT_REQUEST: 'fulfillments',
+  VOUCHER_REQUEST: 'voucher-requests',
+  OUT_OF_STOCK: 'vouchers',
+  LOW_STOCK: 'vouchers',
+  VOUCHER_SOLD: 'orders',
+  MISMATCH_BLOCKED: 'orders',
+  ALLOCATION_FAILED: 'orders',
+  PAID_ORDER_NOT_COLLECTABLE: 'orders',
+};
+
+const tabFor = (n: AdminNotification) => n.tab || TAB_FOR_TYPE[n.type || ''] || null;
 
 /**
  * Real-time admin notification feed — polls the live backend /api/admin/notifications
- * (real sold vouchers, stock alerts, mismatch events, fulfillment + voucher requests).
- * Voucher codes are masked server-side; nothing fake is generated here.
- *
- * `toasts` holds actionable notifications the admin has not seen yet (new since the
- * last time the drawer was opened). Once acknowledged they never resurface.
+ * (real sold vouchers, stock alerts, mismatch events, voucher requests). Voucher codes
+ * are masked server-side; nothing fake is generated here.
  */
 export function useAdminNotifications() {
   const [notificationsData, setNotificationsData] = useState<NotificationsData>({ data: [], counts: {} });
   const [notifLoading, setNotifLoading] = useState(false);
-  const [toasts, setToasts] = useState<AdminNotification[]>([]);
-  const seenRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    seenRef.current = readSeen();
-  }, []);
+  const [notifError, setNotifError] = useState('');
 
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
     try {
       const res = await adminApi.notifications();
       if (res?.success) {
-        const payload = res as unknown as NotificationsData;
-        setNotificationsData(payload);
-        const fresh = (payload.data || []).filter(
-          (n) => n.id && isActionable(n) && !seenRef.current.has(String(n.id))
-        );
-        if (fresh.length) setToasts((prev) => [...fresh, ...prev].slice(0, 4));
+        setNotificationsData(res as unknown as NotificationsData);
+        setNotifError('');
+      } else {
+        // A failed poll must never present as "All systems normal".
+        setNotifError(res?.message || 'Could not refresh notifications.');
       }
     } catch {
-      // silent — the feed refreshes again shortly
+      setNotifError('Could not refresh notifications.');
     } finally {
       setNotifLoading(false);
     }
   }, []);
 
-  /** Mark everything currently in the feed as seen (called when the drawer opens). */
-  const acknowledgeAll = useCallback(() => {
-    for (const n of notificationsData.data || []) if (n.id) seenRef.current.add(String(n.id));
-    writeSeen(seenRef.current);
-    setToasts([]);
-  }, [notificationsData]);
-
-  const dismissToast = useCallback((id?: string) => {
-    if (id) {
-      seenRef.current.add(String(id));
-      writeSeen(seenRef.current);
-    }
-    setToasts((prev) => prev.filter((t) => String(t.id) !== String(id)));
-  }, []);
-
   useEffect(() => {
-    // Poll the admin notification feed on mount + every 15s. `loadNotifications`
-    // flips a loading flag before its awaited fetch (accepted polling pattern).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadNotifications();
-    const timer = setInterval(loadNotifications, 15000);
-    return () => clearInterval(timer);
+    // Defer the first tick so the effect body performs no synchronous setState
+    // (react-compiler rule) — the interval ticks below are already async.
+    const first = setTimeout(loadNotifications, 0);
+    // Polling every 15s in a background tab is pure waste — skip the tick while
+    // the console is hidden, and catch up once on return.
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') loadNotifications();
+    }, 15000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadNotifications();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [loadNotifications]);
 
-  return { notificationsData, notifLoading, loadNotifications, toasts, acknowledgeAll, dismissToast };
+  return { notificationsData, notifLoading, notifError, loadNotifications };
 }
 
 export function NotificationsDrawer({
@@ -123,13 +109,18 @@ export function NotificationsDrawer({
   onClose,
   data,
   loading,
+  error,
   onRefresh,
+  onNavigate,
 }: {
   open: boolean;
   onClose: () => void;
   data: NotificationsData;
   loading: boolean;
+  error?: string;
   onRefresh: () => void;
+  /** Opens the console tab an alert belongs to. */
+  onNavigate?: (tab: string) => void;
 }) {
   const items = data?.data || [];
   const counts = data?.counts || {};
@@ -168,18 +159,29 @@ export function NotificationsDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {items.length === 0 ? (
+          {error ? (
+            <div className="text-center py-16" role="alert">
+              <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+              <div className="font-black text-sm text-neutral-600 dark:text-neutral-400">Notifications unavailable</div>
+              <div className="text-xs text-neutral-400 font-semibold">{error}</div>
+              <button onClick={onRefresh} className="mt-3 text-[11px] font-black text-brand-pink hover:underline">
+                Try again
+              </button>
+            </div>
+          ) : items.length === 0 ? (
             <div className="text-center py-16">
               <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-50" />
               <div className="font-black text-sm text-neutral-600 dark:text-neutral-400">All systems normal</div>
               <div className="text-xs text-neutral-400 font-semibold">No recent alerts or pending mismatch events</div>
             </div>
           ) : (
-            items.map((n, idx) => (
+            items.map((n, idx) => {
+              const tab = onNavigate ? tabFor(n) : null;
+              return (
               <div
                 key={n.id || idx}
                 className={`p-4 rounded-2xl border transition-all ${
-                  n.severity === 'critical' || n.severity === 'error' || n.type === 'MISMATCH_BLOCKED' || n.type === 'FULFILLMENT_REQUEST'
+                  n.severity === 'critical' || n.severity === 'error' || n.type === 'MISMATCH_BLOCKED'
                     ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60'
                     : n.type === 'OUT_OF_STOCK'
                     ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40'
@@ -218,8 +220,22 @@ export function NotificationsDrawer({
                     )}
                   </div>
                 )}
+
+                {tab && (
+                  <button
+                    onClick={() => {
+                      onNavigate?.(tab);
+                      onClose();
+                    }}
+                    className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-black text-brand-pink hover:underline"
+                  >
+                    {n.type === 'FULFILLMENT_REQUEST' ? 'View request' : 'Open'}
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -228,49 +244,6 @@ export function NotificationsDrawer({
           <span>Auto-refreshes every 15s</span>
         </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * Corner toasts for new actionable alerts (paid orders awaiting a voucher,
- * mismatch blocks, out-of-stock). Each toast is dismissible and, once dismissed
- * or once the drawer is opened, never re-appears for that notification.
- */
-export function NotificationToasts({
-  toasts,
-  onOpen,
-  onDismiss,
-}: {
-  toasts: AdminNotification[];
-  onOpen: () => void;
-  onDismiss: (id?: string) => void;
-}) {
-  if (toasts.length === 0) return null;
-  return (
-    <div className="fixed bottom-4 right-4 z-60 w-full max-w-sm space-y-2">
-      {toasts.map((n, idx) => (
-        <div
-          key={n.id || idx}
-          className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-[#161616] shadow-2xl p-4 animate-in slide-in-from-right-4"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-black text-xs text-rose-600 dark:text-rose-400 mb-0.5">{n.title}</p>
-              <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300 leading-relaxed">{n.message}</p>
-            </div>
-            <button onClick={() => onDismiss(n.id)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-[#222] shrink-0">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <button
-            onClick={() => { onOpen(); onDismiss(n.id); }}
-            className="mt-2 w-full py-2 rounded-xl bg-brand-pink text-white font-black text-[11px]"
-          >
-            Open notifications
-          </button>
-        </div>
-      ))}
     </div>
   );
 }

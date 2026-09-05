@@ -38,9 +38,6 @@ export const config = {
     supportPhone: process.env.SUPPORT_PHONE || '+91 9855926113',
     adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'apexvouchers@gmail.com',
     website: process.env.BUSINESS_WEBSITE || 'https://apexvouchers.com',
-    // Optional hosted PNG/JPG logo for email headers (email clients don't render
-    // SVG reliably). When unset, emails use a text wordmark. ~200×48px, on white.
-    logoUrl: process.env.EMAIL_LOGO_URL || '',
   },
 
   admin: {

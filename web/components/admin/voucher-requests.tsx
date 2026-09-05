@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Search, RefreshCw, Download, Mail, Plus, Ticket } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { Th, Td, Empty, FormCard, Label } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { notify } from '@/components/ui/toast';
 
 interface VRRow {
   _id: string;
@@ -43,8 +45,11 @@ export function VoucherRequestsAdmin() {
   const [rows, setRows] = useState<VRRow[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [selected, setSelected] = useState<VRRow | null>(null);
   const [statusDraft, setStatusDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
@@ -58,14 +63,22 @@ export function VoucherRequestsAdmin() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    setLoadError('');
+    const params: Record<string, string> = { page: String(page), limit: '50' };
     if (status) params.status = status;
     if (search) params.search = search;
     const res = await adminApi.voucherRequests(params);
-    setRows((res.data as VRRow[]) || []);
-    setStats((res.stats as Record<string, number>) || {});
+    // request() never throws — a failed load must not render as an empty list.
+    if (!res?.success) {
+      setLoadError((res?.message as string) || 'Could not load voucher requests.');
+      setRows([]);
+    } else {
+      setRows((res.data as VRRow[]) || []);
+      setStats((res.stats as Record<string, number>) || {});
+      setPages(Number(res.pages) || 1);
+    }
     setLoading(false);
-  }, [status, search]);
+  }, [status, search, page]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 300);
@@ -103,21 +116,21 @@ export function VoucherRequestsAdmin() {
       closeDetail();
       refresh();
     } else {
-      alert((res.message as string) || 'Failed to update request');
+      notify.error((res.message as string) || 'Failed to update request');
     }
   };
 
   const quickStatus = async (row: VRRow, newStatus: string) => {
     const res = await adminApi.updateVoucherRequest(row._id, { status: newStatus });
     if (res.success) refresh();
-    else alert((res.message as string) || 'Failed to update request');
+    else notify.error((res.message as string) || 'Failed to update request');
   };
 
   const addCodesForRequest = async () => {
     if (!selected) return;
     const codes = codeInput.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
     if (codes.length === 0 || !codeExpiry) {
-      alert('Paste at least one voucher code and set an expiry date.');
+      notify.error('Paste at least one voucher code and set an expiry date.');
       return;
     }
     setAddingCodes(true);
@@ -131,9 +144,9 @@ export function VoucherRequestsAdmin() {
     if (res?.success) {
       setCodeInput('');
       await loadInventory(productId);
-      alert(`${(res.added as number) || codes.length} code(s) added to inventory. You can now mark this request "AWAITING_PAYMENT".`);
+      notify.success(`${(res.added as number) || codes.length} code(s) added to inventory. You can now mark this request "AWAITING_PAYMENT".`);
     } else {
-      alert((res?.message as string) || 'Failed to add voucher codes');
+      notify.error((res?.message as string) || 'Failed to add voucher codes');
     }
   };
 
@@ -186,14 +199,14 @@ export function VoucherRequestsAdmin() {
           <Search className="w-4 h-4 text-neutral-400 shrink-0" />
           <input placeholder="Search request ID, name, email, voucher..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent outline-none text-xs font-bold w-full" />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
           <option value="">All Statuses</option>
           {VR_STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </select>
       </div>
 
       {selected && (
-        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail} saving={saving}>
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5 space-y-4">
               <div>
@@ -387,10 +400,23 @@ export function VoucherRequestsAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && (
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && (
           <Empty title="No voucher requests found" desc="When a customer requests an out-of-stock voucher it appears here." />
         )}
       </div>
+
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

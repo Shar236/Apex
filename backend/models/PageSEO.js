@@ -21,8 +21,9 @@ const pageSEOSchema = new mongoose.Schema(
     pageKey: {
       type: String,
       required: [true, 'Page key is required'],
-      unique: true, // creates the (unique) index — no separate index needed
+      unique: true,
       trim: true,
+      index: true,
     },
     pageTitle: {
       type: String,
@@ -39,5 +40,8 @@ const pageSEOSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// No explicit pageKey index here — `unique: true` on the field already builds
+// one. Declaring both made Mongo maintain two identical indexes on every write.
 
 export const PageSEO = mongoose.model('PageSEO', pageSEOSchema);

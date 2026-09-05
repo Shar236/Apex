@@ -1,16 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Sparkles, Clock, ShoppingCart, Package, Users, Ticket, Tag, AlertTriangle, RefreshCw,
-  CalendarCheck, FileSpreadsheet, Download, ShieldAlert,
+  CalendarCheck, FileSpreadsheet, Download, ShieldAlert, PencilRuler,
 } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { StatCard, Empty } from '@/components/admin/admin-ui';
+import { notify } from '@/components/ui/toast';
+import { DashboardCharts, type RevenuePoint, type CountPoint } from '@/components/admin/charts';
 
 interface DashboardData {
   kpi?: Record<string, number | null>;
-  charts?: { dailyRevenue?: Array<{ _id: string; revenue: number; orders: number }> };
+  charts?: {
+    dailyRevenue?: RevenuePoint[];
+    dailyVouchersSold?: CountPoint[];
+    dailyNewCustomers?: CountPoint[];
+  };
   tables?: {
     bestSellers?: Array<{ id: string; name: string; unitsSold: number; stock: number; revenue: number; sellingPrice: number }>;
     lowStockProducts?: Array<{ id: string; name: string; brand: string; availableStock: number; sellingPrice: number; lowStockThreshold: number }>;
@@ -22,22 +28,32 @@ interface DashboardData {
 export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [period, setPeriod] = useState('30d');
   const [unmaskedExport, setUnmaskedExport] = useState(false);
-
-  const refresh = useCallback(async (p: string) => {
-    setLoading(true);
-    const res = await adminApi.dashboard({ period: p });
-    setData((res.data as DashboardData) || null);
-    setLoading(false);
-  }, []);
+  // Bumping this re-runs the load — the Refresh / Retry buttons use it.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    // Re-fetch dashboard analytics when the period changes; `refresh` flips a
-    // loading flag before its awaited fetch (accepted pattern, no server loader).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh(period);
-  }, [period, refresh]);
+    let alive = true;
+    (async () => {
+      const res = await adminApi.dashboard({ period });
+      if (!alive) return;
+      if (!res.success) {
+        // A dead backend must not look like an empty store — every KPI would
+        // honestly render ₹0/0 without this.
+        setLoadError(res.message || 'Could not load dashboard data.');
+        setData(null);
+      } else {
+        setLoadError('');
+        setData((res.data as DashboardData) || null);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [period, reloadKey]);
 
   const kpi = data?.kpi || {};
   const charts = data?.charts || {};
@@ -48,20 +64,29 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
     { label: 'Total Net Revenue', value: formatPrice((kpi.netRevenue as number) || 0), icon: <Sparkles className="w-5 h-5" />, tint: '#FF005C', sub: 'Excludes refunded/cancelled' },
     { label: "Today's Revenue", value: formatPrice((kpi.todayRevenue as number) || 0), icon: <Sparkles className="w-5 h-5" />, tint: '#10B981', growth: (kpi.revenueGrowth as number) ?? null },
     { label: "Yesterday's Revenue", value: formatPrice((kpi.yesterdayRevenue as number) || 0), icon: <Clock className="w-5 h-5" />, tint: '#8B5CF6' },
-    { label: 'Total Orders', value: kpi.totalOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#EC4899' },
-    { label: "Today's Orders", value: kpi.todayOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#0EA5E9', growth: (kpi.ordersGrowth as number) ?? null },
-    { label: 'Total Products Sold', value: kpi.totalProductsSold || 0, icon: <Package className="w-5 h-5" />, tint: '#6C3CE0' },
-    { label: 'Total Customers', value: kpi.totalCustomers || 0, icon: <Users className="w-5 h-5" />, tint: '#14B8A6' },
-    { label: 'Available Vouchers', value: kpi.availableVouchers || 0, icon: <Ticket className="w-5 h-5" />, tint: '#F59E0B' },
-    { label: 'Active Promotions', value: kpi.activePromotions || 0, icon: <Tag className="w-5 h-5" />, tint: '#3B82F6' },
-    { label: 'Pending Orders', value: kpi.pendingOrders || 0, icon: <Clock className="w-5 h-5" />, tint: '#F97316' },
-    { label: 'Refunds Processed', value: kpi.refunds || 0, icon: <AlertTriangle className="w-5 h-5" />, tint: '#EF4444' },
+    // A card is only clickable when it actually has a destination in the console.
+    { label: 'Total Orders', value: kpi.totalOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#EC4899', onClick: () => onNavigate('orders') },
+    { label: "Today's Orders", value: kpi.todayOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#0EA5E9', growth: (kpi.ordersGrowth as number) ?? null, onClick: () => onNavigate('orders') },
+    { label: 'Total Products Sold', value: kpi.totalProductsSold || 0, icon: <Package className="w-5 h-5" />, tint: '#6C3CE0', onClick: () => onNavigate('products') },
+    { label: 'Total Customers', value: kpi.totalCustomers || 0, icon: <Users className="w-5 h-5" />, tint: '#14B8A6', onClick: () => onNavigate('users') },
+    { label: 'Available Vouchers', value: kpi.availableVouchers || 0, icon: <Ticket className="w-5 h-5" />, tint: '#F59E0B', onClick: () => onNavigate('vouchers') },
+    { label: 'Active Promotions', value: kpi.activePromotions || 0, icon: <Tag className="w-5 h-5" />, tint: '#3B82F6', onClick: () => onNavigate('promotions') },
+    { label: 'Pending Orders', value: kpi.pendingOrders || 0, icon: <Clock className="w-5 h-5" />, tint: '#F97316', onClick: () => onNavigate('orders') },
+    { label: 'Refunds Processed', value: kpi.refunds || 0, icon: <AlertTriangle className="w-5 h-5" />, tint: '#EF4444', onClick: () => onNavigate('orders') },
     { label: 'New PTE Requests', value: kpi.newPTEBookingRequests || 0, icon: <CalendarCheck className="w-5 h-5" />, tint: '#0EA5E9', onClick: () => onNavigate('pte-bookings') },
     { label: 'Open Voucher Requests', value: kpi.newVoucherRequests || 0, icon: <Ticket className="w-5 h-5" />, tint: '#EA580C', onClick: () => onNavigate('voucher-requests') },
   ];
 
-  const dailyRevenue = charts.dailyRevenue || [];
-  const maxRev = Math.max(...dailyRevenue.map((d) => d.revenue || 1), 1);
+  // Quick actions. Each one navigates to the section that owns the task —
+  // nothing here is decorative, and no action exists without a destination.
+  const quickActions = [
+    { label: 'Add voucher codes', icon: <Ticket className="w-4 h-4" />, tab: 'vouchers' },
+    { label: 'Add product', icon: <Package className="w-4 h-4" />, tab: 'products' },
+    { label: 'Pending fulfillment', icon: <Clock className="w-4 h-4" />, tab: 'fulfillments' },
+    { label: 'View orders', icon: <ShoppingCart className="w-4 h-4" />, tab: 'orders' },
+    { label: 'Create coupon', icon: <Tag className="w-4 h-4" />, tab: 'promotions' },
+    { label: 'Write blog post', icon: <PencilRuler className="w-4 h-4" />, tab: 'blog' },
+  ];
 
   return (
     <div className="space-y-8">
@@ -82,14 +107,40 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
             <option value="30d">Last 30 Days</option>
             <option value="90d">Last 90 Days</option>
           </select>
-          <button onClick={() => refresh(period)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
+          <button onClick={() => setReloadKey((k) => k + 1)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-2">
+        {quickActions.map((a) => (
+          <button
+            key={a.label}
+            onClick={() => onNavigate(a.tab)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#EAEAEA] bg-white px-4 py-2.5 text-xs font-black text-neutral-700 shadow-sm transition hover:border-brand-pink hover:text-brand-pink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-pink dark:border-[#292929] dark:bg-[#161616] dark:text-neutral-200"
+          >
+            {a.icon}
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Load failure — never render zeros as if the store were empty */}
+      {!loading && loadError && (
+        <div className="flex flex-col items-center gap-2 px-6 py-14 text-center rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]" role="alert">
+          <AlertTriangle className="w-6 h-6 text-rose-500" />
+          <p className="font-black text-sm text-neutral-900 dark:text-white">Unable to load the dashboard</p>
+          <p className="text-xs font-bold text-neutral-500">{loadError}</p>
+            <button onClick={() => setReloadKey((k) => k + 1)} className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-bold text-surface transition hover:opacity-90">
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
+
       {/* Real-time Alerts Banner */}
-      {(alerts.lowStockCount > 0 || alerts.failedPaymentsCount > 0 || alerts.pendingOrdersCount > 0 || alerts.expiringPromosCount > 0) && (
+      {!loadError && (alerts.lowStockCount > 0 || alerts.failedPaymentsCount > 0 || alerts.pendingOrdersCount > 0 || alerts.expiringPromosCount > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {(alerts.lowStockCount ?? 0) > 0 && (
             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 flex items-center gap-3">
@@ -131,43 +182,26 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {loading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] animate-pulse h-32" />
-            ))
-          : stats.map((s) => <StatCard key={s.label} {...s} />)}
-      </div>
-
-      {/* SVG Time-Series Chart */}
-      <div className="rounded-3xl p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-black text-lg text-neutral-900 dark:text-white">Revenue & Sales Trends</h3>
-            <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Daily net sales breakdown for selected period ({period})</p>
-          </div>
+      {!loadError && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-3xl p-5 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] animate-pulse h-32" />
+              ))
+            : stats.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
-        {dailyRevenue.length > 0 ? (
-          <div className="pt-4">
-            <div className="h-44 flex items-end gap-2 border-b border-[#EAEAEA] dark:border-[#292929] pb-2 px-2">
-              {dailyRevenue.map((item, idx) => {
-                const heightPct = Math.max(12, Math.round((item.revenue / maxRev) * 100));
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
-                    <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-neutral-900 text-white px-2 py-1 rounded text-[10px] font-mono font-bold transition-opacity whitespace-nowrap z-10">
-                      {item._id}: {formatPrice(item.revenue)} ({item.orders} orders)
-                    </div>
-                    <div className="w-full bg-brand-pink rounded-t-lg transition-all hover:bg-[#6C3CE0]" style={{ height: `${heightPct}%` }} />
-                    <span className="text-[9px] font-bold text-neutral-400 truncate w-full text-center">{item._id?.slice(5)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="py-12 text-center text-xs font-bold text-neutral-400">No sales data available for the selected period.</div>
-        )}
-      </div>
+      )}
+
+      {/* Analytics — real series from /api/admin/dashboard, honouring the period selector. */}
+      {!loadError && (
+        <DashboardCharts
+          dailyRevenue={charts.dailyRevenue}
+          dailyVouchersSold={charts.dailyVouchersSold}
+          dailyNewCustomers={charts.dailyNewCustomers}
+          period={period}
+          loading={loading}
+        />
+      )}
 
       {/* Best-Selling Products & Low Stock Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -192,7 +226,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
         <div className="rounded-3xl p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-black text-lg text-neutral-900 dark:text-white">Low Stock Inventory Alerts</h3>
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Threshold: &lt; 10 codes</span>
+            {/* Each product's own lowStockThreshold decides inclusion — not a global 10. */}
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">At or below each product&apos;s threshold</span>
           </div>
           <div className="space-y-3">
             {(tables.lowStockProducts || []).map((p) => (
@@ -233,7 +268,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
           ].map((b) => (
             <button
               key={b.resource}
-              onClick={() => adminApi.downloadExport(b.resource, !!b.unmasked)}
+              onClick={async () => {
+                // Report the outcome — a failed export previously did nothing
+                // at all, indistinguishable from a slow download.
+                const res = await adminApi.downloadExport(b.resource, !!b.unmasked);
+                if (!res.success) notify.error(res.message || `Could not export ${b.label}.`);
+              }}
               className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-left font-black text-xs flex items-center justify-between transition"
             >
               <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ import { adminBlogApi, type BlogSeoAnalysis } from '@/lib/admin-blog-api';
 import { Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
 import { BlogRichEditor } from '@/components/admin/blog-rich-editor';
 import type { BlogPost, BlogFaq } from '@/lib/blog-types';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 const CATEGORIES = ['Exam Guide', 'PTE', 'IELTS', 'TOEFL', 'Duolingo', 'GRE', 'Study Abroad', 'Visa & Immigration', 'News'];
 
@@ -66,6 +67,7 @@ function Section({ title, children, defaultOpen = true, badge }: { title: string
 }
 
 export function BlogEditor({ post, onClose, onSaved }: { post: BlogPost | null; onClose: () => void; onSaved: () => void }) {
+  const confirm = useConfirm();
   const [draft, setDraft] = useState<Draft>(() => toDraft(post));
   const [id, setId] = useState<string | undefined>(post?._id);
   const [status, setStatus] = useState<string>(post?.status || 'draft');
@@ -177,7 +179,7 @@ export function BlogEditor({ post, onClose, onSaved }: { post: BlogPost | null; 
 
   const doTrash = async () => {
     if (!id) return onClose();
-    if (!window.confirm(`Move "${draft.title}" to Trash? It will be removed from the public blog. You can restore it later.`)) return;
+    if (!(await confirm({ title: `Move "${draft.title}" to Trash? It will be removed from the public blog. You can restore it later.` }))) return;
     setBusy('trash');
     const r = await adminBlogApi.trash(id);
     setBusy(null);

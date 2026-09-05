@@ -136,8 +136,9 @@ export const productApi = {
     return request(`/api/products${qs ? `?${qs}` : ''}`);
   },
   get: (id: string) => request(`/api/products/${id}`),
-  getWebsiteConfig: () => request('/api/products/website-config'),
-  getPublicSEO: () => request('/api/seo/public'),
+  // Server Components bootstrap the storefront via getWebsiteConfig() in
+  // lib/website-config.ts (which also carries hero/footer/announcement CMS
+  // state) — productApi had thin duplicates of those reads here.
 };
 
 export const accountApi = {
@@ -189,8 +190,9 @@ export const accountApi = {
     request('/api/account/validate-promo', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+// Orders are created only through paymentApi.createOrder (which also creates the
+// matching Razorpay order) — /api/orders is read-only.
 export const orderApi = {
-  create: (payload: unknown) => request('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
   get: (id: string) => request(`/api/orders/${id}`),
 };
 
@@ -210,8 +212,6 @@ export const paymentApi = {
 
 export const seoApi = {
   overview: () => request('/api/seo/overview'),
-  analyzeInline: (payload: unknown) => request('/api/seo/analyze', { method: 'POST', body: JSON.stringify(payload) }),
-  analyzeProduct: (id: string) => request(`/api/seo/analyze/product/${id}`),
   updateProductSEO: (id: string, data: unknown) =>
     request(`/api/seo/products/${id}/seo`, { method: 'PATCH', body: JSON.stringify(data) }),
   pages: () => request('/api/seo/pages'),
@@ -231,7 +231,7 @@ export const seoApi = {
     request('/api/seo/global-settings', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
-// Blog HTTP layer lives in lib/blog-api.ts (mirrors the Vite app's src/blogs/lib/blogApi.js).
+// Blog HTTP layers: public reads in lib/blog-api.ts, admin writes in lib/admin-blog-api.ts.
 
 export const adminApi = {
   dashboard: (params: Record<string, string> = {}) => {
@@ -242,7 +242,6 @@ export const adminApi = {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/users${qs ? `?${qs}` : ''}`);
   },
-  user: (id: string) => request(`/api/admin/users/${id}`),
   setUserStatus: (id: string, status: string) =>
     request(`/api/admin/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   products: (params: Record<string, string> = {}) => {
@@ -296,21 +295,6 @@ export const adminApi = {
     }
     return { success: true, ...data };
   },
-  uploadProductScreenshot: async (file: File): Promise<ApiResponse> => {
-    const formData = new FormData();
-    formData.append('image', file);
-    const token = getToken();
-    const resp = await fetch(`${apiBase()}/api/admin/products/screenshot-upload`, {
-      method: 'POST',
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: formData,
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.success === false) {
-      return { success: false, message: data?.message || `Upload failed (${resp.status})` };
-    }
-    return { success: true, ...data };
-  },
   vouchers: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/vouchers${qs ? `?${qs}` : ''}`);
@@ -321,8 +305,18 @@ export const adminApi = {
   addVouchers: (payload: unknown) => request('/api/admin/vouchers', { method: 'POST', body: JSON.stringify(payload) }),
   addVouchersBulk: (payload: unknown) =>
     request('/api/admin/vouchers/bulk', { method: 'POST', body: JSON.stringify(payload) }),
-  updateVoucher: (id: string, data: unknown) =>
-    request(`/api/admin/vouchers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Note: there is deliberately no updateVoucher wrapper — the admin UI edits
+  // voucher status/expiry only, via setVoucherStatus, and the backend
+  // mass-assignment guard forbids rewriting code/userId/orderId anyway.
+  deleteVoucher: (id: string) => request(`/api/admin/vouchers/${id}`, { method: 'DELETE' }),
+  // Asks the server what a delete would actually do before showing the confirm
+  // dialog — delivered codes are always kept, so the count in the dialog is real.
+  previewVoucherDelete: (ids: string[]) =>
+    request('/api/admin/vouchers/delete-preview', { method: 'POST', body: JSON.stringify({ ids }) }),
+  bulkDeleteVouchers: (ids: string[]) =>
+    request('/api/admin/vouchers/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+  setVoucherStatus: (ids: string[], status: string) =>
+    request('/api/admin/vouchers/status', { method: 'PATCH', body: JSON.stringify({ ids, status }) }),
   orders: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/orders${qs ? `?${qs}` : ''}`);
@@ -373,37 +367,23 @@ export const adminApi = {
     window.URL.revokeObjectURL(downloadUrl);
     return { success: true };
   },
-  videos: (params: Record<string, string> = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return request(`/api/admin/reels${qs ? `?${qs}` : ''}`);
-  },
+  // Reels and videos are one resource served by /api/admin/reels. The parallel
+  // `*Video` wrappers that duplicated every call below had no callers and were
+  // removed; use the `*Reel` names.
   reels: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/reels${qs ? `?${qs}` : ''}`);
   },
-  getVideo: (id: string) => request(`/api/admin/reels/${id}`),
-  getReel: (id: string) => request(`/api/admin/reels/${id}`),
-  createVideo: (data: unknown) => request('/api/admin/reels', { method: 'POST', body: JSON.stringify(data) }),
   createReel: (data: unknown) => request('/api/admin/reels', { method: 'POST', body: JSON.stringify(data) }),
-  updateVideo: (id: string, data: unknown) =>
-    request(`/api/admin/reels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   updateReel: (id: string, data: unknown) =>
     request(`/api/admin/reels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  quickToggleFeaturedVideo: (id: string, featured: boolean) =>
-    request(`/api/admin/reels/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
   quickToggleFeaturedReel: (id: string, featured: boolean) =>
     request(`/api/admin/reels/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
-  quickTogglePublishVideo: (id: string, published: boolean) =>
-    request(`/api/admin/reels/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
   quickTogglePublishReel: (id: string, published: boolean) =>
     request(`/api/admin/reels/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
-  quickUpdateOrder: (id: string, order: number) =>
-    request(`/api/admin/reels/${id}/order`, { method: 'PATCH', body: JSON.stringify({ order }) }),
   bulkReorderReels: (items: unknown) =>
     request('/api/admin/reels/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
-  deleteVideo: (id: string) => request(`/api/admin/reels/${id}`, { method: 'DELETE' }),
   deleteReel: (id: string) => request(`/api/admin/reels/${id}`, { method: 'DELETE' }),
-  updateVideoSettings: (data: unknown) => request('/api/admin/reels/settings', { method: 'PATCH', body: JSON.stringify(data) }),
   updateReelSettings: (data: unknown) => request('/api/admin/reels/settings', { method: 'PATCH', body: JSON.stringify(data) }),
   uploadMedia: async (formData: FormData) => {
     const token = getToken();
@@ -418,7 +398,6 @@ export const adminApi = {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/awards${qs ? `?${qs}` : ''}`);
   },
-  getAward: (id: string) => request(`/api/admin/awards/${id}`),
   createAward: (data: unknown) => request('/api/admin/awards', { method: 'POST', body: JSON.stringify(data) }),
   updateAward: (id: string, data: unknown) =>
     request(`/api/admin/awards/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -439,45 +418,27 @@ export const adminApi = {
     return resp.json();
   },
   seo: seoApi,
-  // adminApi.blog lives in lib/blog-api.ts.
+  // Admin blog HTTP layer lives in lib/admin-blog-api.ts.
   pteBookings: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/pte-bookings${qs ? `?${qs}` : ''}`);
   },
-  getPTEBooking: (id: string) => request(`/api/admin/pte-bookings/${id}`),
   updatePTEBooking: (id: string, data: unknown) =>
     request(`/api/admin/pte-bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   voucherRequests: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/voucher-requests${qs ? `?${qs}` : ''}`);
   },
-  getVoucherRequest: (id: string) => request(`/api/admin/voucher-requests/${id}`),
   updateVoucherRequest: (id: string, data: unknown) =>
     request(`/api/admin/voucher-requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   fulfillments: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/fulfillments${qs ? `?${qs}` : ''}`);
   },
-  deliverFulfillment: (id: string, code: string, adminNotes = '') =>
-    request(`/api/admin/fulfillments/${id}/deliver`, { method: 'POST', body: JSON.stringify({ code, adminNotes }) }),
+  deliverFulfillment: (id: string, code: string) =>
+    request(`/api/admin/fulfillments/${id}/deliver`, { method: 'POST', body: JSON.stringify({ code }) }),
   cancelFulfillment: (id: string, reason = '') =>
     request(`/api/admin/fulfillments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
-  resendFulfillmentEmail: (id: string) =>
-    request(`/api/admin/fulfillments/${id}/resend-email`, { method: 'POST' }),
-  updateFulfillmentNotes: (id: string, adminNotes: string) =>
-    request(`/api/admin/fulfillments/${id}/notes`, { method: 'PATCH', body: JSON.stringify({ adminNotes }) }),
-  security: {
-    me: () => request('/api/admin/security/me'),
-    sendEmailOtp: (newEmail: string) =>
-      request('/api/admin/security/email/send-otp', { method: 'POST', body: JSON.stringify({ newEmail }) }),
-    verifyEmailOtp: (otp: string) =>
-      request('/api/admin/security/email/verify-otp', { method: 'POST', body: JSON.stringify({ otp }) }),
-    changePassword: (currentPassword: string, newPassword: string, confirmNewPassword: string) =>
-      request('/api/admin/security/password/change', {
-        method: 'POST',
-        body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword }),
-      }),
-  },
 };
 
 export const pteBookingApi = {
@@ -486,12 +447,10 @@ export const pteBookingApi = {
 };
 
 export const videoApi = {
-  list: () => request('/api/reels'),
-  get: (id: string) => request(`/api/reels/${id}`),
+  // Public carousel reads go through lib/video-api.ts (revalidate-cached);
+  // only the view counter is posted live from the client.
   incrementView: (id: string) => request(`/api/reels/${id}/view`, { method: 'POST' }),
 };
-
-export const reelApi = videoApi;
 
 export const awardApi = {
   list: (params: Record<string, string> = {}) => {

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Search, Trophy, ChevronUp, ChevronDown, Edit2, Trash2, X, Eye, Crown, Play, CheckCircle2, Clock, Film, Star, Building2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { StatCard, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
+import { StatCard, Pill, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface AwardRow {
   _id?: string;
@@ -29,6 +31,7 @@ interface AwardRow {
 }
 
 export function AwardsAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<AwardRow[]>([]);
   const [kpis, setKpis] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -46,9 +49,9 @@ export function AwardsAdmin() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (type === 'video') {
-      if (!/\.(mp4|webm|mov)$/i.test(file.name)) { alert('Invalid video format. Please select .mp4, .webm, or .mov.'); return; }
+      if (!/\.(mp4|webm|mov)$/i.test(file.name)) { notify.error('Invalid video format. Please select .mp4, .webm, or .mov.'); return; }
     } else {
-      if (!/\.(jpg|jpeg|png|webp)$/i.test(file.name)) { alert('Invalid image format. Please select .jpg, .png, or .webp.'); return; }
+      if (!/\.(jpg|jpeg|png|webp)$/i.test(file.name)) { notify.error('Invalid image format. Please select .jpg, .png, or .webp.'); return; }
     }
     setUploadingMedia(true);
     setUploadProgress(30);
@@ -65,10 +68,10 @@ export function AwardsAdmin() {
           setDraft((prev) => ({ ...prev, videoUrl: (res.videoUrl as string) || (prev.videoUrl as string), videoPublicId: (res.videoPublicId as string) || (prev.videoPublicId as string) || '', videoThumbnail: (res.videoThumbnail as string) || (prev.videoThumbnail as string) || '' }));
         }
       } else {
-        alert((res.message as string) || 'File upload failed');
+        notify.error((res.message as string) || 'File upload failed');
       }
     } catch (err) {
-      alert('Upload error: ' + (err instanceof Error ? err.message : 'Server error during upload'));
+      notify.error('Upload error: ' + (err instanceof Error ? err.message : 'Server error during upload'));
     } finally {
       setUploadingMedia(false);
       setUploadProgress(0);
@@ -118,7 +121,7 @@ export function AwardsAdmin() {
   };
 
   const saveAward = async () => {
-    if (!(draft.title as string)?.trim()) { alert('Award title is required.'); return; }
+    if (!(draft.title as string)?.trim()) { notify.error('Award title is required.'); return; }
     const payload = {
       ...draft,
       title: (draft.title as string).trim(),
@@ -131,21 +134,27 @@ export function AwardsAdmin() {
     if (isCreating) res = await adminApi.createAward(payload);
     else res = await adminApi.updateAward(editing?._id || editing?.id || '', payload);
     if (res.success) { setIsCreating(false); setEditing(null); refresh(); }
-    else alert((res.message as string) || 'Failed to save award');
+    else notify.error((res.message as string) || 'Failed to save award');
   };
 
   const toggleFeatured = async (a: AwardRow) => {
     const res = await adminApi.quickToggleFeaturedAward(a._id || a.id || '', !a.featured);
-    if (res.success) refresh(); else alert((res.message as string) || 'Failed to toggle featured');
+    if (res.success) refresh(); else notify.error((res.message as string) || 'Failed to toggle featured');
   };
 
   const toggleStatus = async (a: AwardRow) => {
     const next = a.status === 'active' || (a.isActive !== false && a.published !== false) ? 'inactive' : 'active';
     const res = await adminApi.quickToggleStatusAward(a._id || a.id || '', next);
-    if (res.success) refresh(); else alert((res.message as string) || 'Failed to update status');
+    if (res.success) refresh(); else notify.error((res.message as string) || 'Failed to update status');
   };
 
   const moveOrder = async (index: number, direction: number) => {
+    // Reordering under a filter would renumber only the visible rows and
+    // corrupt the global order (same guard as videos/products).
+    if (search || statusFilter) {
+      notify.error('Clear search/filters before reordering — otherwise the global order would be corrupted.');
+      return;
+    }
     const targetIdx = index + direction;
     if (targetIdx < 0 || targetIdx >= rows.length) return;
     const newRows = [...rows];
@@ -159,9 +168,9 @@ export function AwardsAdmin() {
   };
 
   const removeAward = async (a: AwardRow) => {
-    if (!confirm(`Delete award "${a.title}"? Its Cloudinary media will also be removed.`)) return;
+    if (!(await confirm({ title: `Delete award "${a.title}"? Its Cloudinary media will also be removed.` }))) return;
     const res = await adminApi.deleteAward(a._id || a.id || '');
-    if (res.success) refresh(); else alert((res.message as string) || 'Failed to delete award');
+    if (res.success) refresh(); else notify.error((res.message as string) || 'Failed to delete award');
   };
 
   return (

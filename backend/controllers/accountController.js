@@ -506,7 +506,7 @@ export const myOrders = async (req, res, next) => {
     // VoucherRequest is that purchase's customer-facing record (see
     // "My Voucher Requests"). The voucher itself still appears in "My Vouchers".
     const orders = await Order.find({ userId: req.user.id, source: { $ne: 'VOUCHER_REQUEST' } })
-      .select('-processedEventIds -webhookStatus -paymentSessionId -__v')
+      .select('-processedEventIds -webhookStatus -paymentSessionId -cashfreeOrderId -__v')
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, data: orders });

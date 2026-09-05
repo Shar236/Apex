@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy } from 'lucide-react';
+import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy, Calculator } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
+import { ApexLogo } from '@/components/apex-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui';
 
@@ -15,6 +15,11 @@ interface NavbarProps {
   supportEmail?: string;
   announcementText?: string;
   announcementEnabled?: boolean;
+  /** Makes the announcement strip clickable — CMS-configurable. */
+  announcementLink?: string;
+  /** Campaign banners replace the standard strip when this is on. */
+  announcementOverrideWithCampaign?: boolean;
+  activeCampaignTitle?: string | null;
 }
 
 const EXAM_CATEGORIES = [
@@ -30,6 +35,9 @@ export function Navbar({
   supportEmail = 'apexvouchers@gmail.com',
   announcementText = '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers',
   announcementEnabled = true,
+  announcementLink,
+  announcementOverrideWithCampaign = false,
+  activeCampaignTitle = null,
 }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -49,6 +57,7 @@ export function Navbar({
   const isHomeActive = pathname === '/';
   const isShopActive = pathname.startsWith('/exam-vouchers');
   const isExamBookingActive = pathname === '/exam-booking';
+  const isCalculatorsActive = pathname.startsWith('/calculators');
   const isGuidesActive = pathname.startsWith('/blog');
   const isAwardsActive = pathname === '/awards';
 
@@ -75,9 +84,18 @@ export function Navbar({
           </div>
 
           <div className="flex items-center gap-3 ml-auto sm:ml-0 whitespace-nowrap text-[11px] sm:text-xs">
-            {announcementEnabled && (
+            {/* CMS: overrideWithCampaign swaps the standard strip for the active
+                campaign title; link makes the strip clickable. */}
+            {announcementEnabled && !(
+              announcementOverrideWithCampaign && activeCampaignTitle
+            ) && (
               <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
                 {announcementText}
+              </span>
+            )}
+            {announcementEnabled && announcementOverrideWithCampaign && activeCampaignTitle && (
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
+                {activeCampaignTitle}
               </span>
             )}
             {isAuthenticated ? (
@@ -98,28 +116,8 @@ export function Navbar({
       <nav className={`w-full transition-all duration-300 ${scrolled ? 'bg-surface/95 backdrop-blur-md shadow-sm py-2.5 border-b border-line' : 'bg-surface border-b border-line py-3.5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <Link
-              href="/"
-              className="flex items-center shrink-0 rounded-lg py-1 pr-2 transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              {/* Light navbar (default) */}
-              <Image
-                src="/apex-vouchers-logo.svg"
-                alt="Apex Vouchers"
-                width={244}
-                height={104}
-                priority
-                className="block h-9 w-auto sm:h-10 dark:hidden"
-              />
-              {/* Dark-theme fallback so the wordmark stays visible if the site is in dark mode */}
-              <Image
-                src="/apex-vouchers-logo-dark.svg"
-                alt="Apex Vouchers"
-                width={244}
-                height={104}
-                priority
-                className="hidden h-9 w-auto sm:h-10 dark:block"
-              />
+            <Link href="/" className="flex items-center text-left focus:outline-none cursor-pointer group shrink-0" aria-label="Go to Apex Vouchers Home">
+              <ApexLogo showTagline={false} />
             </Link>
 
             <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-ink-muted whitespace-nowrap">
@@ -159,6 +157,10 @@ export function Navbar({
               <Link href="/exam-booking" className={`px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${isExamBookingActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
                 <span>Exam Booking</span>
                 <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-accent/10 text-accent border border-accent/20 leading-tight">PTE</span>
+              </Link>
+
+              <Link href="/calculators" className={navLinkClass(isCalculatorsActive)}>
+                Score Calculators
               </Link>
 
               <Link href="/#how-it-works" className={navLinkClass(false)}>
@@ -231,6 +233,18 @@ export function Navbar({
                 <span>PTE Exam Booking Assistance</span>
               </div>
               <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-md font-medium">NEW</span>
+            </Link>
+
+            <Link
+              href="/calculators"
+              onClick={() => setIsMenuOpen(false)}
+              className={`w-full text-left px-4 py-2.5 rounded-xl font-normal flex items-center justify-between ${isCalculatorsActive ? 'bg-accent/8 text-accent font-medium' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-accent" />
+                <span>Score Calculators</span>
+              </div>
+              <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-md font-medium">12 Tools</span>
             </Link>
 
             <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">

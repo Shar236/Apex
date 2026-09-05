@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
-import { createOrder, getOrder } from '../controllers/orderController.js';
+import { getOrder } from '../controllers/orderController.js';
 
 const r = Router();
 
-r.post('/', protect, createOrder);
 r.get('/:id', protect, getOrder);
 
-// NOTE: there is deliberately NO "mark this order paid" endpoint here.
-// The ONLY way an order becomes PAID is a cryptographically verified Razorpay
-// payment via POST /api/payments/verify or the signed Razorpay webhook.
+// NOTE: this router is READ-ONLY by design.
+// Orders are created only by POST /api/payments/order (which also creates the
+// matching Razorpay order), and an order becomes PAID only through a
+// cryptographically verified Razorpay payment — POST /api/payments/verify or
+// the signed Razorpay webhook.
 
 export default r;

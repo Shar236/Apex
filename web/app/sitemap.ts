@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/config';
 import { listProducts } from '@/lib/product-detail';
 import { listPublicBlogPosts } from '@/lib/blog-api';
+import { CALCULATORS } from '@/lib/calculators';
 
 /**
  * Only includes routes that actually exist in this Next.js app today.
@@ -36,6 +37,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
+  const calculatorEntries: MetadataRoute.Sitemap = CALCULATORS.map((c) => ({
+    url: `${siteConfig.siteUrl}/calculators/${c.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.8,
+  }));
+
   return [
     {
       url: siteConfig.siteUrl,
@@ -45,6 +53,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${siteConfig.siteUrl}/exam-vouchers`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${siteConfig.siteUrl}/calculators`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
@@ -117,5 +131,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...productEntries,
     ...blogEntries,
+    ...calculatorEntries,
   ];
 }

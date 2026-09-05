@@ -23,54 +23,6 @@ const imageSeoSchema = new mongoose.Schema({
   caption: { type: String, trim: true, default: '' },
 }, { _id: false });
 
-// ── Product-level redemption CMS ────────────────────────────────────────────
-// Each product carries its own complete "How to Redeem" content so redemption
-// instructions are data-driven and product-specific — no hard-coded per-exam
-// logic in the frontend. See web/lib/redemption-guides.ts for the render-time
-// fallback chain (structured guide → legacy redemptionSteps → provider family).
-
-const redemptionScreenshotSchema = new mongoose.Schema({
-  url: { type: String, trim: true, default: '' },
-  publicId: { type: String, trim: true, default: '' },
-  alt: { type: String, trim: true, default: '' },
-  caption: { type: String, trim: true, default: '' },
-  width: { type: Number },
-  height: { type: Number },
-}, { _id: false });
-
-const redemptionStepSchema = new mongoose.Schema({
-  // `order` is derived from array position on save (see normalizeProductPayload);
-  // stored so the public API doesn't have to infer it.
-  order: { type: Number, default: 0 },
-  title: { type: String, trim: true, default: '' },
-  description: { type: String, trim: true, default: '' },
-  screenshot: { type: redemptionScreenshotSchema, default: () => ({}) },
-  importantNote: { type: String, trim: true, default: '' },
-  videoUrl: { type: String, trim: true, default: '' },
-}); // keep _id — the admin editor uses it as a stable React key
-
-const redemptionGuideSchema = new mongoose.Schema({
-  enabled: { type: Boolean, default: false },
-  providerLabel: { type: String, trim: true, default: '' },
-  officialUrl: { type: String, trim: true, default: '' },
-  buttonText: { type: String, trim: true, default: '' },
-  introduction: { type: String, trim: true, default: '' },
-  steps: { type: [redemptionStepSchema], default: [] },
-  warnings: [{ type: String, trim: true }],
-  lastUpdated: { type: Date },
-}, { _id: false });
-
-const productContentSchema = new mongoose.Schema({
-  enabled: { type: Boolean, default: false },
-  heading: { type: String, trim: true, default: '' },
-  content: { type: String, default: '' }, // sanitized HTML (see backend/utils/richText.js)
-}, { _id: false });
-
-const infoRowSchema = new mongoose.Schema({
-  label: { type: String, trim: true, default: '' },
-  value: { type: String, trim: true, default: '' },
-}, { _id: false });
-
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -208,23 +160,13 @@ const productSchema = new mongoose.Schema(
     seoDescription: { type: String, trim: true, default: '' },
     seo: seoSchema,
     inclusions: [{ type: String }],
-    redemptionSteps: [{ type: String }], // legacy free-text steps — fallback only
+    redemptionSteps: [{ type: String }],
     faqs: [
       {
         question: { type: String, trim: true },
         answer: { type: String, trim: true },
       },
     ],
-    // Product-specific redemption CMS (data-driven "How to Redeem").
-    redemptionGuide: { type: redemptionGuideSchema, default: () => ({}) },
-    // Product-specific long-form "About This Product" rich content.
-    productContent: { type: productContentSchema, default: () => ({}) },
-    // "Important Information" label/value rows shown on the product page.
-    importantInfo: { type: [infoRowSchema], default: [] },
-    // "Important:" warning callouts.
-    importantNotes: [{ type: String, trim: true }],
-    // "Explore More" — admin-curated related products (ordered). Falls back to
-    // the automatic related-product algorithm when empty (productController).
     relatedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   },
   { timestamps: true }

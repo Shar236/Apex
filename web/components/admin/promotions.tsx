@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, Copy } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { Pill, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface PromoRow {
   _id: string;
@@ -31,23 +34,29 @@ const defaultDraft = {
 };
 
 export function PromotionsAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<PromoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [editing, setEditing] = useState<PromoRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<Record<string, unknown>>(defaultDraft);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     const res = await adminApi.promotions();
-    setRows((res.data as PromoRow[]) || []);
+    if (!res.success) {
+      setLoadError(res.message || 'Could not load promotions.');
+      setRows([]);
+    } else {
+      setRows((res.data as PromoRow[]) || []);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    // Data-fetch on mount; `refresh` flips a loading flag before its awaited
-    // fetch (accepted data-fetching-in-effect pattern, no server loader here).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -59,9 +68,18 @@ export function PromotionsAdmin() {
 
   const save = async () => {
     if (!draft.name || !draft.code || (draft.discountValue as number) <= 0) {
-      alert('Name, code, and discount value are required.');
+      notify.error('Name, code, and discount value are required.');
       return;
     }
+    if (draft.discountType === 'percentage' && Number(draft.discountValue) > 100) {
+      notify.error('A percentage discount cannot exceed 100%.');
+      return;
+    }
+    if (new Date(draft.endAt as string) <= new Date(draft.startAt as string)) {
+      notify.error('End date must be after the start date.');
+      return;
+    }
+    setSaving(true);
     const payload = {
       ...draft,
       discountValue: Number(draft.discountValue) || 0,
@@ -73,17 +91,20 @@ export function PromotionsAdmin() {
       endAt: new Date(draft.endAt as string),
     };
     const res = creating ? await adminApi.createPromotion(payload) : await adminApi.updatePromotion(editing?._id || '', payload);
+    setSaving(false);
     if (res.success) {
+      notify.success(creating ? `Promotion ${String(draft.code || '').toUpperCase()} created.` : `Promotion ${String(draft.code || '').toUpperCase()} updated.`);
       setCreating(false);
       setEditing(null);
       refresh();
-    } else alert((res.message as string) || 'Failed to save promotion');
+    } else notify.error((res.message as string) || 'Failed to save promotion');
   };
 
   const remove = async (p: PromoRow) => {
-    if (!confirm(`Delete promotion ${p.name}?`)) return;
+    if (!(await confirm({ title: `Delete promotion ${p.name}?` }))) return;
     const res = await adminApi.deletePromotion(p._id);
-    if (res.success) refresh();
+    // A failed delete previously gave no feedback at all.
+    if (notify.result(res, `Promotion ${p.code} deleted.`)) refresh();
   };
 
   return (
@@ -99,7 +120,7 @@ export function PromotionsAdmin() {
       </div>
 
       {(creating || editing) && (
-        <FormCard title={creating ? 'Create Promotion' : 'Edit Promotion'} onClose={() => { setCreating(false); setEditing(null); }} onSave={save}>
+        <FormCard title={creating ? 'Create Promotion' : 'Edit Promotion'} onClose={() => { setCreating(false); setEditing(null); }} onSave={save} busy={saving}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Promotion Name *" value={draft.name as string} onChange={(v) => setDraft({ ...draft, name: v })} />
             <Field label="Promo Code *" value={draft.code as string} onChange={(v) => setDraft({ ...draft, code: String(v).toUpperCase() })} />
@@ -183,7 +204,8 @@ export function PromotionsAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No active promotions" desc="Create your first discount campaign." />}
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && <Empty title="No active promotions" desc="Create your first discount campaign." />}
       </div>
     </div>
   );

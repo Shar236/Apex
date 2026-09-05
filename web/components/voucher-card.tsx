@@ -68,7 +68,7 @@ export function VoucherCard({ product }: { product: Product }) {
       </div>
 
       <div className="px-4 pt-3">
-        <ProviderLogo product={product} className="h-19" />
+        <ProviderLogo product={product} size="md" />
       </div>
 
       <Link href={detailHref} className="px-4 pt-3 text-center font-heading font-normal text-[17px] leading-snug text-ink line-clamp-2 min-h-10.4 hover:text-accent transition-colors">

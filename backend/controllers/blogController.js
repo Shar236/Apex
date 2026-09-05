@@ -638,7 +638,11 @@ export const getPublicBlog = async (req, res, next) => {
       // Slug not found — check for a managed redirect (e.g. old slug → new slug)
       const redirect = await Redirect.findOne({ sourcePath: `/blog/${String(slug).toLowerCase()}`, enabled: true }).lean();
       if (redirect) {
-        return res.status(redirect.type || 301).json({
+        // HTTP 200 + REDIRECT contract: the Next.js data layer fetches this with
+        // `redirect: 'follow'`, and a 3xx without a Location header throws a
+        // network error there (the REDIRECT branch was unreachable). The actual
+        // 301 to browsers comes from the Next side via permanentRedirect().
+        return res.json({
           success: false,
           code: 'REDIRECT',
           message: 'Article moved',

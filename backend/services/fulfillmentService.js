@@ -11,41 +11,6 @@ import {
 const log = (label, err) =>
   console.error(`[fulfillment:${label}] ${err?.message || err}`);
 
-/** The "is this code buyable right now" predicate — same one allocation uses. */
-const availableCodeFilter = () => ({ status: 'AVAILABLE', expiryDate: { $gt: new Date() } });
-
-/**
- * Send (or re-send) the voucher-delivery email for a fulfilled request. Reused by
- * both the initial delivery and the admin "resend" action so there is exactly one
- * email code path. Never throws — returns the nodemailer-style { sent } result.
- */
-const emailFulfilmentVoucher = async (request, order, voucher) => {
-  const product = await Product.findById(request.productId)
-    .select('redemptionSteps officialWebsiteUrl')
-    .lean()
-    .catch(() => null);
-  const enriched = [
-    {
-      code: voucher.code,
-      expiryDate: voucher.expiryDate,
-      productName: request.productName,
-      voucherType: voucher.voucherType,
-      redemptionSteps: Array.isArray(product?.redemptionSteps) ? product.redemptionSteps : [],
-      officialWebsiteUrl: product?.officialWebsiteUrl || '',
-    },
-  ];
-  try {
-    return await sendOrderConfirmation(
-      { name: request.customerName, email: request.customerEmail },
-      order,
-      enriched
-    );
-  } catch (err) {
-    log('delivery-email', err);
-    return { sent: false, error: err.message };
-  }
-};
-
 /**
  * Create (or return the existing) post-payment fulfillment request for a PAID
  * order that could not be auto-allocated because inventory ran out.
@@ -110,7 +75,7 @@ export const createFulfillmentRequestForOrder = async ({ order, user, paymentId 
  * - Marks the order FULFILLED, attaches the voucher, and emails the customer.
  * - Idempotent: delivering the same code twice returns the same result.
  */
-export const deliverFulfillmentRequest = async ({ requestId, code, adminNotes, admin }) => {
+export const deliverFulfillmentRequest = async ({ requestId, code, admin }) => {
   const codeClean = String(code || '').trim().toUpperCase();
   if (!codeClean) {
     throw new AppError('Voucher code is required', 400, 'CODE_REQUIRED');
@@ -239,26 +204,55 @@ export const deliverFulfillmentRequest = async ({ requestId, code, adminNotes, a
   await order.save();
 
   // ── Mark the request delivered.
-  const noteClean = String(adminNotes || '').trim().slice(0, 2000);
   request.status = 'DELIVERED';
   request.voucherCode = voucher.code;
   request.voucherId = voucher._id;
   request.deliveredAt = now;
   request.emailStatus = 'PENDING';
-  if (noteClean) request.adminNotes = noteClean;
   request.activityHistory.push({
     status: 'DELIVERED',
-    note: `Voucher delivered by ${admin?.email || 'admin'}${noteClean ? ` — note: ${noteClean}` : ''}`,
+    note: `Voucher delivered by ${admin?.email || 'admin'}`,
     adminId: admin?._id || null,
     adminEmail: admin?.email || '',
     timestamp: now,
   });
   await request.save();
 
+  // ── Close out a customer "Request Voucher" when the paid order it produced is
+  // delivered manually. Auto-allocation does this via the fulfillVerifiedOrder
+  // hook; without it here the customer's request is stuck AWAITING_PAYMENT even
+  // though the voucher is in their vault. Best-effort — never fails delivery.
+  if (order.voucherRequestId) {
+    const { markVoucherRequestFulfilled } = await import('./voucherRequestService.js');
+    await markVoucherRequestFulfilled({ order, voucher, user: null }).catch((err) =>
+      log('voucher-request-fulfill-hook', err)
+    );
+  }
+
   // ── Email the customer (best-effort, never fails the delivery).
-  const mailRes = await emailFulfilmentVoucher(request, order, voucher);
-  request.emailStatus = mailRes?.sent === false ? 'FAILED' : 'SENT';
-  request.emailError = mailRes?.sent === false ? mailRes.error || 'Email send failed' : null;
+  try {
+    const enriched = [
+      {
+        code: voucher.code,
+        expiryDate: voucher.expiryDate,
+        productName: request.productName,
+        voucherType: voucher.voucherType,
+        redemptionSteps: [],
+        officialWebsiteUrl: '',
+      },
+    ];
+    const mailRes = await sendOrderConfirmation(
+      { name: request.customerName, email: request.customerEmail },
+      order,
+      enriched
+    );
+    request.emailStatus = mailRes?.sent === false ? 'FAILED' : 'SENT';
+    if (mailRes?.sent === false) request.emailError = mailRes.error || 'Email send failed';
+  } catch (err) {
+    request.emailStatus = 'FAILED';
+    request.emailError = err.message;
+    log('delivery-email', err);
+  }
   await request.save().catch(() => {});
 
   await AuditLog.create({
@@ -275,68 +269,6 @@ export const deliverFulfillmentRequest = async ({ requestId, code, adminNotes, a
   }).catch(() => {});
 
   return { request, order, alreadyDelivered: false, voucher };
-};
-
-/**
- * Re-send the voucher-delivery email for an ALREADY-DELIVERED request (e.g. the
- * first send bounced). Never allocates a second voucher and never moves the
- * request out of DELIVERED — it only re-sends the existing code and updates
- * emailStatus.
- */
-export const resendFulfillmentVoucherEmail = async ({ requestId, admin }) => {
-  const request = await FulfillmentRequest.findById(requestId);
-  if (!request) throw new AppError('Fulfillment request not found', 404, 'REQUEST_NOT_FOUND');
-  if (request.status !== 'DELIVERED') {
-    throw new AppError('Only a delivered request can have its voucher email re-sent', 409, 'REQUEST_NOT_DELIVERED');
-  }
-
-  const [order, voucher] = await Promise.all([
-    Order.findById(request.orderId),
-    request.voucherId
-      ? VoucherCode.findById(request.voucherId).lean()
-      : VoucherCode.findOne({ code: request.voucherCode, userId: request.userId }).lean(),
-  ]);
-  if (!order) throw new AppError('Linked order not found', 404, 'ORDER_NOT_FOUND');
-  if (!voucher) throw new AppError('Delivered voucher record not found', 404, 'VOUCHER_NOT_FOUND');
-
-  const mailRes = await emailFulfilmentVoucher(request, order, voucher);
-  const sent = mailRes?.sent !== false;
-  request.emailStatus = sent ? 'SENT' : 'FAILED';
-  request.emailError = sent ? null : mailRes.error || 'Email send failed';
-  request.activityHistory.push({
-    status: 'DELIVERED',
-    note: `Voucher email re-sent by ${admin?.email || 'admin'} — ${sent ? 'accepted' : `failed: ${request.emailError}`}`,
-    adminId: admin?._id || null,
-    adminEmail: admin?.email || '',
-    timestamp: new Date(),
-  });
-  await request.save();
-
-  await AuditLog.create({
-    adminEmail: admin?.email || 'admin@apexvouchers.in',
-    action: 'FULFILLMENT_EMAIL_RESENT',
-    resourceType: 'FulfillmentRequest',
-    resourceId: request._id.toString(),
-    details: { requestId: request.requestId, orderNo: order.orderNo, sent, error: request.emailError || undefined },
-  }).catch(() => {});
-
-  return { request, sent, error: request.emailError };
-};
-
-/** Admin edits the internal note on a request without changing its status. */
-export const updateFulfillmentNotes = async ({ requestId, adminNotes, admin }) => {
-  const request = await FulfillmentRequest.findById(requestId);
-  if (!request) throw new AppError('Fulfillment request not found', 404, 'REQUEST_NOT_FOUND');
-  request.adminNotes = String(adminNotes || '').trim().slice(0, 2000);
-  request.activityHistory.push({
-    status: request.status,
-    note: `Note updated by ${admin?.email || 'admin'}`,
-    adminId: admin?._id || null,
-    adminEmail: admin?.email || '',
-    timestamp: new Date(),
-  });
-  await request.save();
-  return { request };
 };
 
 /** Admin cancels a pending fulfillment request (e.g. refund issued). */
@@ -394,19 +326,6 @@ export const listFulfillmentRequests = async (query = {}) => {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
   ]);
-
-  // One aggregate for the whole page — current buyable stock per product, so the
-  // admin can see at a glance whether a code can be pulled from inventory.
-  const productIds = [...new Set(rows.map((r) => r.productId).filter(Boolean).map(String))];
-  let stockByProduct = new Map();
-  if (productIds.length) {
-    const grouped = await VoucherCode.aggregate([
-      { $match: { productId: { $in: rows.map((r) => r.productId).filter(Boolean) }, ...availableCodeFilter() } },
-      { $group: { _id: '$productId', available: { $sum: 1 } } },
-    ]);
-    stockByProduct = new Map(grouped.map((g) => [String(g._id), g.available]));
-  }
-  for (const r of rows) r.availableStock = stockByProduct.get(String(r.productId)) || 0;
 
   const stats = {
     total,

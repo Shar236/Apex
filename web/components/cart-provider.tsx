@@ -48,9 +48,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Hydrate the cart from localStorage after mount. Lazy init would diverge
-    // from the server render ([]) and mismatch the cart-count badge on hydration.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(loadCart());
   }, []);
 

@@ -12,6 +12,7 @@ export interface HeroSettings {
   headingLine3?: string;
   descriptionText?: string;
   ctaText?: string;
+  ctaLink?: string;
 }
 
 export interface ActiveCampaign {
@@ -102,6 +103,12 @@ export function HeroSection({
   const heading3 = heroSettings?.headingLine3 || 'Your Savings.';
   const descriptionText = heroSettings?.descriptionText || 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.';
   const mainCtaText = activeCampaign?.ctaText || heroSettings?.ctaText || 'Browse Vouchers';
+  // Admin-configurable target — previously saved but never rendered (the CTA
+  // always hardcoded /exam-vouchers). Falls back to the catalog page.
+  const mainCtaHref =
+    heroSettings?.ctaLink && (heroSettings.ctaLink.startsWith('/') || /^https?:\/\//.test(heroSettings.ctaLink))
+      ? heroSettings.ctaLink
+      : '/exam-vouchers';
 
   const displayBenefits =
     Array.isArray(benefitCards) && benefitCards.length > 0
@@ -162,7 +169,7 @@ export function HeroSection({
             </div>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Button as={Link} href="/exam-vouchers" variant="primary" size="lg">
+              <Button as={Link} href={mainCtaHref} variant="primary" size="lg">
                 <span>{mainCtaText}</span>
                 <ArrowRight className="w-5 h-5" />
               </Button>

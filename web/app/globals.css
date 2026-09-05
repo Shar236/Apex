@@ -101,14 +101,9 @@ html, body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-weight: 400;
+  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Scoped to the attribute Next.js sets on <html> so the router can suppress
-   smooth scrolling during route transitions (silences the Next 16 warning). */
-html[data-scroll-behavior="smooth"] {
-  scroll-behavior: smooth;
 }
 
 /* Never allow sideways scroll. `clip` (not `hidden`) so it doesn't create a
@@ -419,5 +414,39 @@ h1, h2, h3, h4, h5, h6 {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Radix overlay motion (Dialog / AlertDialog / Sheet / DropdownMenu).
+
+   Enter animations only. Radix keeps a closing node mounted until its exit
+   animation fires `animationend`; when that never arrives — a background tab,
+   a reduced-motion override that sets `animation: none` — the dialog stays in
+   the DOM forever. Closing instantly is worth more than 140ms of polish.
+
+   Deliberately scoped class names rather than the tw-animate-css utilities
+   (`animate-in`, `fade-in-0`, …): this file already defines its own
+   `.animate-in` for a different effect, so importing that package would both
+   collide with it and add a dependency for four keyframes.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes apexOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes apexPopIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes apexMenuIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes apexSlideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes apexSlideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes apexSlideInBottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.apex-overlay[data-state='open'] { animation: apexOverlayIn 180ms ease-out; }
+.apex-pop[data-state='open'] { animation: apexPopIn 190ms cubic-bezier(0.16, 1, 0.3, 1); }
+.apex-menu[data-state='open'] { animation: apexMenuIn 130ms cubic-bezier(0.16, 1, 0.3, 1); }
+.apex-sheet-left[data-state='open'] { animation: apexSlideInLeft 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+.apex-sheet-right[data-state='open'] { animation: apexSlideInRight 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+.apex-sheet-bottom[data-state='open'] { animation: apexSlideInBottom 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .apex-overlay, .apex-pop, .apex-menu,
+  .apex-sheet-left, .apex-sheet-right, .apex-sheet-bottom {
+    animation: none !important;
   }
 }

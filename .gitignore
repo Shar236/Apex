@@ -4,11 +4,15 @@ node_modules/
 .pnp.js
 
 # Build output
-/dist
-/build
-/.next
-/out
+dist/
+build/
+.next/
+out/
 coverage/
+*.tsbuildinfo
+
+# Deployment tooling
+.vercel/
 
 # Local env files
 .env

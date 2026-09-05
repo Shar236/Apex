@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { Pill, Th, Td, Empty } from '@/components/admin/admin-ui';
+import { notify } from '@/components/ui/toast';
 
 interface AdminOrder {
   _id: string;
@@ -28,23 +29,37 @@ interface AdminOrder {
   adminNotifiedAt?: string | null;
 }
 
+/**
+ * One label/value cell in the order detail panel.
+ *
+ * Defined at module scope on purpose: it used to be declared inside the detail
+ * component, so React saw a brand-new component type on every render and tore
+ * down and rebuilt all fifteen fields each time the panel updated.
+ */
+function F({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
+  return (
+    <div>
+      <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">{label}</div>
+      <div className={`text-xs font-bold text-neutral-800 dark:text-neutral-200 break-all ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
+    </div>
+  );
+}
+
 const maskCode = (code: string) => {
   const c = String(code || '');
   if (c.length <= 4) return '••••';
   return `${c.slice(0, 2)}••••${c.slice(-2)}`;
 };
 
-const F = ({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) => (
-  <div>
-    <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">{label}</div>
-    <div className={`text-xs font-bold text-neutral-800 dark:text-neutral-200 break-all ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
-  </div>
-);
-
 function OrderDetailPanel({ order }: { order: AdminOrder }) {
-  const [detail, setDetail] = useState<{ data?: AdminOrder; vouchers?: Array<{ _id: string; code: string; status?: string; voucherType?: string; productId?: { name?: string } | null }> } | null>(null);
+  // Voucher codes arrive masked by the server (isMasked: true). Revealing a
+  // real code goes through the audited /vouchers/:id/reveal endpoint — the
+  // same VOUCHER_VIEW_CODE audit trail the inventory list uses — so a raw
+  // code is never sitting in an order-detail response.
+  const [detail, setDetail] = useState<{ data?: AdminOrder; vouchers?: Array<{ _id: string; codeDisplay?: string; code?: string; isMasked?: boolean; status?: string; voucherType?: string; productId?: { name?: string } | null }> } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reveal, setReveal] = useState(false);
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealing, setRevealing] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -56,14 +71,32 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
     return () => {
       alive = false;
     };
-    // Keyed on the id only — `order` is used purely as a fallback snapshot and
-    // must not retrigger the fetch when the parent re-renders with a new object.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order._id]);
 
   if (loading) return <div className="p-4 text-xs font-bold text-neutral-400 animate-pulse">Loading order details…</div>;
   const o = detail?.data || order;
   const vouchers = detail?.vouchers || [];
+
+  const revealCode = async (v: { _id: string; codeDisplay?: string }) => {
+    if (revealed[v._id]) {
+      setRevealed((prev) => {
+        const next = { ...prev };
+        delete next[v._id];
+        return next;
+      });
+      return;
+    }
+    setRevealing(v._id);
+    const res = await adminApi.revealVoucherCode(v._id);
+    setRevealing(null);
+    const code = (res.data as { code?: string } | undefined)?.code;
+    if (res.success && typeof code === 'string') {
+      setRevealed((prev) => ({ ...prev, [v._id]: code }));
+    } else {
+      notify.error(res.message || 'Could not reveal this code.');
+    }
+  };
+
 
   return (
     <div className="p-4 bg-neutral-50 dark:bg-[#0E0E0E] border-t border-[#EAEAEA] dark:border-[#292929] space-y-4">
@@ -98,9 +131,7 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
         <div className="flex items-center justify-between mb-1.5">
           <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">Voucher Codes Delivered ({vouchers.length})</div>
           {vouchers.length > 0 && (
-            <button onClick={() => setReveal((r) => !r)} className="text-[10px] font-black text-brand-pink">
-              {reveal ? 'Hide codes' : 'Reveal codes'}
-            </button>
+            <div className="text-[10px] font-black text-neutral-400">Click a code to reveal — each reveal is audit-logged</div>
           )}
         </div>
         {vouchers.length === 0 ? (
@@ -111,7 +142,14 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
           <div className="space-y-1">
             {vouchers.map((v) => (
               <div key={v._id} className="flex items-center justify-between text-xs font-bold bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] rounded-lg px-3 py-2">
-                <span className="font-mono">{reveal ? v.code : maskCode(v.code)}</span>
+                <button
+                  onClick={() => revealCode(v)}
+                  disabled={revealing === v._id}
+                  className="font-mono hover:text-brand-pink transition-colors cursor-pointer disabled:opacity-50"
+                  title={revealed[v._id] ? 'Click to hide' : 'Reveal code (audited)'}
+                >
+                  {revealed[v._id] || v.codeDisplay || maskCode(v.code || '')}
+                </button>
                 <span className="text-neutral-400">{v.productId?.name || v.voucherType} · {v.status}</span>
               </div>
             ))}
@@ -125,33 +163,38 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
 export function OrdersAdmin() {
   const [rows, setRows] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const res = await adminApi.orders(status ? { status } : {});
-    setRows((res.data as AdminOrder[]) || []);
+    setLoadError('');
+    const res = await adminApi.orders({ ...(status ? { status } : {}), page: String(page), limit: '25' });
+    if (!res.success) {
+      // A failed load must not render as "No orders" — that reads as an empty
+      // store when the backend is actually unreachable.
+      setLoadError(res.message || 'Could not load orders.');
+      setRows([]);
+    } else {
+      setRows((res.data as AdminOrder[]) || []);
+      setPages(Number(res.pages) || 1);
+    }
     setLoading(false);
-  }, [status]);
-
-  useEffect(() => {
-    // Data-fetch on mount / when the status filter changes; `refresh` flips a
-    // loading flag before its awaited fetch (accepted pattern, no server loader).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
-  }, [refresh]);
+  }, [status, page]);
 
   const updateStatus = async (id: string, orderStatus: string, paymentStatus: string) => {
     const res = await adminApi.updateOrderStatus(id, { orderStatus, paymentStatus });
-    if (res.success) refresh();
-    else alert(res.message);
+    if (notify.result(res, `Order marked ${orderStatus}.`, 'Could not update the order status.')) refresh();
   };
 
   const handleResendEmail = async (id: string) => {
     const res = await adminApi.resendOrderEmail(id);
-    alert(res.message);
-    if (res.success) refresh();
+    // Report what actually happened — this previously announced the response
+    // message as a success even when the resend had failed.
+    if (notify.result(res, 'Confirmation email resent.', 'Could not resend the confirmation email.')) refresh();
   };
 
   return (
@@ -161,7 +204,7 @@ export function OrdersAdmin() {
           <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Order Management</h1>
           <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Review customer orders, payment status, email delivery, and voucher allocation.</p>
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); setExpandedId(null); }} className="px-3 py-2 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
           <option value="">All statuses</option>
           {['PENDING', 'PAYMENT_PENDING', 'PAID', 'PROCESSING', 'PAYMENT_RECEIVED_NEEDS_ALLOCATION', 'FULFILLED', 'CANCELLED', 'REFUNDED', 'FAILED'].map((s) => (
             <option key={s} value={s}>{s}</option>
@@ -193,8 +236,28 @@ export function OrdersAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No orders" />}
+        {!loading && loadError && (
+          <div className="flex flex-col items-center gap-2 px-6 py-14 text-center" role="alert">
+            <p className="font-black text-sm text-neutral-900 dark:text-white">Unable to load orders</p>
+            <p className="text-xs font-bold text-neutral-500">{loadError}</p>
+            <button onClick={refresh} className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-bold text-surface transition hover:opacity-90">
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !loadError && rows.length === 0 && <Empty title="No orders" />}
       </div>
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -237,33 +300,33 @@ function FragmentRow({
           <Pill text={o.emailStatus || 'PENDING'} tint={o.emailStatus === 'SENT' ? 'emerald' : o.emailStatus === 'FAILED' ? 'rose' : 'amber'} />
         </Td>
         <Td className="whitespace-nowrap">{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : '—'}</Td>
-        <Td className="whitespace-nowrap">
-          {o.paymentStatus === 'PAID' && (
-            <button onClick={() => handleResendEmail(o._id)} className="mr-1 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-brand-pink border border-brand-pink/30 text-[10px] font-black">
-              Resend Email
-            </button>
-          )}
-          {o.orderStatus !== 'FULFILLED' && (
-            <button onClick={() => updateStatus(o._id, 'FULFILLED', 'PAID')} className="mr-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 text-[10px] font-black">
-              Fulfill
-            </button>
-          )}
-          {o.orderStatus === 'PAYMENT_PENDING' && (
-            <button onClick={() => updateStatus(o._id, 'PAID', 'PAID')} className="mr-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[10px] font-black">
-              Mark Paid
-            </button>
-          )}
-          {o.orderStatus !== 'REFUNDED' && o.paymentStatus === 'PAID' && (
-            <button onClick={() => updateStatus(o._id, 'REFUNDED', 'REFUNDED')} className="mr-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[10px] font-black">
-              Refund
-            </button>
-          )}
-          {o.orderStatus !== 'CANCELLED' && (
-            <button onClick={() => updateStatus(o._id, 'CANCELLED', 'CANCELLED')} className="px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-600 border border-neutral-200 text-[10px] font-black">
-              Cancel
-            </button>
-          )}
-        </Td>
+          <Td className="whitespace-nowrap">
+            {o.paymentStatus === 'PAID' && (
+              <button onClick={() => handleResendEmail(o._id)} className="mr-1 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-brand-pink border border-brand-pink/30 text-[10px] font-black">
+                Resend Email
+              </button>
+            )}
+            {o.orderStatus !== 'FULFILLED' && o.orderStatus !== 'REFUNDED' && o.orderStatus !== 'CANCELLED' && (o.paymentStatus === 'PAID' || o.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION' || o.orderStatus === 'PROCESSING') && (
+              <button onClick={() => updateStatus(o._id, 'FULFILLED', 'PAID')} className="mr-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 text-[10px] font-black" title="Marks the order fulfilled — only valid once voucher codes are allocated">
+                Fulfill
+              </button>
+            )}
+            {o.orderStatus === 'PAYMENT_PENDING' && (
+              <button onClick={() => updateStatus(o._id, 'PAID', 'PAID')} className="mr-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 text-[10px] font-black" title="Record a payment received outside the gateway (bank transfer etc.)">
+                Mark Paid
+              </button>
+            )}
+            {o.orderStatus !== 'REFUNDED' && o.paymentStatus === 'PAID' && (
+              <button onClick={() => updateStatus(o._id, 'REFUNDED', 'REFUNDED')} className="mr-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 text-[10px] font-black">
+                Refund
+              </button>
+            )}
+            {o.orderStatus !== 'CANCELLED' && o.orderStatus !== 'REFUNDED' && o.paymentStatus !== 'PAID' && (
+              <button onClick={() => updateStatus(o._id, 'CANCELLED', 'CANCELLED')} className="px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-600 border border-neutral-200 text-[10px] font-black">
+                Cancel
+              </button>
+            )}
+          </Td>
       </tr>
       {expandedId === o._id && (
         <tr>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Search, RefreshCw, Download, Mail, Phone, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Th, Td, Empty, FormCard, Label, TextArea } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { notify } from '@/components/ui/toast';
 
 interface PTERow {
   _id: string;
@@ -20,7 +22,7 @@ interface PTERow {
   message?: string;
   status?: string;
   adminNotes?: string;
-  activityHistory?: Array<{ timestamp?: string; action?: string; notes?: string; adminEmail?: string }>;
+  activityHistory?: Array<{ timestamp?: string; status?: string; note?: string; adminEmail?: string }>;
   createdAt?: string;
   confirmationDetails?: {
     bookingReference?: string;
@@ -54,16 +56,21 @@ const fmtPTEDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('e
 
 export function PTEBookingsAdmin() {
   const [rows, setRows] = useState<PTERow[]>([]);
+  const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [status, setStatus] = useState('');
   const [examType, setExamType] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [selected, setSelected] = useState<PTERow | null>(null);
   const [statusDraft, setStatusDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
   const [confirmedCentre, setConfirmedCentre] = useState('');
   const [confirmedDate, setConfirmedDate] = useState('');
@@ -72,14 +79,24 @@ export function PTEBookingsAdmin() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    setLoadError('');
+    const params: Record<string, string> = { page: String(page), limit: '50' };
     if (status) params.status = status;
     if (examType) params.examType = examType;
     if (search) params.search = search;
     const res = await adminApi.pteBookings(params);
-    setRows((res.data as PTERow[]) || []);
+    // request() never throws — a failed load must not render as an empty list.
+    if (!res?.success) {
+      setLoadError((res?.message as string) || 'Could not load booking requests.');
+      setRows([]);
+    } else {
+      setRows((res.data as PTERow[]) || []);
+      // DB-wide counters — KPIs must not shift with the current filter/page.
+      setStats((res.stats as Record<string, number>) || {});
+      setPages(Number(res.pages) || 1);
+    }
     setLoading(false);
-  }, [status, examType, search]);
+  }, [status, examType, search, page]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 300);
@@ -95,10 +112,12 @@ export function PTEBookingsAdmin() {
     setConfirmedDate(row.confirmationDetails?.confirmedDate ? new Date(row.confirmationDetails.confirmedDate).toISOString().slice(0, 10) : '');
     setConfirmedTime(row.confirmationDetails?.confirmedTime || '');
     setInstructions(row.confirmationDetails?.importantInstructions || '');
+    setShowConfirmModal(false);
   };
 
   const closeDetail = () => {
     setSelected(null);
+    setShowConfirmModal(false);
   };
 
   const saveDetail = async () => {
@@ -120,14 +139,13 @@ export function PTEBookingsAdmin() {
       closeDetail();
       refresh();
     } else {
-      alert((res.message as string) || 'Failed to update request');
+      notify.error((res.message as string) || 'Failed to update request');
     }
   };
 
   const quickStatus = async (row: PTERow, newStatus: string) => {
     const res = await adminApi.updatePTEBooking(row._id, { status: newStatus });
-    if (res.success) refresh();
-    else alert(res.message);
+    if (notify.result(res, `Request marked ${newStatus}.`, 'Could not update the request.')) refresh();
   };
 
   const handleExport = async () => {
@@ -140,11 +158,13 @@ export function PTEBookingsAdmin() {
     setExporting(false);
   };
 
-  const totalCount = rows.length;
-  const newCount = rows.filter((r) => r.status === 'New').length;
-  const inProgressCount = rows.filter((r) => ['Processing', 'Booking In Progress'].includes(r.status || '')).length;
-  const waitingCustomerCount = rows.filter((r) => r.status === 'Waiting for Customer').length;
-  const confirmedCount = rows.filter((r) => ['Booking Confirmed', 'Completed'].includes(r.status || '')).length;
+  // Server-side DB-wide stats — KPI cards previously counted only the current
+  // filtered page, so the numbers changed with every search/filter.
+  const totalCount = stats.total ?? rows.length;
+  const newCount = stats.new ?? 0;
+  const inProgressCount = (stats.processing ?? 0) + (stats.inProgress ?? 0);
+  const waitingCustomerCount = stats.waitingForCustomer ?? 0;
+  const confirmedCount = (stats.confirmed ?? 0) + (stats.completed ?? 0);
 
   return (
     <div className="space-y-6">
@@ -187,11 +207,11 @@ export function PTEBookingsAdmin() {
           <input placeholder="Search request ID, name, email, phone, city..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent outline-none text-xs font-bold w-full" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={examType} onChange={(e) => setExamType(e.target.value)} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
+          <select value={examType} onChange={(e) => { setExamType(e.target.value); setPage(1); }} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
             <option value="">All Exam Types</option>
             {PTE_EXAM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
             <option value="">All Statuses</option>
             {PTE_BOOKING_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -199,7 +219,7 @@ export function PTEBookingsAdmin() {
       </div>
 
       {selected && (
-        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail} saving={saving}>
+        <FormCard title={`Request ${selected.requestId}`} onClose={closeDetail} onSave={saveDetail}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5 space-y-4">
               <div>
@@ -283,8 +303,10 @@ export function PTEBookingsAdmin() {
                           <span>{act.timestamp ? new Date(act.timestamp).toLocaleString() : ''}</span>
                           <span className="text-[10px] text-neutral-500">{act.adminEmail?.split('@')[0]}</span>
                         </div>
-                        <div className="text-neutral-900 dark:text-white font-black">{act.action}</div>
-                        {act.notes && <div className="text-neutral-500 font-medium">{act.notes}</div>}
+                        {/* Entries store `status` + `note` (PTEBookingRequest schema) —
+                            the old act.action/act.notes reads rendered blank rows. */}
+                        <div className="text-neutral-900 dark:text-white font-black">{act.status}</div>
+                        {act.note && <div className="text-neutral-500 font-medium">{act.note}</div>}
                       </div>
                     ))
                   ) : (
@@ -421,8 +443,21 @@ export function PTEBookingsAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No PTE booking requests found" desc="Try changing your search terms or filter criteria." />}
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && <Empty title="No PTE booking requests found" desc="Try changing your search terms or filter criteria." />}
       </div>
+
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

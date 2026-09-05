@@ -8,6 +8,8 @@ import { adminBlogApi } from '@/lib/admin-blog-api';
 import { Th, Td, Empty, StatCard, fmtDate } from '@/components/admin/admin-ui';
 import { BlogEditor } from '@/components/admin/blog-editor';
 import type { BlogPost } from '@/lib/blog-types';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 type Row = BlogPost & { status?: string };
 
@@ -20,6 +22,7 @@ const STATUS_TINT: Record<string, string> = {
 };
 
 export function BlogAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -43,11 +46,16 @@ export function BlogAdmin() {
     return () => clearTimeout(t);
   }, [refresh]);
 
-  const act = async (fn: () => Promise<{ success: boolean; message?: string }>, key: string, slug?: string) => {
+  const act = async (
+    fn: () => Promise<{ success: boolean; message?: string }>,
+    key: string,
+    slug?: string,
+    successMessage?: string,
+  ) => {
     setActing(key);
     const r = await fn();
     setActing(null);
-    if (!r.success) return window.alert(r.message || 'Action failed');
+    if (!notify.result(r, successMessage || 'Done.', 'Action failed')) return;
     if (slug) adminBlogApi.revalidatePublic([slug]);
     refresh();
   };
@@ -142,11 +150,21 @@ export function BlogAdmin() {
                       <button
                         title={r.status === 'trash' ? 'Delete permanently' : 'Move to trash'}
                         disabled={acting === r._id}
-                        onClick={() => {
+                        onClick={async () => {
                           if (r.status === 'trash') {
-                            if (window.confirm(`Permanently delete "${r.title}"? This cannot be undone.`)) act(() => adminBlogApi.permanentDelete(r._id), r._id);
-                          } else if (window.confirm(`Move "${r.title}" to Trash? It will be removed from the public blog.`)) {
-                            act(() => adminBlogApi.trash(r._id), r._id, r.slug);
+                            const ok = await confirm({
+                              title: `Permanently delete "${r.title}"?`,
+                              body: 'This removes the article and its revision history for good. It cannot be undone.',
+                              confirmLabel: 'Delete permanently',
+                            });
+                            if (ok) act(() => adminBlogApi.permanentDelete(r._id), r._id, undefined, 'Article permanently deleted.');
+                          } else {
+                            const ok = await confirm({
+                              title: `Move "${r.title}" to Trash?`,
+                              body: 'It is removed from the public blog straight away. You can restore it from Trash later.',
+                              confirmLabel: 'Move to Trash',
+                            });
+                            if (ok) act(() => adminBlogApi.trash(r._id), r._id, r.slug, 'Article moved to Trash.');
                           }
                         }}
                         className="p-2 rounded-lg hover:bg-rose-50 text-rose-500"

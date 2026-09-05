@@ -104,16 +104,6 @@ app.use('/api/account/email/verify-otp', accountSensitiveLimiter);
 app.use('/api/account/phone', accountSensitiveLimiter);
 app.use('/api/account/password/change', accountSensitiveLimiter);
 
-const adminSecurityLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  message: { success: false, message: 'Too many requests. Please try again later.' },
-});
-app.use('/api/admin/security/email/send-otp', adminSecurityLimiter);
-app.use('/api/admin/security/email/verify-otp', adminSecurityLimiter);
-app.use('/api/admin/security/password/change', adminSecurityLimiter);
-
 const registerOtpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -176,7 +166,6 @@ app.get('/api/seo/public', getPublicSEOData);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/videos', videoRoutes);
 app.use('/api/reels', videoRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/orders', orderRoutes);

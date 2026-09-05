@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { seoApi, adminApi } from '@/lib/api';
 import { StatCard, Pill, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface SEOOverview {
   overallHealth?: { score?: number; grade?: string; analyzedCount?: number };
@@ -32,7 +34,8 @@ interface RedirectRow {
   _id: string;
   sourcePath: string;
   targetPath: string;
-  type: string;
+  /** Number in the Redirect model (301 | 302) — compared via String() in the UI. */
+  type: number | string;
   hits?: number;
   lastHitAt?: string;
   entityType?: string;
@@ -67,6 +70,7 @@ function SEOScoreBadge({ score, grade, gradeColor, size = 'md' }: { score: numbe
 }
 
 export function SEOManager() {
+  const confirm = useConfirm();
   const [subTab, setSubTab] = useState('overview');
   const [overviewData, setOverviewData] = useState<SEOOverview | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -139,15 +143,10 @@ export function SEOManager() {
   }, []);
 
   useEffect(() => {
-    // Lazy-load each sub-tab's data the first time it's shown. Each loader flips
-    // its own loading flag before an awaited fetch (accepted data-fetching-in-
-    // effect pattern — no server loader / React Compiler in this app).
-    /* eslint-disable react-hooks/set-state-in-effect */
     if (subTab === 'overview') loadOverview();
     if (subTab === 'pages') loadPages();
     if (subTab === 'redirects') loadRedirects();
     if (subTab === 'global') loadGlobal();
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [subTab, loadOverview, loadPages, loadRedirects, loadGlobal]);
 
   useEffect(() => {
@@ -171,7 +170,7 @@ export function SEOManager() {
         });
       }
     } catch {
-      alert('Failed to load page SEO');
+      notify.error('Failed to load page SEO');
     }
   };
 
@@ -179,12 +178,12 @@ export function SEOManager() {
     try {
       const res = await seoApi.updatePage(editingPage!.pageKey, pageDraft);
       if (res?.success) {
-        alert('Page SEO saved!');
+        notify.success('Page SEO saved!');
         setEditingPage(null);
         loadPages();
-      } else alert((res?.message as string) || 'Failed');
+      } else notify.error((res?.message as string) || 'Failed');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed');
+      notify.error(err instanceof Error ? err.message : 'Failed');
     }
   };
 
@@ -193,7 +192,7 @@ export function SEOManager() {
     setRedirectDraft({
       sourcePath: r?.sourcePath || '',
       targetPath: r?.targetPath || '',
-      type: r?.type || '301',
+      type: String(r?.type || '301'),
       enabled: r?.enabled !== false,
       notes: '',
     });
@@ -209,20 +208,20 @@ export function SEOManager() {
         setRedirectModalOpen(false);
         setEditingRedirect(null);
         loadRedirects();
-        alert('Redirect saved');
-      } else alert((res?.message as string) || 'Failed');
+        notify.success('Redirect saved');
+      } else notify.error((res?.message as string) || 'Failed');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed');
+      notify.error(err instanceof Error ? err.message : 'Failed');
     }
   };
 
   const deleteRedirect = async (r: RedirectRow) => {
-    if (!confirm(`Delete redirect from ${r.sourcePath}?`)) return;
+    if (!(await confirm({ title: `Delete redirect from ${r.sourcePath}?` }))) return;
     try {
       const res = await seoApi.deleteRedirect(r._id);
       if (res?.success) loadRedirects();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed');
+      notify.error(err instanceof Error ? err.message : 'Failed');
     }
   };
 
@@ -231,11 +230,11 @@ export function SEOManager() {
     try {
       const res = await seoApi.updateGlobalSettings(globalForm);
       if (res?.success) {
-        alert('Global SEO settings saved!');
+        notify.success('Global SEO settings saved!');
         loadGlobal();
-      } else alert((res?.message as string) || 'Failed');
+      } else notify.error((res?.message as string) || 'Failed');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed');
+      notify.error(err instanceof Error ? err.message : 'Failed');
     } finally {
       setGlobalSaving(false);
     }
@@ -413,9 +412,11 @@ export function SEOManager() {
                       const res = await adminApi.getProduct(id);
                       if (!res.success) return;
                       const p = res.data as { _id: string; name: string; slug?: string; seo?: Record<string, unknown> };
+                      // The seo subdocument stores title/description (Product.js seoSchema);
+                      // reading seoTitle/seoDescription here always prefilled blanks.
                       const payload = {
-                        seoTitle: p.seo?.seoTitle as string | undefined,
-                        seoDescription: p.seo?.seoDescription as string | undefined,
+                        seoTitle: (p.seo?.title as string) || undefined,
+                        seoDescription: (p.seo?.description as string) || undefined,
                         ogImage: p.seo?.ogImage as string | undefined,
                       };
                       const title = prompt('SEO Title (leave empty to clear):', payload.seoTitle || '') ?? null;
@@ -432,9 +433,9 @@ export function SEOManager() {
                         },
                       });
                       if (res2?.success) {
-                        alert('Product SEO saved!');
+                        notify.success('Product SEO saved!');
                         loadOverview();
-                      } else alert((res2?.message as string) || 'Failed to save');
+                      } else notify.error((res2?.message as string) || 'Failed to save');
                     };
                     return (
                       <tr key={ps.id || ps._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111]">
@@ -580,7 +581,8 @@ export function SEOManager() {
                       <Td><span className="font-mono text-[11px]">{r.sourcePath}</span></Td>
                       <Td><span className="font-mono text-[11px]">{r.targetPath}</span></Td>
                       <Td className="text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${r.type === '301' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' : 'bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300'}`}>{r.type} {r.type === '301' ? '(Permanent)' : '(Temporary)'}</span>
+                        {/* type is a Number in the Redirect model — string comparison labeled every 301 as Temporary */}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${String(r.type) === '301' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' : 'bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300'}`}>{r.type} {String(r.type) === '301' ? '(Permanent)' : '(Temporary)'}</span>
                       </Td>
                       <Td className="text-center tabular-nums">{r.hits || 0}</Td>
                       <Td className="text-center whitespace-nowrap">

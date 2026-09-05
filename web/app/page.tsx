@@ -5,7 +5,6 @@ import { ExamLogoMarquee } from '@/components/exam-logo-marquee';
 import { ExamCategorySection } from '@/components/exam-category-section';
 import { FeaturedVouchers } from '@/components/featured-vouchers';
 import { PTEBookingAssistance } from '@/components/pte-booking-assistance';
-import { SavingsCalculator } from '@/components/savings-calculator';
 import { HowItWorks } from '@/components/how-it-works';
 import { WhyApexVoucher } from '@/components/why-apex-voucher';
 import { VisualExplainerSection } from '@/components/visual-explainer-section';
@@ -57,7 +56,6 @@ export default async function HomePage() {
       <ExamCategorySection products={config.products} />
       <FeaturedVouchers products={config.products} />
       <PTEBookingAssistance products={config.products} />
-      <SavingsCalculator products={config.products} />
       <HowItWorks />
       <WhyApexVoucher />
       <VisualExplainerSection />

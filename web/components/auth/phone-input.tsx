@@ -71,11 +71,6 @@ export function PhoneInput({
     return allCountries.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || `+${c.callingCode}`.includes(q));
   }, [allCountries, search]);
 
-  // Parse the controlled E.164 `value` prop back into the national-number display
-  // state (and, if the number carries a country, the selected country). This is a
-  // formatting-sync effect with a try/catch and a country feedback dep — keeping
-  // it as an effect is the correct, readable choice here.
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (value) {
       try {
@@ -97,8 +92,8 @@ export function PhoneInput({
     } else {
       setLocalValue('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, country, selectedCountry]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

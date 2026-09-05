@@ -7,6 +7,7 @@ import { Campaign } from '../models/Campaign.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateOrderNo } from '../utils/index.js';
+import { runInTransaction } from '../utils/transaction.js';
 import { applyPromotion } from '../services/promotions.js';
 import {
   sendOrderConfirmation,
@@ -125,20 +126,18 @@ const getProductsWithPrices = async (lineItems) => {
 const computeOrderTotals = async ({ lineItems, promoCode, userId }) => {
   const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
   const productIds = lineItems.map((it) => it.productId);
-  const now = new Date();
 
-  // Promo validation and the active-campaign lookup are independent — run both together.
-  const [promoResult, activeCampaigns] = await Promise.all([
-    applyPromotion(promoCode, subtotal, userId, productIds),
-    Campaign.find({
-      status: { $in: ['ACTIVE', 'SCHEDULED'] },
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-    })
-      .sort({ priority: -1, createdAt: -1 })
-      .lean(),
-  ]);
+  const promoResult = await applyPromotion(promoCode, subtotal, userId, productIds);
   const promoDiscount = Math.max(0, promoResult.discount || 0);
+
+  const now = new Date();
+  const activeCampaigns = await Campaign.find({
+    status: { $in: ['ACTIVE', 'SCHEDULED'] },
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  })
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
 
   let campaignDiscount = 0;
   if (activeCampaigns.length > 0) {
@@ -298,11 +297,43 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   if (!working) throw new AppError('Order not found during fulfillment', 404, 'ORDER_MISSING');
 
   // If we didn't win the claim, another path is (or already finished) fulfilling.
+  // Report the winner's ACTUAL state — the loser must not claim FULFILLED while
+  // the winner is still mid-allocation or headed into manual fulfillment.
   if (!claimed) {
     fx('fulfill:claim-lost', working, { source });
+    const winnerDone = working.orderStatus === 'FULFILLED' || working.fulfillmentStatus === 'FULFILLED';
+    if (!winnerDone) {
+      return { alreadyFulfilled: true, pendingFulfillment: true, needsAllocation: true, vouchers: [], order: working };
+    }
     return { alreadyFulfilled: true, vouchers: await publicVoucherList(working), order: working };
   }
   fx('fulfill:claimed PENDING->PAID', working, { source });
+
+  // Consume the coupon exactly once, at the PAID transition — only the claim
+  // winner reaches this line, so verify/webhook replays can never double-count.
+  // An abandoned (never-paid) checkout therefore never burns usage. The $inc is
+  // guarded by the coupon's remaining usageLimit in the filter, so concurrent
+  // paid orders cannot overshoot the cap; if the very last use was consumed
+  // milliseconds earlier, this order still keeps its discount — honouring a
+  // captured payment outranks the boundary.
+  if (working.promotionId) {
+    const promoDoc = await Promotion.findById(working.promotionId).select('usageLimit').lean();
+    const consumeGuard = { _id: working.promotionId };
+    if (promoDoc?.usageLimit != null) consumeGuard.usageCount = { $lt: promoDoc.usageLimit };
+    const consumed = await Promotion.updateOne(consumeGuard, {
+      $inc: { usageCount: 1 },
+      $push: { usedBy: working.userId },
+    });
+    if (consumed.modifiedCount === 0) {
+      await AuditLog.create({
+        adminEmail: `${source}@apexvouchers.in`,
+        action: 'PROMOTION_LIMIT_REACHED_AT_PAYMENT',
+        resourceType: 'Promotion',
+        resourceId: String(working.promotionId),
+        details: { orderNo: working.orderNo, promoCode: working.promoCode },
+      }).catch(() => {});
+    }
+  }
 
   await AuditLog.create({
     adminEmail: user?.email || working.customerSnapshot?.email || 'system@apexvouchers.in',
@@ -319,18 +350,16 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
     },
   }).catch(() => {});
 
-  // Allocate vouchers atomically.
+  // Allocate vouchers atomically. Uses a transaction where the deployment
+  // supports one and falls back to the (already atomic) session-less path on a
+  // standalone mongod — otherwise every paid order would be pushed into manual
+  // fulfillment even with inventory on hand.
   let vouchers = [];
   try {
-    const session = await Order.startSession();
-    try {
-      await session.withTransaction(async () => {
-        const allocRes = await allocateVouchersForOrder({ order: working, user, session });
-        vouchers = allocRes.vouchers;
-      });
-    } finally {
-      await session.endSession();
-    }
+    vouchers = await runInTransaction(async (session) => {
+      const allocRes = await allocateVouchersForOrder({ order: working, user, session });
+      return allocRes.vouchers;
+    });
   } catch (allocErr) {
     fx('fulfill:allocation-FAILED', working, { source, error: allocErr.message, code: allocErr.code });
 
@@ -372,6 +401,20 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
       });
     } catch (frErr) {
       console.error(`[fulfillment:create-failed] order=${working.orderNo}: ${frErr.message}`);
+      // The request row is how this paid order becomes visible in the admin
+      // Fulfillments queue (and the notification badge) — a silent failure here
+      // makes the order invisible. Retry once without any special context; only
+      // then accept the failure (the audit log below still records it).
+      try {
+        fulfillmentRequest = await createFulfillmentRequestForOrder({
+          order: working,
+          user,
+          paymentId: razorpayPaymentId || null,
+        });
+        console.warn(`[fulfillment:create-retry-ok] order=${working.orderNo}`);
+      } catch (retryErr) {
+        console.error(`[fulfillment:create-retry-failed] order=${working.orderNo}: ${retryErr.message}`);
+      }
     }
 
     await AuditLog.create({
@@ -384,6 +427,9 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
         error: allocErr.message,
         code: allocErr.code,
         fulfillmentRequestId: fulfillmentRequest?._id?.toString() || null,
+        // False means the queue row could not be created — the order is paid but
+        // NOT visible in the Fulfillments tab. Requires the reconcile script.
+        fulfillmentRequestCreated: !!fulfillmentRequest,
       },
     }).catch(() => {});
 
@@ -401,20 +447,18 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   const enriched = enrichVouchers(working, vouchers);
   fx('fulfill:allocated', working, { source, voucherCount: enriched.length });
 
-  // One fulfillment event → customer email + admin sale notification +
-  // (if request-sourced) closing the VoucherRequest. All best-effort, none can
-  // change the PAID / FULFILLED state, and all independent — run them in
-  // parallel so the customer's confirmation email doesn't queue behind the
-  // admin notification's SMTP round trip.
-  await Promise.all([
-    notifyAdminSaleOnce(user, working, enriched),
-    deliverOrderEmailSafe(user, working, enriched),
-    working.voucherRequestId
-      ? markVoucherRequestFulfilled({ order: working, voucher: vouchers[0], user }).catch((err) =>
-          console.error(`[voucher-request:fulfill-hook] order=${working.orderNo}: ${err.message}`),
-        )
-      : Promise.resolve(),
-  ]);
+  // One fulfillment event → customer email + admin sale notification.
+  // Both are best-effort and CANNOT change the PAID / FULFILLED state.
+  await notifyAdminSaleOnce(user, working, enriched);
+  await deliverOrderEmailSafe(user, working, enriched);
+
+  // Close out a "Request Voucher" request if this order was raised to fulfil one.
+  // Best-effort — never affects the PAID / FULFILLED state.
+  if (working.voucherRequestId) {
+    await markVoucherRequestFulfilled({ order: working, voucher: vouchers[0], user }).catch((err) =>
+      console.error(`[voucher-request:fulfill-hook] order=${working.orderNo}: ${err.message}`),
+    );
+  }
 
   fx('fulfill:done', working, { source, emailStatus: working.emailStatus, adminNotified: !!working.adminNotifiedAt });
 
@@ -552,7 +596,6 @@ export const getPublicPaymentConfig = (_req, res) => {
  * server-calculated amount. Nothing is fulfilled here.
  * ══════════════════════════════════════════════════════════════════════════ */
 export const createPaymentOrder = async (req, res, next) => {
-  let session;
   try {
     const gate = assertPaymentOrderAllowed();
     if (!gate.ok) {
@@ -643,17 +686,11 @@ export const createPaymentOrder = async (req, res, next) => {
       },
     });
 
-    session = await Order.startSession();
-    await session.withTransaction(async () => {
-      await order.save({ session });
-      if (promoResult.promotion) {
-        await Promotion.updateOne(
-          { _id: promoResult.promotion._id },
-          { $inc: { usageCount: 1 }, $push: { usedBy: req.user.id } },
-          { session }
-        );
-      }
-    });
+    // Order is persisted with the discount priced in, but coupon usage is NOT
+    // consumed yet — an abandoned checkout must not burn the customer's or the
+    // campaign's one-time usage. Consumption happens once, atomically, at the
+    // PAID transition inside fulfillVerifiedOrder (consumPromotionForOrder).
+    await order.save();
 
     // 3. Create the Razorpay order for the EXACT server total (in paise).
     let rzpOrder;
@@ -700,8 +737,6 @@ export const createPaymentOrder = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
-  } finally {
-    if (session) await session.endSession();
   }
 };
 
@@ -837,16 +872,20 @@ export const verifyPayment = async (req, res, next) => {
     return res.json({
       success: true,
       paymentStatus: 'PAID',
-      orderStatus: 'FULFILLED',
-      fulfillmentStatus: 'FULFILLED',
+      // Mirror the order's ACTUAL persisted status. The only caller reaching
+      // this block without needsAllocation has allocated vouchers; but never
+      // hardcode FULFILLED over what the DB says (e.g. a claim-lost race that
+      // resolved to PROCESSING).
+      orderStatus: result.order.orderStatus === 'PROCESSING' ? 'PAID' : result.order.orderStatus,
+      fulfillmentStatus: result.order.fulfillmentStatus,
       emailStatus: result.order.emailStatus, // 'SENT' | 'FAILED' | 'SENDING'
       data: {
         orderNo: result.order.orderNo,
         total: result.order.total,
         currency: result.order.currency,
         paymentStatus: 'PAID',
-        orderStatus: 'FULFILLED',
-        fulfillmentStatus: 'FULFILLED',
+        orderStatus: result.order.orderStatus === 'PROCESSING' ? 'PAID' : result.order.orderStatus,
+        fulfillmentStatus: result.order.fulfillmentStatus,
         emailStatus: result.order.emailStatus,
         paymentReference: result.order.razorpayPaymentId || result.order.paymentReference || null,
         paidAt: result.order.paidAt,

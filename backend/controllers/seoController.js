@@ -309,7 +309,6 @@ const DEFAULT_PAGES = [
   { pageKey: 'home', pageTitle: 'Homepage', routePath: '/' },
   { pageKey: 'exam-vouchers', pageTitle: 'Exam Vouchers Catalog', routePath: '/#vouchers' },
   { pageKey: 'how-it-works', pageTitle: 'How It Works', routePath: '/#how-it-works' },
-  { pageKey: 'savings-calculator', pageTitle: 'Savings Calculator', routePath: '/#calculator' },
   { pageKey: 'exam-guides', pageTitle: 'Exam Guides', routePath: '/#exam-guides' },
   { pageKey: 'faq', pageTitle: 'Frequently Asked Questions', routePath: '/#faq' },
   { pageKey: 'about', pageTitle: 'About Apex Vouchers', routePath: '/#about' },
@@ -323,6 +322,8 @@ const DEFAULT_PAGES = [
 ];
 
 export const ensureDefaultPages = async () => {
+  // Cleanup: the Savings Calculator feature was removed; drop its obsolete page SEO record.
+  await PageSEO.deleteOne({ pageKey: 'savings-calculator' }).catch(() => {});
   for (const def of DEFAULT_PAGES) {
     await PageSEO.findOneAndUpdate(
       { pageKey: def.pageKey },

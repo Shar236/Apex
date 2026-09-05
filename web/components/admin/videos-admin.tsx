@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Eye, Crown, Play, CheckCircle2, Clock, Film, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Eye, Crown, Play, CheckCircle2, Clock, Film, Loader2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { ApexLogo } from '@/components/apex-logo';
 import { StatCard, Pill, Th, Td, Empty, FormCard, Field, Label, TextArea, Check } from '@/components/admin/admin-ui';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface ReelRow {
   _id?: string;
@@ -30,13 +32,15 @@ interface ReelRow {
 }
 
 export function VideosAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<ReelRow[]>([]);
   const [kpis, setKpis] = useState<Record<string, number>>({});
-  const [settings, setSettings] = useState({ videoSectionEnabled: true, movieReelModeEnabled: true });
+  const [settings, setSettings] = useState({ videoSectionEnabled: true });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const filtersActive = !!(search || statusFilter || categoryFilter);
 
   const [editing, setEditing] = useState<ReelRow | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -50,11 +54,11 @@ export function VideosAdmin() {
     if (!file) return;
     if (type === 'video') {
       if (!/\.(mp4|webm|mov)$/i.test(file.name)) {
-        alert('Invalid video format. Please select an .mp4, .webm, or .mov video file.');
+        notify.error('Invalid video format. Please select an .mp4, .webm, or .mov video file.');
         return;
       }
     } else if (!/\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
-      alert('Invalid image format. Please select a .jpg, .png, or .webp image file.');
+      notify.error('Invalid image format. Please select a .jpg, .png, or .webp image file.');
       return;
     }
     setUploadingMedia(true);
@@ -83,10 +87,10 @@ export function VideosAdmin() {
           }));
         }
       } else {
-        alert((res.message as string) || 'File upload failed');
+        notify.error((res.message as string) || 'File upload failed');
       }
     } catch (err) {
-      alert('Upload error: ' + (err instanceof Error ? err.message : 'Server error during upload'));
+      notify.error('Upload error: ' + (err instanceof Error ? err.message : 'Server error during upload'));
     } finally {
       setUploadingMedia(false);
       setUploadProgress(0);
@@ -102,7 +106,7 @@ export function VideosAdmin() {
     const res = await adminApi.reels(params);
     setRows((res.data as ReelRow[]) || []);
     setKpis((res.kpis as Record<string, number>) || {});
-    if (res.settings) setSettings(res.settings as { videoSectionEnabled: boolean; movieReelModeEnabled: boolean });
+    if (res.settings) setSettings(res.settings as { videoSectionEnabled: boolean });
     setLoading(false);
   }, [search, statusFilter, categoryFilter]);
 
@@ -167,7 +171,7 @@ export function VideosAdmin() {
 
   const saveVideo = async () => {
     if (!draft.title || (!draft.videoUrl && !draft.cloudinaryPublicId)) {
-      alert('Video title and video URL or Cloudinary Public ID are required.');
+      notify.error('Video title and video URL or Cloudinary Public ID are required.');
       return;
     }
     const orderVal = Number(draft.order ?? draft.displayOrder) || 0;
@@ -188,10 +192,17 @@ export function VideosAdmin() {
       setIsCreating(false);
       setEditing(null);
       refresh();
-    } else alert((res.message as string) || 'Failed to save video');
+    } else notify.error((res.message as string) || 'Failed to save video');
   };
 
   const moveOrder = async (index: number, direction: number) => {
+    // Reordering while a search/filter is active would renumber only the
+    // visible subset and corrupt the global order (hidden rows keep stale
+    // numbers). Block it the same way products does.
+    if (filtersActive) {
+      notify.error('Clear search/filters before reordering — otherwise the global order would be corrupted.');
+      return;
+    }
     const targetIdx = index + direction;
     if (targetIdx < 0 || targetIdx >= rows.length) return;
     const newRows = [...rows];
@@ -213,15 +224,6 @@ export function VideosAdmin() {
     }
   };
 
-  const toggleMovieModeEnabled = async () => {
-    const nextVal = !settings.movieReelModeEnabled;
-    const res = await adminApi.updateReelSettings({ movieReelModeEnabled: nextVal });
-    if (res.success) {
-      setSettings((prev) => ({ ...prev, movieReelModeEnabled: nextVal }));
-      refresh();
-    }
-  };
-
   const toggleFeatured = async (v: ReelRow) => {
     const res = await adminApi.quickToggleFeaturedReel(v._id || v.id || '', !v.featured);
     if (res.success) refresh();
@@ -234,10 +236,10 @@ export function VideosAdmin() {
   };
 
   const removeVideo = async (v: ReelRow) => {
-    if (!confirm(`Are you sure you want to delete reel "${v.title}"?`)) return;
+    if (!(await confirm({ title: `Are you sure you want to delete reel "${v.title}"?` }))) return;
     const res = await adminApi.deleteReel(v._id || v.id || '');
     if (res.success) refresh();
-    else alert((res.message as string) || 'Failed to delete reel');
+    else notify.error((res.message as string) || 'Failed to delete reel');
   };
 
   return (
@@ -250,9 +252,6 @@ export function VideosAdmin() {
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={toggleSectionEnabled} className={`px-4 py-2.5 rounded-2xl text-xs font-black border transition cursor-pointer flex items-center gap-2 ${settings.videoSectionEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'}`}>
             <Film className="w-4 h-4" /> Reel Section: {settings.videoSectionEnabled ? 'ON (Visible)' : 'OFF (Hidden)'}
-          </button>
-          <button onClick={toggleMovieModeEnabled} className={`px-4 py-2.5 rounded-2xl text-xs font-black border transition cursor-pointer flex items-center gap-2 ${settings.movieReelModeEnabled ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-[#262626]'}`}>
-            <Sparkles className="w-4 h-4" /> Movie Mode: {settings.movieReelModeEnabled ? 'ON' : 'OFF'}
           </button>
           <button onClick={startCreate} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl btn-pink text-white font-black text-xs shadow-lg cursor-pointer">
             <Plus className="w-4 h-4" /> Add New Reel

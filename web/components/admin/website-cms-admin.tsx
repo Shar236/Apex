@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Megaphone, RefreshCw, Plus, Save, ExternalLink, X, Trash2, HelpCircle, ShieldCheck, FileText,
+  Megaphone, RefreshCw, Plus, Save, ExternalLink, X, Trash2, HelpCircle, ShieldCheck, FileText, Info, Sparkles, CheckCircle2,
 } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { adminApi, formatPrice } from '@/lib/api';
+import { Pill, Empty } from '@/components/admin/admin-ui';
 import type { Product } from '@/lib/types';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface Campaign {
   _id: string;
@@ -67,9 +70,7 @@ const DEFAULT_POLICY = {
 };
 
 function CampaignFormModal({ campaign, products, onClose, onSave }: { campaign: Campaign | null; products: Product[]; onClose: () => void; onSave: (data: Record<string, unknown>) => void }) {
-  // Lazy initializer — the `new Date()` defaults are computed once on mount, not
-  // on every render (keeps render pure).
-  const [form, setForm] = useState(() => ({
+  const [form, setForm] = useState({
     name: campaign?.name || '',
     status: campaign?.status || 'ACTIVE',
     startDate: campaign?.startDate ? new Date(campaign.startDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -86,7 +87,7 @@ function CampaignFormModal({ campaign, products, onClose, onSave }: { campaign: 
     applicableProducts: campaign?.applicableProducts ? campaign.applicableProducts.map((p) => (typeof p === 'object' ? p._id : p)) : [] as string[],
     ctaText: campaign?.ctaText || 'Shop Independence Day Offer',
     showCountdown: campaign?.showCountdown !== false,
-  }));
+  });
 
   const inputCls = 'w-full p-3 rounded-2xl border border-slate-200 dark:border-[#292929] bg-slate-50 dark:bg-[#1A1A1A] font-bold text-xs';
 
@@ -196,6 +197,7 @@ function CampaignFormModal({ campaign, products, onClose, onSave }: { campaign: 
 }
 
 export function WebsiteCMSAdmin() {
+  const confirm = useConfirm();
   const [activeSubTab, setActiveSubTab] = useState('campaigns');
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -234,17 +236,10 @@ export function WebsiteCMSAdmin() {
   }, []);
 
   useEffect(() => {
-    // Load campaigns + settings + products on mount; `loadCMSData` flips a
-    // loading flag before its awaited fetch (accepted data-fetch-in-effect).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCMSData();
   }, [loadCMSData]);
 
-  // Seed the editable price grid once the product list arrives (render-time,
-  // not an effect — React's "adjust state when source data changes" pattern).
-  const [pricedFrom, setPricedFrom] = useState(products);
-  if (products !== pricedFrom) {
-    setPricedFrom(products);
+  useEffect(() => {
     if (Array.isArray(products) && products.length > 0) {
       setProductPrices(
         products.map((p) => ({
@@ -257,15 +252,15 @@ export function WebsiteCMSAdmin() {
         }))
       );
     }
-  }
+  }, [products]);
 
   const handleSaveHeroSettings = async () => {
     setSavingSettings(true);
     try {
       await adminApi.updateWebsiteSettings({ heroSettings: heroForm });
-      alert('Hero slogans updated successfully!');
+      notify.success('Hero slogans updated successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update hero settings');
+      notify.error(err instanceof Error ? err.message : 'Failed to update hero settings');
     } finally {
       setSavingSettings(false);
     }
@@ -275,9 +270,9 @@ export function WebsiteCMSAdmin() {
     setSavingSettings(true);
     try {
       await adminApi.updateWebsiteSettings({ announcementSettings: announcementForm });
-      alert('Announcement bar updated successfully!');
+      notify.success('Announcement bar updated successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update announcement bar');
+      notify.error(err instanceof Error ? err.message : 'Failed to update announcement bar');
     } finally {
       setSavingSettings(false);
     }
@@ -287,9 +282,9 @@ export function WebsiteCMSAdmin() {
     setSavingSettings(true);
     try {
       await adminApi.updateWebsiteSettings({ footerSettings: footerForm });
-      alert('Footer settings updated successfully!');
+      notify.success('Footer settings updated successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update footer settings');
+      notify.error(err instanceof Error ? err.message : 'Failed to update footer settings');
     } finally {
       setSavingSettings(false);
     }
@@ -299,25 +294,23 @@ export function WebsiteCMSAdmin() {
     setSavingSettings(true);
     try {
       await adminApi.updateWebsiteSettings({ policySettings: policyForm });
-      alert('Policy and Guide settings updated successfully!');
+      notify.success('Policy and Guide settings updated successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update policy settings');
+      notify.error(err instanceof Error ? err.message : 'Failed to update policy settings');
     } finally {
       setSavingSettings(false);
     }
   };
 
   const handleQuickPriceSave = async (prod: (typeof productPrices)[number]) => {
-    try {
-      await adminApi.quickUpdatePrice(prod._id, {
-        originalPrice: Number(prod.originalPrice),
-        sellingPrice: Number(prod.sellingPrice),
-        inStock: prod.inStock,
-      });
-      alert(`Updated price for ${prod.name}!`);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update product price');
-    }
+    // inStock was silently dropped by the backend (stock is voucher-inventory
+    // derived) while the UI claimed success — only real fields are sent now.
+    const res = await adminApi.quickUpdatePrice(prod._id, {
+      originalPrice: Number(prod.originalPrice),
+      sellingPrice: Number(prod.sellingPrice),
+    });
+    if (res.success) notify.success(`Updated price for ${prod.name}!`);
+    else notify.error(res.message || `Failed to update price for ${prod.name}`);
   };
 
   const handleToggleCampaign = async (id: string) => {
@@ -325,17 +318,17 @@ export function WebsiteCMSAdmin() {
       const res = await adminApi.toggleCampaign(id);
       if (res.success) setCampaigns((prev) => prev.map((c) => (c._id === id ? { ...c, status: String(res.status ?? '') as Campaign['status'] } : c)));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to toggle campaign status');
+      notify.error(err instanceof Error ? err.message : 'Failed to toggle campaign status');
     }
   };
 
   const handleDeleteCampaign = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this campaign?')) return;
+    if (!(await confirm({ title: 'Are you sure you want to delete this campaign?' }))) return;
     try {
       await adminApi.deleteCampaign(id);
       setCampaigns((prev) => prev.filter((c) => c._id !== id));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete campaign');
+      notify.error(err instanceof Error ? err.message : 'Failed to delete campaign');
     }
   };
 
@@ -351,7 +344,7 @@ export function WebsiteCMSAdmin() {
       setIsCampaignModalOpen(false);
       setEditingCampaign(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save campaign');
+      notify.error(err instanceof Error ? err.message : 'Failed to save campaign');
     }
   };
 
@@ -378,7 +371,7 @@ export function WebsiteCMSAdmin() {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink font-black text-xs border border-brand-pink/20 mb-2">
             <Megaphone className="w-3.5 h-3.5" /> WEBSITE CONTENT &amp; CAMPAIGN CMS
           </span>
-          <h2 className="font-heading font-black text-2xl text-slate-900 dark:text-white">Dynamic Marketing &amp; Pricing Management</h2>
+          <h1 className="font-heading font-black text-2xl text-slate-900 dark:text-white">Dynamic Marketing &amp; Pricing Management</h1>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Control homepage slogans, festival offers, voucher prices, announcement bar, and footer content without code changes.</p>
         </div>
         <button onClick={loadCMSData} className="px-4 py-2.5 rounded-2xl bg-neutral-100 dark:bg-[#1A1A1A] hover:bg-neutral-200 dark:hover:bg-[#252525] font-black text-xs text-neutral-700 dark:text-neutral-200 inline-flex items-center gap-2 transition cursor-pointer">
@@ -571,10 +564,11 @@ export function WebsiteCMSAdmin() {
                       </td>
                       <td className="p-4 text-emerald-600 dark:text-emerald-400 font-black">Save ₹{savings.toLocaleString()} ({disc}%)</td>
                       <td className="p-4">
-                        <label className="inline-flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={prod.inStock} onChange={(e) => { const val = e.target.checked; setProductPrices((prev) => prev.map((p, i) => (i === idx ? { ...p, inStock: val } : p))); }} className="w-4 h-4 accent-brand-pink" />
-                          <span className="text-xs font-bold">{prod.inStock ? 'In Stock' : 'Temporarily Unavailable'}</span>
-                        </label>
+                        {/* Stock is derived from voucher inventory (Products &amp; Pricing) —
+                            the old editable checkbox here was a silent no-op. */}
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${prod.inStock ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'}`}>
+                          {prod.inStock ? 'IN STOCK' : 'NO INVENTORY'}
+                        </span>
                       </td>
                       <td className="p-4 text-right">
                         <button onClick={() => handleQuickPriceSave(prod)} className="px-4 py-2 rounded-xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-md inline-flex items-center gap-1.5 cursor-pointer">
@@ -796,13 +790,19 @@ export function WebsiteCMSAdmin() {
             ) : (
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF0F5] border border-brand-pink/20 text-xs font-black text-brand-pink">🎟️ Save on Exam Fees with Apex Vouchers</div>
             )}
-            <h1 className="font-heading font-black text-3xl sm:text-4xl text-slate-900 dark:text-white leading-tight">
+            {/* A visual preview of the customer hero, not a document heading —
+                a real <h1> here would outrank the page's own title. */}
+            <div className="font-heading font-black text-3xl sm:text-4xl text-slate-900 dark:text-white leading-tight">
               {heroForm.headingLine1} <br />
               <span className="text-brand-pink">{heroForm.headingHighlight}</span> <br />
               {heroForm.headingLine3}
-            </h1>
+            </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium max-w-xl">{heroForm.descriptionText}</p>
-            <button className="px-6 py-3 rounded-full bg-brand-pink text-white font-black text-xs shadow-lg">{activeCampaign?.ctaText || heroForm.ctaText || 'Browse Vouchers'}</button>
+            {/* Preview chrome, not an admin action — kept out of the tab order
+                so it never reads as a clickable control that does nothing. */}
+            <span aria-hidden="true" className="inline-block px-6 py-3 rounded-full bg-brand-pink text-white font-black text-xs shadow-lg select-none">
+              {activeCampaign?.ctaText || heroForm.ctaText || 'Browse Vouchers'}
+            </span>
           </div>
         </div>
       )}

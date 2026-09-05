@@ -40,7 +40,7 @@ export function AboutApexVouchers() {
           <div className="lg:col-span-6 flex justify-center">
             <div className="relative w-full max-w-lg bg-surface rounded-3xl p-6 shadow-xl border border-line overflow-hidden space-y-4">
               <div className="relative h-60 rounded-2xl overflow-hidden bg-[#0B0D12]">
-                <Image src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f" alt="Apex Vouchers Student Support Team" fill sizes="(max-width: 1024px) 100vw, 512px" className="object-cover opacity-80" />
+                <Image src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80" alt="Apex Vouchers Student Support Team" fill sizes="(max-width: 1024px) 100vw, 512px" className="object-cover opacity-80" />
                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <span className="text-xs font-medium text-accent uppercase tracking-widest block">Apex Vouchers Desk</span>

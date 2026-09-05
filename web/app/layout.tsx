@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Sora } from 'next/font/google';
 import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toast';
 import { AuthProvider } from '@/components/auth-provider';
 import { CartProvider } from '@/components/cart-provider';
 import { VoucherProvider } from '@/components/voucher-provider';
@@ -9,7 +10,7 @@ import { Footer } from '@/components/footer';
 import { CartDrawer, CartToast } from '@/components/cart-drawer';
 import { CheckoutModal } from '@/components/checkout/checkout-modal';
 import { siteConfig } from '@/lib/config';
-import { getLayoutConfig } from '@/lib/website-config';
+import { getWebsiteConfig } from '@/lib/website-config';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -33,15 +34,6 @@ export const metadata: Metadata = {
     absolute: siteConfig.defaultTitle,
   },
   description: siteConfig.defaultDescription,
-  icons: {
-    icon: [
-      { url: '/favicon-32x32.png?v=circle1', type: 'image/png', sizes: '32x32' },
-      { url: '/favicon.ico?v=circle1', sizes: 'any' },
-      { url: '/favicon-16x16.png?v=circle1', type: 'image/png', sizes: '16x16' },
-    ],
-    shortcut: '/favicon.ico?v=circle1',
-    apple: '/apple-touch-icon.png?v=circle1',
-  },
   openGraph: {
     type: 'website',
     siteName: siteConfig.name,
@@ -57,19 +49,15 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
-  const config = await getLayoutConfig();
+  const config = await getWebsiteConfig();
 
   return (
     <html
       lang="en"
       className={`${dmSans.variable} ${sora.variable}`}
-      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
-        <link rel="icon" href="/favicon-32x32.png?v=circle1" type="image/png" sizes="32x32" />
-        <link rel="icon" href="/favicon.ico?v=circle1" sizes="any" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=circle1" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="antialiased min-h-screen flex flex-col">
@@ -82,6 +70,9 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
                   supportEmail={config.footerSettings.email}
                   announcementText={config.announcementSettings.text}
                   announcementEnabled={config.announcementSettings.enabled !== false}
+                  announcementLink={config.announcementSettings.link}
+                  announcementOverrideWithCampaign={config.announcementSettings.overrideWithCampaign === true}
+                  activeCampaignTitle={config.activeCampaign ? config.activeCampaign.title || null : null}
                 />
                 <CartToast />
                 <main className="flex-1">{children}</main>
@@ -93,6 +84,7 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
                 />
                 <CartDrawer />
                 <CheckoutModal />
+                <Toaster />
               </VoucherProvider>
             </CartProvider>
           </AuthProvider>

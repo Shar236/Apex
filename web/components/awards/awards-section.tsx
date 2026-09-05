@@ -8,6 +8,8 @@ import { resolveImageSrc } from '@/lib/cloudinary';
 import { awardApi } from '@/lib/api';
 import type { Award } from '@/lib/award-api';
 
+const PAGE_SIZE = 9;
+
 const FALLBACK_IMG =
   'data:image/svg+xml;charset=utf-8,' +
   encodeURIComponent(
@@ -23,22 +25,24 @@ const FALLBACK_IMG =
   );
 
 function AwardImage({ award, width = 800, className = '', eager = false }: { award: Award; width?: number; className?: string; eager?: boolean }) {
-  const resolved = award.imageUrl ? resolveImageSrc(award.imageUrl) : FALLBACK_IMG;
-  // Track only which URL failed — deriving `src` during render means a new award
-  // (new imageUrl) automatically retries without an effect or a reset.
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const src = failedUrl === resolved ? FALLBACK_IMG : resolved;
+  const [src, setSrc] = useState(award.imageUrl ? resolveImageSrc(award.imageUrl) : FALLBACK_IMG);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setSrc(award.imageUrl ? resolveImageSrc(award.imageUrl) : FALLBACK_IMG);
+    setFailed(false);
+  }, [award.imageUrl]);
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={failed ? FALLBACK_IMG : src}
       alt={award.imageAlt || `Award: ${award.title}`}
       width={width}
       height={Math.round((width * 3) / 4)}
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
-      onError={() => setFailedUrl(resolved)}
+      onError={() => setFailed(true)}
       className={`${className} object-cover`}
     />
   );
@@ -366,7 +370,7 @@ export function AwardsSection({ initialAwards, total, featuredCount }: { initial
         {awards.length > 0 && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
-              {awards.map((award) => (
+              {awards.map((award, idx) => (
                 <AwardCard key={award.id} award={award} onView={(a) => setSelectedAward(a)} />
               ))}
             </div>

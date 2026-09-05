@@ -1,6 +1,13 @@
 import fs from 'fs';
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES, FulfillmentRequest } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES, FulfillmentRequest, ORDER_STATUSES, PAYMENT_STATUSES } from '../models/index.js';
 import { normalizeVoucherType } from '../services/voucherAllocation.js';
+import {
+  deleteVouchers,
+  previewVoucherDeletion,
+  setVoucherStatuses,
+  updateVoucherFields,
+  maskVoucherCode,
+} from '../services/voucherInventory.js';
 import {
   listVoucherRequests,
   getVoucherRequestById,
@@ -22,7 +29,6 @@ import {
   uploadImage,
   isCloudinaryUrl,
 } from '../services/cloudinaryService.js';
-import { sanitizeRichHtml } from '../utils/richText.js';
 
 
 const PAID_ORDER_STATUSES = ['PAID', 'FULFILLED'];
@@ -82,83 +88,7 @@ const isValidHttpUrl = (value) => {
   }
 };
 
-/**
- * Normalise + validate a product's redemption CMS block. Full-replace semantics
- * (whatever the admin sends replaces the stored guide). Empty steps are dropped;
- * partial steps are kept (an admin may save before finishing — spec §19). URLs
- * are hard-validated. `order` is re-derived from array position so drag/move in
- * the editor is the single source of truth for ordering.
- */
-const normalizeRedemptionGuide = (guide) => {
-  if (guide === null || typeof guide !== 'object') {
-    return { enabled: false, providerLabel: '', officialUrl: '', buttonText: '', introduction: '', steps: [], warnings: [] };
-  }
-  const rawSteps = Array.isArray(guide.steps) ? guide.steps : [];
-  const steps = rawSteps
-    .map((s, i) => {
-      if (!s || typeof s !== 'object') return null;
-      const title = String(s.title || '').trim();
-      const description = String(s.description || '').trim();
-      const importantNote = String(s.importantNote || '').trim();
-      const videoUrl = String(s.videoUrl || '').trim();
-      const shot = s.screenshot && typeof s.screenshot === 'object' ? s.screenshot : {};
-      const screenshot = {
-        url: String(shot.url || '').trim(),
-        publicId: String(shot.publicId || '').trim(),
-        alt: String(shot.alt || '').trim(),
-        caption: String(shot.caption || '').trim(),
-        width: Number(shot.width) > 0 ? Number(shot.width) : undefined,
-        height: Number(shot.height) > 0 ? Number(shot.height) : undefined,
-      };
-      const isEmpty = !title && !description && !importantNote && !videoUrl && !screenshot.url;
-      if (isEmpty) return null;
-      if (videoUrl && !isValidHttpUrl(videoUrl)) {
-        throw new AppError(`Redemption step ${i + 1} video URL is not a valid URL`, 400, 'VALIDATION_ERROR');
-      }
-      return { title, description, screenshot, importantNote, videoUrl };
-    })
-    .filter(Boolean)
-    .map((s, i) => ({ ...s, order: i + 1 }));
-
-  const officialUrl = String(guide.officialUrl || '').trim();
-  if (officialUrl && !isValidHttpUrl(officialUrl)) {
-    throw new AppError('Redemption guide official URL is not a valid URL', 400, 'VALIDATION_ERROR');
-  }
-  const warnings = Array.isArray(guide.warnings)
-    ? guide.warnings.map((w) => String(w || '').trim()).filter(Boolean)
-    : [];
-
-  return {
-    enabled: !!guide.enabled,
-    providerLabel: String(guide.providerLabel || '').trim(),
-    officialUrl,
-    buttonText: String(guide.buttonText || '').trim(),
-    introduction: String(guide.introduction || '').trim(),
-    steps,
-    warnings,
-    lastUpdated: steps.length > 0 || guide.enabled ? new Date() : undefined,
-  };
-};
-
-/** Non-blocking pre-publish checks surfaced to the admin after a save (spec §19). */
-const collectRedemptionWarnings = (product) => {
-  const warnings = [];
-  const g = product?.redemptionGuide;
-  if (!product?.active || !g?.enabled) return warnings;
-  if (!g.steps || g.steps.length === 0) {
-    warnings.push('Redemption guide is enabled but has no steps yet.');
-  } else {
-    g.steps.forEach((s, i) => {
-      if (!s.title || !s.description) warnings.push(`Redemption step ${i + 1} is missing a title or description.`);
-    });
-  }
-  if (!g.officialUrl && !product.officialWebsiteUrl && !product.officialProductUrl) {
-    warnings.push('Redemption guide has no official / redemption URL set.');
-  }
-  return warnings;
-};
-
-const normalizeProductPayload = (body, { selfId } = {}) => {
+const normalizeProductPayload = (body) => {
   const payload = { ...body };
   if (typeof payload.badges === 'string') {
     payload.badges = payload.badges.split(',').map((b) => b.trim()).filter(Boolean);
@@ -204,46 +134,6 @@ const normalizeProductPayload = (body, { selfId } = {}) => {
   if (!isValidHttpUrl(payload.officialProductUrl)) {
     throw new AppError('Official product URL is not a valid URL', 400, 'VALIDATION_ERROR');
   }
-
-  // ── Redemption CMS blocks ────────────────────────────────────────────────
-  if (payload.redemptionGuide !== undefined) {
-    payload.redemptionGuide = normalizeRedemptionGuide(payload.redemptionGuide);
-  }
-  if (payload.productContent !== undefined) {
-    const pc = payload.productContent && typeof payload.productContent === 'object' ? payload.productContent : {};
-    payload.productContent = {
-      enabled: !!pc.enabled,
-      heading: String(pc.heading || '').trim(),
-      content: sanitizeRichHtml(pc.content || ''),
-    };
-  }
-  if (payload.importantInfo !== undefined) {
-    payload.importantInfo = (Array.isArray(payload.importantInfo) ? payload.importantInfo : [])
-      .map((r) => ({ label: String(r?.label || '').trim(), value: String(r?.value || '').trim() }))
-      .filter((r) => r.label || r.value);
-  }
-  if (payload.importantNotes !== undefined) {
-    payload.importantNotes = (Array.isArray(payload.importantNotes) ? payload.importantNotes : [])
-      .map((n) => String(n || '').trim())
-      .filter(Boolean);
-  }
-  if (payload.faqs !== undefined) {
-    payload.faqs = (Array.isArray(payload.faqs) ? payload.faqs : [])
-      .map((f) => ({ question: String(f?.question || '').trim(), answer: String(f?.answer || '').trim() }))
-      .filter((f) => f.question && f.answer);
-  }
-  if (payload.relatedProducts !== undefined) {
-    const seen = new Set();
-    payload.relatedProducts = (Array.isArray(payload.relatedProducts) ? payload.relatedProducts : [])
-      .map((r) => (r && typeof r === 'object' && r._id ? String(r._id) : String(r || '')))
-      .filter((rid) => {
-        if (!isValidObjectId(rid) || seen.has(rid)) return false;
-        if (selfId && rid === String(selfId)) return false;
-        seen.add(rid);
-        return true;
-      });
-  }
-
   return payload;
 };
 
@@ -812,7 +702,7 @@ export const createProduct = async (req, res, next) => {
       originalPrice: product.originalPrice,
     });
 
-    res.status(201).json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
+    res.status(201).json({ success: true, data: product });
   } catch (err) {
     next(err);
   }
@@ -831,7 +721,22 @@ export const updateProduct = async (req, res, next) => {
       return next(new AppError('Selling price cannot exceed original price', 400));
     }
 
-    const updatePayload = normalizeProductPayload(req.body, { selfId: id });
+    const updatePayload = normalizeProductPayload(req.body);
+    // Derived/computed fields are owned by the server, never the client: the
+    // edit form round-trips stale list-row snapshots, and findByIdAndUpdate
+    // (unlike save()) skips the pre-save hook that recomputes them. Writing a
+    // client snapshot would persist a stale discount/stock view of the product.
+    delete updatePayload.inStock;
+    delete updatePayload.discountPercent;
+    delete updatePayload.availableVouchers;
+    delete updatePayload.reservedVouchers;
+    delete updatePayload.soldVouchers;
+    delete updatePayload.totalVouchers;
+    delete updatePayload.stockStatus;
+    // Recompute the discount from the effective prices, mirroring the pre-save hook.
+    if (origPrice > 0 && sellPrice >= 0) {
+      updatePayload.discountPercent = Math.max(0, Math.min(100, Math.round(((origPrice - sellPrice) / origPrice) * 100)));
+    }
     const product = await Product.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
 
     // If the primary image was swapped for a different Cloudinary asset, clean up
@@ -843,16 +748,6 @@ export const updateProduct = async (req, res, next) => {
       product.imagePublicId !== oldImagePublicId
     ) {
       await deleteProductImageIfUnused(oldImagePublicId, product._id);
-    }
-
-    // Redemption screenshots that were removed / replaced during this edit:
-    // best-effort delete from Cloudinary when nothing else references them.
-    const screenshotIds = (steps) =>
-      new Set((steps || []).map((s) => s?.screenshot?.publicId).filter(Boolean));
-    const oldScreens = screenshotIds(oldProduct.redemptionGuide?.steps);
-    const newScreens = screenshotIds(product.redemptionGuide?.steps);
-    for (const pid of oldScreens) {
-      if (!newScreens.has(pid)) await deleteRedemptionScreenshotIfUnused(pid, product._id);
     }
 
     const diffs = {};
@@ -870,7 +765,7 @@ export const updateProduct = async (req, res, next) => {
       diffs,
     });
 
-    res.json({ success: true, data: product, warnings: collectRedemptionWarnings(product) });
+    res.json({ success: true, data: product });
   } catch (err) {
     next(err);
   }
@@ -1135,59 +1030,6 @@ const deleteProductImageIfUnused = async (publicId, exceptProductId) => {
   }
 };
 
-/**
- * Upload a single redemption-guide step screenshot to Cloudinary
- * (apex_products/redemption). Same 502-on-failure contract as uploadProductImage
- * — the admin keeps the previous screenshot rather than persisting a broken ref.
- */
-export const uploadProductScreenshot = async (req, res, next) => {
-  try {
-    const file = req.file;
-    if (!file || !file.buffer) return next(new AppError('No screenshot file uploaded', 400));
-
-    let result;
-    try {
-      result = await uploadImage(file.buffer, { folder: 'apex_products/redemption' });
-    } catch (cloudErr) {
-      console.error('[Upload] Product screenshot Cloudinary upload failed:', cloudErr.message);
-      return next(new AppError('Screenshot upload to Cloudinary failed. Please try again.', 502));
-    }
-
-    res.json({
-      success: true,
-      url: result.url,
-      publicId: result.publicId,
-      width: result.width,
-      height: result.height,
-      format: result.format,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * Best-effort delete a redemption screenshot from Cloudinary, but only when no
- * other product's redemption step references the same public_id and it is not
- * in use as any product's primary image. Never throws.
- */
-const deleteRedemptionScreenshotIfUnused = async (publicId, exceptProductId) => {
-  try {
-    if (!publicId) return;
-    const [usedInGuide, usedAsImage] = await Promise.all([
-      Product.exists({
-        _id: { $ne: exceptProductId },
-        'redemptionGuide.steps.screenshot.publicId': publicId,
-      }),
-      Product.exists({ imagePublicId: publicId }),
-    ]);
-    if (usedInGuide || usedAsImage) return;
-    await deleteCloudinaryAsset(publicId, 'image');
-  } catch (err) {
-    console.warn(`[Cloudinary] Redemption screenshot cleanup skipped for ${publicId}:`, err.message);
-  }
-};
-
 export const reorderProducts = async (req, res, next) => {
   try {
     const { items } = req.body; // Array of { id, order }
@@ -1224,12 +1066,25 @@ export const getProductInventory = async (req, res, next) => {
       .limit(20)
       .lean();
 
+    // Masked like every other admin inventory surface — raw codes only leave
+    // the server through the audited /vouchers/:id/reveal endpoint.
+    const maskedCodes = recentCodes.map((v) => ({
+      _id: v._id,
+      codeDisplay: maskVoucherCode(v.code),
+      isMasked: true,
+      status: v.status,
+      soldTo: v.soldTo || null,
+      soldAt: v.soldAt || null,
+      expiryDate: v.expiryDate || null,
+      createdAt: v.createdAt,
+    }));
+
     res.json({
       success: true,
       data: {
         product: { id: product._id, name: product.name, brand: product.brand },
         counts: { available, reserved, sold, assigned, used, expired, total },
-        codes: recentCodes,
+        codes: maskedCodes,
       },
     });
   } catch (err) {
@@ -1265,24 +1120,25 @@ export const listVouchers = async (req, res, next) => {
       VoucherCode.countDocuments(filter),
     ]);
 
-    // Mask voucher codes by default unless unmasked=true is explicitly requested by authenticated admin
+    // Mask voucher codes by default unless unmasked=true is explicitly requested.
+    // The raw `code` is REMOVED from the payload when masked — previously it was
+    // spread into the response alongside `codeDisplay`, so every full code was
+    // sitting in the JSON and the audited /reveal endpoint could be bypassed by
+    // just reading the list response.
+    const isMasked = unmasked !== 'true';
+    if (!isMasked) {
+      // Bulk reveal is as sensitive as the per-code /reveal endpoint, so it
+      // leaves the same audit trail rather than being a silent bypass.
+      await recordAudit(req, 'VOUCHER_LIST_UNMASKED', 'VoucherCode', null, {
+        count: vouchers.length,
+        filter: { status: status || null, productId: productId || null, voucherType: voucherType || null },
+      });
+    }
     const processedVouchers = vouchers.map((v) => {
-      let codeDisplay = v.code;
-      if (unmasked !== 'true') {
-        const parts = String(v.code || '').split('-');
-        if (parts.length >= 3) {
-          codeDisplay = `${parts[0]}-****-****-${parts[parts.length - 1]}`;
-        } else if (v.code && v.code.length > 8) {
-          codeDisplay = `${v.code.slice(0, 4)}-****-${v.code.slice(-4)}`;
-        } else {
-          codeDisplay = '****-****-****';
-        }
-      }
-      return {
-        ...v,
-        codeDisplay,
-        isMasked: unmasked !== 'true',
-      };
+      if (!isMasked) return { ...v, codeDisplay: v.code, isMasked: false };
+
+      const { code, ...rest } = v;
+      return { ...rest, codeDisplay: maskVoucherCode(code), isMasked: true };
     });
 
     res.json({
@@ -1362,39 +1218,39 @@ export const getVoucherCodeUnmasked = async (req, res, next) => {
 
 export const getAdminNotifications = async (req, res, next) => {
   try {
-    // Polled every 15s by every open admin tab — fan the independent reads out
-    // in parallel rather than six sequential Atlas round trips.
-    const [recentlySold, mismatchLogs, openVoucherRequests, openFulfillments, products] = await Promise.all([
-      // 1. Recently sold vouchers
-      VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
-        .populate('productId', 'name brand voucherType')
-        .populate('orderId', 'orderNo total')
-        .populate('userId', 'name email')
-        .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
-        .limit(15)
-        .lean(),
-      // 2. Mismatch alerts / failures from AuditLog
-      AuditLog.find({
-        action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED', 'ORDER_AWAITING_FULFILLMENT', 'PAID_ORDER_NOT_COLLECTABLE'] },
-      })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .lean(),
-      // 2b. Open voucher requests (legacy pre-payment flow — kept for historical rows)
-      VoucherRequest.find({ status: { $in: ['PENDING', 'PROCESSING'] } })
-        .sort({ createdAt: -1 })
-        .limit(15)
-        .lean(),
-      // 2c. Open fulfillment requests — PAID orders awaiting a manually-sourced
-      // voucher code because inventory ran out. Highest-priority action item.
-      FulfillmentRequest.find({ status: 'PROCESSING' })
-        .sort({ createdAt: -1 })
-        .limit(20)
-        .lean(),
-      // 3. Active products (for stock alerts)
-      Product.find({ active: true }).lean(),
-    ]);
+    // 1. Recently Sold Vouchers (Last 20)
+    const recentlySold = await VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
+      .populate('productId', 'name brand voucherType')
+      .populate('orderId', 'orderNo total')
+      .populate('userId', 'name email')
+      .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
+      .limit(15)
+      .lean();
 
+    // 2. Mismatch Alerts / Failures from AuditLog
+    const mismatchLogs = await AuditLog.find({
+      action: { $in: ['VOUCHER_MISMATCH_BLOCKED', 'ORDER_ALLOCATION_FAILED', 'PAID_ORDER_NOT_COLLECTABLE'] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    // 2b. Open voucher requests (customer asked for an out-of-stock voucher)
+    const openVoucherRequests = await VoucherRequest.find({ status: { $in: ['PENDING', 'PROCESSING'] } })
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .lean();
+
+    // 2c. Paid orders awaiting a manually sourced code. These are the most
+    // urgent items in the console — the customer's money is already taken — but
+    // they previously only reached the admin by email.
+    const pendingFulfillments = await FulfillmentRequest.find({ status: 'PROCESSING' })
+      .sort({ createdAt: -1 })
+      .limit(25)
+      .lean();
+
+    // 3. Low stock and out-of-stock products
+    const products = await Product.find({ active: true }).lean();
     const productIds = products.map((p) => p._id);
     const stockStats = await aggregateVoucherStatsByProduct(productIds);
 
@@ -1440,7 +1296,7 @@ export const getAdminNotifications = async (req, res, next) => {
             details: log.details,
           };
         }
-        if (log.action === 'ORDER_ALLOCATION_FAILED' || log.action === 'ORDER_AWAITING_FULFILLMENT') {
+        if (log.action === 'ORDER_ALLOCATION_FAILED') {
           return {
             id: log._id,
             type: 'ALLOCATION_FAILED',
@@ -1461,25 +1317,28 @@ export const getAdminNotifications = async (req, res, next) => {
           details: log.details,
         };
       }),
-      ...stockAlerts,
-      ...openFulfillments.map((r) => ({
+      ...pendingFulfillments.map((r) => ({
         id: `fr_${r._id}`,
         type: 'FULFILLMENT_REQUEST',
         severity: 'critical',
-        title: '🎟️ Paid order — voucher needs sourcing',
-        message: `${r.customerName} paid ${r.currency || 'INR'} ${r.amountPaid} for ${r.productName} (${r.voucherType}) — no stock. Deliver a code in Fulfillment Requests.`,
+        title: '💳 Paid — voucher needed',
+        message: `${r.customerName} paid ${r.currency === 'USD' ? '$' : '₹'}${r.amountPaid} for ${r.productName} (Order #${r.orderNo}). Assign a code to complete delivery.`,
+        tab: 'fulfillments',
         product: { _id: r.productId, name: r.productName, voucherType: r.voucherType },
         timestamp: r.createdAt,
         data: {
           requestId: r.requestId,
+          fulfillmentId: String(r._id),
           orderNo: r.orderNo,
           productName: r.productName,
           voucherType: r.voucherType,
           customerEmail: r.customerEmail,
           amountPaid: r.amountPaid,
+          currency: r.currency,
           status: r.status,
         },
       })),
+      ...stockAlerts,
       ...openVoucherRequests.map((r) => ({
         id: `vr_${r._id}`,
         type: 'VOUCHER_REQUEST',
@@ -1524,7 +1383,7 @@ export const getAdminNotifications = async (req, res, next) => {
         sales: recentlySold.length,
         stockAlerts: stockAlerts.length,
         voucherRequests: openVoucherRequests.length,
-        fulfillments: openFulfillments.length,
+        pendingFulfillments: pendingFulfillments.length,
       },
     });
   } catch (err) {
@@ -1575,19 +1434,80 @@ export const addVouchers = async (req, res, next) => {
   }
 };
 
+/* ── Voucher inventory writes ────────────────────────────────────────────────
+ * All of these delegate to services/voucherInventory.js, which owns the rules
+ * about what may be deleted or re-statused. The controller only unpacks the
+ * request and shapes the response.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/** Admin identity for the service's audit trail (includes the request IP). */
+const auditActor = (req) => ({ _id: req.user?._id, email: req.user?.email, ip: req.ip || null });
+
 export const updateVoucher = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const voucher = await VoucherCode.findByIdAndUpdate(id, req.body, { new: true });
-    if (!voucher) return next(new AppError('Voucher not found', 404));
-
-    await recordAudit(req, 'VOUCHER_UPDATED', 'VoucherCode', voucher._id, {
-      code: voucher.code,
-      status: voucher.status,
-      voucherType: voucher.voucherType,
-    });
-
+    const voucher = await updateVoucherFields({ id: req.params.id, patch: req.body || {}, admin: auditActor(req) });
     res.json({ success: true, data: voucher });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** DELETE /api/admin/vouchers/:id — remove a single inventory row. */
+export const deleteVoucher = async (req, res, next) => {
+  try {
+    const result = await deleteVouchers({ ids: [req.params.id], admin: auditActor(req) });
+    if (result.deleted === 0) {
+      return next(
+        new AppError(
+          result.skipped[0]?.reason || 'This voucher could not be deleted',
+          409,
+          'VOUCHER_NOT_DELETABLE'
+        )
+      );
+    }
+    res.json({ success: true, message: 'Voucher deleted', ...result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** POST /api/admin/vouchers/bulk-delete — remove many; delivered codes are kept. */
+export const bulkDeleteVouchers = async (req, res, next) => {
+  try {
+    const result = await deleteVouchers({ ids: req.body?.ids, admin: auditActor(req) });
+    res.json({
+      success: true,
+      message: `${result.deleted} voucher${result.deleted === 1 ? '' : 's'} deleted`,
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** POST /api/admin/vouchers/delete-preview — what a delete would actually do. */
+export const previewVoucherDelete = async (req, res, next) => {
+  try {
+    const result = await previewVoucherDeletion(req.body?.ids);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** PATCH /api/admin/vouchers/status — mark codes EXPIRED / INVALID / CANCELLED / AVAILABLE. */
+export const bulkSetVoucherStatus = async (req, res, next) => {
+  try {
+    const result = await setVoucherStatuses({
+      ids: req.body?.ids,
+      status: req.body?.status,
+      admin: auditActor(req),
+    });
+    res.json({
+      success: true,
+      message: `${result.modified} voucher${result.modified === 1 ? '' : 's'} marked ${result.status}`,
+      ...result,
+    });
   } catch (err) {
     next(err);
   }
@@ -1626,8 +1546,55 @@ export const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { orderStatus, paymentStatus } = req.body;
+
+    // Enum whitelist (matches the Order model) so a typo'd payload is a 400,
+    // not a Mongoose ValidationError 500.
+    if (orderStatus && !ORDER_STATUSES.includes(orderStatus)) {
+      return next(new AppError(`Invalid orderStatus "${orderStatus}"`, 400, 'INVALID_ORDER_STATUS'));
+    }
+    if (paymentStatus && !PAYMENT_STATUSES.includes(paymentStatus)) {
+      return next(new AppError(`Invalid paymentStatus "${paymentStatus}"`, 400, 'INVALID_PAYMENT_STATUS'));
+    }
+
     const order = await Order.findById(id);
     if (!order) return next(new AppError('Order not found', 404));
+
+    // FULFILLED means voucher codes were delivered. Never let the panel mark an
+    // unverified or code-less order fulfilled — that state strands the customer
+    // (no codes, resend-email refuses) and fakes success. Paid orders without
+    // inventory must be fulfilled through the Fulfillment Requests queue, which
+    // allocates a code and emails it.
+    if (orderStatus === 'FULFILLED') {
+      if (order.paymentStatus !== 'PAID' && paymentStatus !== 'PAID') {
+        return next(new AppError(
+          'Cannot fulfil an order whose payment is not verified. Verify the payment first, or fulfil it from the Fulfillment Requests queue.',
+          409,
+          'PAYMENT_NOT_VERIFIED'
+        ));
+      }
+      const hasAllocated = await VoucherCode.exists({
+        orderId: order._id,
+        status: { $in: ['SOLD', 'ASSIGNED', 'USED'] },
+      });
+      if (!hasAllocated) {
+        return next(new AppError(
+          'This order has no allocated voucher codes. Fulfil it from the Fulfillment Requests queue so a code is assigned and emailed.',
+          409,
+          'NO_ALLOCATED_CODES'
+        ));
+      }
+    }
+
+    // A paid order cannot silently vanish: cancelling it must go through the
+    // refund path (which records REFUNDED and preserves the money trail).
+    if (orderStatus === 'CANCELLED' && order.paymentStatus === 'PAID' && paymentStatus !== 'REFUNDED') {
+      return next(new AppError(
+        'A paid order cannot be cancelled. Record a refund instead (Refund action).',
+        409,
+        'PAID_ORDER_CANCEL_BLOCKED'
+      ));
+    }
+
     const oldStatus = order.orderStatus;
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentStatus = paymentStatus;
@@ -1657,6 +1624,10 @@ export const listPromotions = async (_req, res, next) => {
 
 export const createPromotion = async (req, res, next) => {
   try {
+    const { startAt, endAt } = req.body || {};
+    if (startAt && endAt && new Date(endAt) <= new Date(startAt)) {
+      return next(new AppError('Promotion end date must be after the start date', 400, 'INVALID_DATE_RANGE'));
+    }
     const promo = new Promotion(req.body);
     await promo.save();
 
@@ -1675,6 +1646,23 @@ export const createPromotion = async (req, res, next) => {
 export const updatePromotion = async (req, res, next) => {
   try {
     const { id } = req.params;
+    // Validate the merged date range, not just the posted fields — a PATCH that
+    // moves only one boundary can silently invert the window and kill the code.
+    const current = await Promotion.findById(id).lean();
+    if (!current) return next(new AppError('Promotion not found', 404));
+    const startAt = req.body?.startAt ?? current.startAt;
+    const endAt = req.body?.endAt ?? current.endAt;
+    if (startAt && endAt && new Date(endAt) <= new Date(startAt)) {
+      return next(new AppError('Promotion end date must be after the start date', 400, 'INVALID_DATE_RANGE'));
+    }
+    // The 0–100 schema validator cannot bind discountType during update
+    // validators, so a PATCH sending only discountValue would bypass it.
+    // Validate the merged (posted-or-current) pair here.
+    const effType = req.body?.discountType ?? current.discountType;
+    const effValue = req.body?.discountValue ?? current.discountValue;
+    if (effType === 'percentage' && (Number(effValue) < 0 || Number(effValue) > 100)) {
+      return next(new AppError('Percentage discount must be between 0 and 100', 400, 'INVALID_DISCOUNT_VALUE'));
+    }
     const promo = await Promotion.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
     if (!promo) return next(new AppError('Promotion not found', 404));
 
@@ -2521,17 +2509,10 @@ export const uploadMedia = async (req, res, next) => {
   }
 };
 
-// Aliases for Reels endpoints
-export const listAdminReels = listAdminVideos;
-export const getAdminReel = getAdminVideo;
-export const createReel = createVideo;
-export const updateReel = updateVideo;
-export const deleteReel = deleteVideo;
-export const quickToggleFeaturedReel = quickToggleFeaturedVideo;
-export const quickTogglePublishReel = quickTogglePublishVideo;
-export const quickUpdateOrderReel = quickUpdateOrderVideo;
-export const bulkReorderReels = bulkReorderVideos;
-export const updateReelSettings = updateVideoSettings;
+// NOTE: the /api/admin/reels routes are wired directly to the *Video handlers
+// in adminRoutes.js — "reels" and "videos" are the same resource. The parallel
+// `export const createReel = createVideo` alias block that used to sit here had
+// no importers and only made the module look like it had two implementations.
 
 
 /**
@@ -2551,15 +2532,9 @@ export const sendTestEmail = async (req, res, next) => {
     const result = await sendEmail({
       to,
       tag: 'admin-test',
-      subject: `Apex Vouchers — Email Delivery Test`,
+      subject: `Apex Vouchers — email delivery test (${stamp})`,
       text: `This is a diagnostic email from the Apex Vouchers admin console.\nIf you received it, transactional email delivery is working.\nSent: ${stamp}`,
-      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#FFFFFF;color:#1A1A2E;max-width:520px;margin:0 auto;padding:24px;border:1px solid #ECECF1;border-radius:12px;">
-        <div style="font-size:18px;font-weight:800;color:#1A1A2E;">APEX<span style="color:#FF005C;">&#8599;</span>&nbsp;<span style="color:#FF005C;">VOUCHERS</span></div>
-        <div style="height:3px;width:44px;background:#FF005C;border-radius:3px;margin:8px 0 16px;"></div>
-        <p style="font-size:14px;line-height:1.6;margin:0 0 10px;">This is a diagnostic email from the <b>Apex Vouchers</b> admin console.</p>
-        <p style="font-size:14px;line-height:1.6;margin:0 0 10px;">If you received it, transactional email delivery is working.</p>
-        <p style="font-size:12px;color:#55607A;margin:0;">Sent: ${stamp}</p>
-      </div>`,
+      html: `<p>This is a diagnostic email from the <b>Apex Vouchers</b> admin console.</p><p>If you received it, transactional email delivery is working.</p><p style="color:#888">Sent: ${stamp}</p>`,
     });
     return res.json({
       success: result.sent,
@@ -2742,24 +2717,22 @@ export const toggleCampaignStatus = async (req, res, next) => {
   }
 };
 
+/** The CMS setting groups the website reads. Anything else is not persisted. */
+const WEBSITE_SETTING_KEYS = [
+  'heroSettings',
+  'announcementSettings',
+  'benefitCards',
+  'footerSettings',
+  'policySettings',
+];
+
 export const getWebsiteSettings = async (req, res, next) => {
   try {
-    const heroSettings = (await Setting.findOne({ key: 'heroSettings' }))?.value || null;
-    const announcementSettings = (await Setting.findOne({ key: 'announcementSettings' }))?.value || null;
-    const benefitCards = (await Setting.findOne({ key: 'benefitCards' }))?.value || null;
-    const footerSettings = (await Setting.findOne({ key: 'footerSettings' }))?.value || null;
-    const policySettings = (await Setting.findOne({ key: 'policySettings' }))?.value || null;
-
-    res.json({
-      success: true,
-      data: {
-        heroSettings,
-        announcementSettings,
-        benefitCards,
-        footerSettings,
-        policySettings,
-      },
-    });
+    // One round trip instead of five sequential findOne calls.
+    const rows = await Setting.find({ key: { $in: WEBSITE_SETTING_KEYS } }).lean();
+    const byKey = new Map(rows.map((r) => [r.key, r.value]));
+    const data = Object.fromEntries(WEBSITE_SETTING_KEYS.map((k) => [k, byKey.get(k) ?? null]));
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -2767,29 +2740,35 @@ export const getWebsiteSettings = async (req, res, next) => {
 
 export const updateWebsiteSettings = async (req, res, next) => {
   try {
-    const { heroSettings, announcementSettings, benefitCards, footerSettings, policySettings } = req.body;
+    const body = req.body || {};
+    const updates = WEBSITE_SETTING_KEYS.filter((key) => body[key] !== undefined && body[key] !== null);
 
-    if (heroSettings) {
-      await Setting.findOneAndUpdate({ key: 'heroSettings' }, { key: 'heroSettings', value: heroSettings }, { upsert: true });
-    }
-    if (announcementSettings) {
-      await Setting.findOneAndUpdate({ key: 'announcementSettings' }, { key: 'announcementSettings', value: announcementSettings }, { upsert: true });
-    }
-    if (benefitCards) {
-      await Setting.findOneAndUpdate({ key: 'benefitCards' }, { key: 'benefitCards', value: benefitCards }, { upsert: true });
-    }
-    if (footerSettings) {
-      await Setting.findOneAndUpdate({ key: 'footerSettings' }, { key: 'footerSettings', value: footerSettings }, { upsert: true });
-    }
-    if (policySettings) {
-      await Setting.findOneAndUpdate({ key: 'policySettings' }, { key: 'policySettings', value: policySettings }, { upsert: true });
+    // Previously this returned "updated successfully" no matter what was sent,
+    // so a payload with a typo'd or unsupported key reported success while
+    // storing nothing. Say so instead.
+    if (!updates.length) {
+      return next(
+        new AppError(
+          `No recognised settings in the request. Expected one of: ${WEBSITE_SETTING_KEYS.join(', ')}`,
+          400,
+          'NO_SETTINGS_SUPPLIED'
+        )
+      );
     }
 
-    await recordAudit(req, 'WEBSITE_SETTINGS_UPDATED', 'Setting', null, {
-      updatedKeys: Object.keys(req.body),
+    await Promise.all(
+      updates.map((key) =>
+        Setting.findOneAndUpdate({ key }, { key, value: body[key] }, { upsert: true })
+      )
+    );
+
+    await recordAudit(req, 'WEBSITE_SETTINGS_UPDATED', 'Setting', null, { updatedKeys: updates });
+
+    res.json({
+      success: true,
+      message: `Updated ${updates.length} setting group${updates.length === 1 ? '' : 's'}.`,
+      updated: updates,
     });
-
-    res.json({ success: true, message: 'Website settings updated successfully.' });
   } catch (err) {
     next(err);
   }

@@ -22,6 +22,10 @@ import {
   getVoucherCodeUnmasked,
   addVouchers,
   updateVoucher,
+  deleteVoucher,
+  bulkDeleteVouchers,
+  previewVoucherDelete,
+  bulkSetVoucherStatus,
   getAdminNotifications,
   listOrdersAdmin,
   updateOrderStatus,
@@ -53,7 +57,6 @@ import {
   uploadMedia,
   uploadProductLogo,
   uploadProductImage,
-  uploadProductScreenshot,
   listVoucherRequestsAdmin,
   getVoucherRequestAdmin,
   updateVoucherRequestAdmin,
@@ -76,12 +79,6 @@ import {
   bulkReorderAwards,
   uploadAwardMedia,
 } from '../controllers/awardController.js';
-import {
-  getAdminSecurityInfo,
-  sendAdminEmailOtp,
-  verifyAdminEmailOtp,
-  adminChangePassword,
-} from '../controllers/adminSecurityController.js';
 import { protectAdmin } from '../middleware/auth.js';
 import { mediaUpload, productLogoUpload, productImageUpload, awardMediaUpload } from '../middleware/upload.js';
 
@@ -99,7 +96,6 @@ r.get('/products', listAdminProducts);
 r.patch('/products/reorder', reorderProducts);
 r.post('/products/logo-upload', productLogoUpload.single('logo'), uploadProductLogo);
 r.post('/products/image-upload', productImageUpload.single('image'), uploadProductImage);
-r.post('/products/screenshot-upload', productImageUpload.single('image'), uploadProductScreenshot);
 r.get('/products/:id', getAdminProduct);
 r.post('/products', createProduct);
 r.patch('/products/:id', updateProduct);
@@ -117,7 +113,12 @@ r.get('/vouchers/summary-by-product', getVoucherInventoryByProduct);
 r.get('/vouchers/:id/reveal', getVoucherCodeUnmasked);
 r.post('/vouchers', addVouchers);
 r.post('/vouchers/bulk', addVouchers);
+// Literal paths are declared before '/vouchers/:id' so they are not shadowed by it.
+r.post('/vouchers/delete-preview', previewVoucherDelete);
+r.post('/vouchers/bulk-delete', bulkDeleteVouchers);
+r.patch('/vouchers/status', bulkSetVoucherStatus);
 r.patch('/vouchers/:id', updateVoucher);
+r.delete('/vouchers/:id', deleteVoucher);
 
 r.get('/notifications', getAdminNotifications);
 
@@ -207,11 +208,5 @@ r.get('/audit-logs', listAuditLogs);
 r.get('/export/:resource', exportCSV);
 
 r.post('/email/test', sendTestEmail);
-
-// ── Admin Security / Account Settings ───────────────────────────────────────
-r.get('/security/me', getAdminSecurityInfo);
-r.post('/security/email/send-otp', sendAdminEmailOtp);
-r.post('/security/email/verify-otp', verifyAdminEmailOtp);
-r.post('/security/password/change', adminChangePassword);
 
 export default r;

@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Th, Td, Empty } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
 
 interface AuditRow {
   _id: string;
@@ -18,21 +19,33 @@ interface AuditRow {
 export function AuditLogsAdmin() {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const res = await adminApi.auditLogs();
-    setRows((res.data as AuditRow[]) || []);
+    setLoadError('');
+    const res = await adminApi.auditLogs({
+      ...(search ? { action: search.toUpperCase() } : {}),
+      page: String(page),
+      limit: '50',
+    });
+    if (!res.success) {
+      setLoadError(res.message || 'Could not load the audit trail.');
+      setRows([]);
+    } else {
+      setRows((res.data as AuditRow[]) || []);
+      setPages(Number(res.pages) || 1);
+    }
     setLoading(false);
-  }, []);
+  }, [search, page]);
 
   useEffect(() => {
-    // Load the admin data once on mount. `refresh` flips a loading flag before
-    // its awaited fetch — an accepted data-fetching-in-effect pattern (this app
-    // has no server loader / React Compiler).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
-  }, [refresh]);
+    const t = setTimeout(refresh, 300);
+    return () => clearTimeout(t);
+  }, [search, page, refresh]);
 
   return (
     <div className="space-y-6">
@@ -41,9 +54,15 @@ export function AuditLogsAdmin() {
           <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">Admin Audit Trail</h1>
           <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">Track every price edit, product creation, status change, and voucher operation.</p>
         </div>
-        <button onClick={refresh} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929]">
+            <Search className="w-4 h-4 text-neutral-400" />
+            <input placeholder="Filter by action (e.g. VOUCHER)" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent outline-none text-xs font-bold w-52" />
+          </div>
+          <button onClick={refresh} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
@@ -72,8 +91,21 @@ export function AuditLogsAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No audit logs recorded yet" desc="Admin actions will appear here automatically." />}
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && <Empty title="No audit logs recorded yet" desc="Admin actions will appear here automatically." />}
       </div>
+
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

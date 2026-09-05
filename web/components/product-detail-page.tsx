@@ -3,18 +3,34 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, ExternalLink, CheckCircle2, MessageCircle, Mail, Headphones, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, CheckCircle2, ImageOff, MessageCircle, Mail, Headphones } from 'lucide-react';
 import { BrandLogoContainer } from '@/components/official-brand-logos';
 import { BuyActions, StickyMobileBar } from '@/components/product/buy-actions';
 import { FaqAccordion } from '@/components/product/faq-accordion';
-import { RedemptionGuideSection } from '@/components/product/redemption-guide-section';
 import { VoucherCard } from '@/components/voucher-card';
 import { StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar, SectionHeading } from '@/components/ui';
-import { getRedemptionGuide } from '@/lib/redemption-guides';
+import { getRedemptionGuide, getRedemptionSteps } from '@/lib/redemption-guides';
 import { formatPrice } from '@/lib/api';
 import type { Product, DurationOption } from '@/lib/types';
 
 const DEFAULT_INCLUSIONS = ['Genuine Digital Voucher', 'Fast Delivery to Email', 'Clear Redemption Instructions', 'Official Provider Redemption', 'Customer Support', 'Transparent Pricing'];
+
+const OfficialWebsiteButton = ({ url, providerLabel }: { url?: string; providerLabel: string }) => {
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-ink text-surface font-medium text-sm shadow-lg hover:scale-[1.02] transition-all cursor-pointer">
+      <span>Visit Official {providerLabel} Website</span>
+      <ExternalLink className="w-4 h-4" />
+    </a>
+  );
+};
+
+const GuideScreenshotPlaceholder = () => (
+  <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-line bg-surface-raised flex flex-col items-center justify-center gap-2 text-center px-4">
+    <ImageOff className="w-6 h-6 text-ink-muted" />
+    <span className="text-[11px] font-normal text-ink-muted">Screenshot coming soon</span>
+  </div>
+);
 
 export function ProductDetailPage({ product, related, supportPhone = '+91 9855926113', supportEmail = 'apexvouchers@gmail.com' }: { product: Product; related: Product[]; supportPhone?: string; supportEmail?: string }) {
   const enabledDurations = useMemo(
@@ -33,9 +49,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
 
   const inclusions = Array.isArray(product.inclusions) && product.inclusions.length > 0 ? product.inclusions : DEFAULT_INCLUSIONS;
   const redemptionGuide = getRedemptionGuide(product);
-  const productContent = product.productContent?.enabled && product.productContent.content?.trim() ? product.productContent : null;
-  const importantInfoRows = (product.importantInfo || []).filter((r) => r.label?.trim() || r.value?.trim());
-  const importantNotes = (product.importantNotes || []).filter((n) => n?.trim());
+  const redemptionSteps = getRedemptionSteps(product);
 
   const faqs =
     Array.isArray(product.faqs) && product.faqs.length > 0
@@ -156,38 +170,48 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
         </div>
       </section>
 
-      {productContent && (
-        <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <SectionHeading eyebrow="Product Details" title={productContent.heading?.trim() || `About the ${product.name}`} align="left" />
-            <div
-              className="product-rich-content text-sm sm:text-base font-normal text-ink-muted leading-relaxed space-y-4 [&_h2]:font-heading [&_h2]:font-medium [&_h2]:text-xl [&_h2]:text-ink [&_h2]:mt-8 [&_h3]:font-heading [&_h3]:font-medium [&_h3]:text-lg [&_h3]:text-ink [&_h3]:mt-6 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_a]:text-accent [&_a]:underline [&_strong]:text-ink [&_strong]:font-medium [&_img]:rounded-2xl [&_img]:border [&_img]:border-line [&_blockquote]:border-l-2 [&_blockquote]:border-accent/40 [&_blockquote]:pl-4 [&_blockquote]:italic"
-              dangerouslySetInnerHTML={{ __html: productContent.content || '' }}
-            />
-          </div>
-        </section>
-      )}
-
       <section className="py-16 sm:py-20 bg-surface transition-colors duration-300">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Buying Guide" title="How to Purchase from Apex Vouchers" subtitle="A simple, secure checkout — from selection to your inbox." />
-          <ol className="space-y-4">
+          <div className="space-y-10">
             {purchaseSteps.map((step, i) => (
-              <li key={step.title} className="flex items-start gap-4 bg-surface-raised rounded-2xl border border-line px-5 py-4">
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/8 text-accent font-medium text-xs border border-accent/20 shrink-0">{i + 1}</span>
-                <div className="space-y-1">
-                  <h3 className="font-heading font-medium text-base text-ink">{step.title}</h3>
+              <div key={step.title} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className={`space-y-2.5 ${i % 2 === 1 ? 'md:order-2' : ''}`}>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/8 text-accent font-medium text-xs border border-accent/20">{i + 1}</span>
+                  <h3 className="font-heading font-medium text-lg text-ink">
+                    Step {i + 1} — {step.title}
+                  </h3>
                   <p className="text-sm text-ink-muted font-normal leading-relaxed">{step.description}</p>
                 </div>
-              </li>
+                <div className={i % 2 === 1 ? 'md:order-1' : ''}>
+                  <GuideScreenshotPlaceholder />
+                </div>
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       </section>
 
       <section className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <RedemptionGuideSection product={product} />
+          <SectionHeading eyebrow="Redemption Guide" title={`How to Redeem Your ${product.name}`} />
+          <div className="space-y-10">
+            {redemptionSteps.map((step, i) => (
+              <div key={step.title} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className={`space-y-2.5 ${i % 2 === 1 ? 'md:order-2' : ''}`}>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/8 text-accent font-medium text-xs border border-accent/20">{i + 1}</span>
+                  <h3 className="font-heading font-medium text-lg text-ink">
+                    Step {i + 1} — {step.title}
+                  </h3>
+                  <p className="text-sm text-ink-muted font-normal leading-relaxed">{step.description}</p>
+                  {i === 0 && <OfficialWebsiteButton url={redemptionGuide.officialUrl} providerLabel={redemptionGuide.providerLabel} />}
+                </div>
+                <div className={i % 2 === 1 ? 'md:order-1' : ''}>
+                  <GuideScreenshotPlaceholder />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -209,32 +233,20 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Good to Know" title="Important Information" />
           <div className="bg-surface rounded-3xl border border-line divide-y divide-line overflow-hidden">
-            {(importantInfoRows.length > 0
-              ? importantInfoRows.map((r) => ({ label: r.label?.trim() || '', value: r.value?.trim() || '' }))
-              : [
-                  product.validityMonths ? { label: 'Voucher Validity', value: `${product.validityMonths} Months from purchase date` } : null,
-                  product.deliveryType ? { label: 'Delivery Method', value: product.deliveryType } : null,
-                  redemptionGuide.providerLabel ? { label: 'Redemption Method', value: `Online, directly on the official ${redemptionGuide.providerLabel} website` } : null,
-                  { label: 'Refund Policy', value: 'Refund guarantee if the voucher code is unredeemed within 7 days of purchase. Contact support to request one.' },
-                ].filter((row): row is { label: string; value: string } => Boolean(row))
-            ).map((row, idx) => (
-              <div key={`${row.label}-${idx}`} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-6 py-4">
-                <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">{row.label}</span>
-                <span className="text-sm font-normal text-ink">{row.value}</span>
-              </div>
-            ))}
-          </div>
-
-          {importantNotes.length > 0 && (
-            <div className="mt-5 space-y-2.5">
-              {importantNotes.map((note, idx) => (
-                <div key={idx} className="flex items-start gap-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 px-4 py-3.5 text-xs font-normal text-amber-800 dark:text-amber-300 leading-relaxed">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span><strong className="font-semibold">Important:</strong> {note}</span>
+            {[
+              product.validityMonths ? { label: 'Voucher Validity', value: `${product.validityMonths} Months from purchase date` } : null,
+              product.deliveryType ? { label: 'Delivery Method', value: product.deliveryType } : null,
+              redemptionGuide.providerLabel ? { label: 'Redemption Method', value: `Online, directly on the official ${redemptionGuide.providerLabel} website` } : null,
+              { label: 'Refund Policy', value: 'Refund guarantee if the voucher code is unredeemed within 7 days of purchase. Contact support to request one.' },
+            ]
+              .filter((row): row is { label: string; value: string } => Boolean(row))
+              .map((row) => (
+                <div key={row.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-6 py-4">
+                  <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">{row.label}</span>
+                  <span className="text-sm font-normal text-ink">{row.value}</span>
                 </div>
               ))}
-            </div>
-          )}
+          </div>
         </div>
       </section>
 

@@ -1,9 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Search, RefreshCw, Ticket, CheckCircle2, X, Send, Download, Loader2, Mail } from 'lucide-react';
+import { Search, RefreshCw, Ticket, CheckCircle2, X, Send, Download, Loader2 } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { Th, Td, Empty, Label, fmtDateTime } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { notify } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/use-confirm';
 
 interface FulfillmentRow {
   _id: string;
@@ -12,13 +15,11 @@ interface FulfillmentRow {
   customerEmail?: string;
   orderNo?: string;
   orderId?: string;
-  productId?: string;
   productName?: string;
   voucherType?: string;
   quantity?: number;
   amountPaid?: number;
   currency?: string;
-  availableStock?: number;
   razorpayPaymentId?: string | null;
   status?: string;
   voucherCode?: string | null;
@@ -52,6 +53,7 @@ const EmailBadge = ({ status }: { status?: string }) => (
 );
 
 export function FulfillmentsAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<FulfillmentRow[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -59,28 +61,34 @@ export function FulfillmentsAdmin() {
   const [search, setSearch] = useState('');
   const [delivering, setDelivering] = useState<FulfillmentRow | null>(null);
   const [codeInput, setCodeInput] = useState('');
-  const [notesInput, setNotesInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [resendingId, setResendingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
   const PAGE_SIZE = 50;
 
   const refresh = useCallback(async (targetPage = 1) => {
     setLoading(true);
+    setLoadError('');
     const params: Record<string, string> = { page: String(targetPage), limit: String(PAGE_SIZE) };
     if (status) params.status = status;
     if (search) params.search = search;
     const res = await adminApi.fulfillments(params);
-    setRows((res.rows as FulfillmentRow[]) || []);
-    setStats((res.stats as Record<string, number>) || {});
-    setPage((res.page as number) || 1);
-    const totalCount = (res.total as number) || 0;
-    setPages(Math.max(1, Math.ceil(totalCount / PAGE_SIZE)));
-    setTotal(totalCount);
+    // request() never throws — a failed load must not render as an empty queue.
+    if (!res?.success) {
+      setLoadError((res?.message as string) || 'Could not load fulfillment requests.');
+      setRows([]);
+    } else {
+      setRows((res.rows as FulfillmentRow[]) || []);
+      setStats((res.stats as Record<string, number>) || {});
+      setPage((res.page as number) || 1);
+      const totalCount = (res.total as number) || 0;
+      setPages(Math.max(1, Math.ceil(totalCount / PAGE_SIZE)));
+      setTotal(totalCount);
+    }
     setLoading(false);
   }, [status, search]);
 
@@ -92,59 +100,51 @@ export function FulfillmentsAdmin() {
   const openDeliver = (row: FulfillmentRow) => {
     setDelivering(row);
     setCodeInput('');
-    setNotesInput(row.adminNotes || '');
   };
 
   const submitDeliver = async () => {
     if (!delivering) return;
     const code = codeInput.trim().toUpperCase();
     if (!code) {
-      alert('Enter the voucher code to deliver.');
+      notify.error('Enter the voucher code to deliver.');
       return;
     }
-    if (!confirm(`Deliver voucher code "${code}" to ${delivering.customerName} (${delivering.customerEmail})?\n\nThe code will be assigned exclusively to this customer and emailed immediately.`)) return;
+    if (!(await confirm({ title: `Deliver voucher code "${code}" to ${delivering.customerName} (${delivering.customerEmail})?\n\nThe code will be assigned exclusively to this customer and emailed immediately.` }))) return;
     setSaving(true);
     try {
-      const res = await adminApi.deliverFulfillment(delivering._id, code, notesInput.trim());
+      const res = await adminApi.deliverFulfillment(delivering._id, code);
       if (res?.success) {
-        alert('✅ Voucher delivered — customer notified by email and My Vouchers updated.');
+        // The backend reports `delivered: false` for an idempotent replay (the
+        // same code was already delivered — nothing was re-emailed); say so
+        // instead of claiming a fresh delivery happened.
+        if ((res as { delivered?: boolean }).delivered === false) {
+          notify.success('This code was already delivered to this customer — nothing was re-sent.');
+        } else {
+          notify.success('✅ Voucher delivered — customer notified by email and My Vouchers updated.');
+        }
         setDelivering(null);
         refresh(page);
       } else {
-        alert((res?.message as string) || 'Delivery failed');
+        notify.error((res?.message as string) || 'Delivery failed');
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Delivery failed');
+      notify.error(err instanceof Error ? err.message : 'Delivery failed');
     } finally {
       setSaving(false);
     }
   };
 
-  const resendEmail = async (row: FulfillmentRow) => {
-    if (!confirm(`Re-send the voucher email for ${row.requestId} to ${row.customerEmail}?\n\nThis re-sends the existing code — it does not issue a new voucher.`)) return;
-    setResendingId(row._id);
-    try {
-      const res = await adminApi.resendFulfillmentEmail(row._id);
-      alert(res?.success ? `✅ ${res.message || 'Voucher email re-sent.'}` : (res?.message as string) || 'Resend failed');
-      refresh(page);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Resend failed');
-    } finally {
-      setResendingId(null);
-    }
-  };
-
   const cancelRequest = async (row: FulfillmentRow) => {
-    if (!confirm(`Cancel fulfillment request ${row.requestId}? Use this only when a refund will be issued.`)) return;
+    if (!(await confirm({ title: `Cancel fulfillment request ${row.requestId}? Use this only when a refund will be issued.` }))) return;
     const reason = window.prompt('Reason (optional):', '') || '';
     setCancellingId(row._id);
     try {
       const res = await adminApi.cancelFulfillment(row._id, reason);
-      if (res?.success) alert('Request cancelled.');
-      else alert((res?.message as string) || 'Cancel failed');
+      if (res?.success) notify.success('Request cancelled.');
+      else notify.error((res?.message as string) || 'Cancel failed');
       refresh(page);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Cancel failed');
+      notify.error(err instanceof Error ? err.message : 'Cancel failed');
     } finally {
       setCancellingId(null);
     }
@@ -239,11 +239,6 @@ export function FulfillmentsAdmin() {
                   <Td>
                     <div className="text-xs font-bold text-neutral-700 dark:text-neutral-200">{r.productName}</div>
                     <div className="text-[10px] font-black text-neutral-400 mt-0.5">{r.voucherType} × {r.quantity || 1}</div>
-                    {r.status === 'PROCESSING' && (
-                      <div className={`text-[10px] font-black mt-0.5 ${(r.availableStock ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                        {(r.availableStock ?? 0) > 0 ? `${r.availableStock} in stock` : 'no stock'}
-                      </div>
-                    )}
                   </Td>
                   <Td>
                     <div className="font-mono text-[11px] font-bold text-neutral-700 dark:text-neutral-200">{r.orderNo}</div>
@@ -280,19 +275,10 @@ export function FulfillmentsAdmin() {
                           </button>
                         </>
                       )}
-                      {r.status === 'DELIVERED' && r.emailStatus !== 'FAILED' && (
+                      {r.status === 'DELIVERED' && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Emailed {fmtDateTime(r.deliveredAt)}
                         </span>
-                      )}
-                      {r.status === 'DELIVERED' && r.emailStatus === 'FAILED' && (
-                        <button
-                          onClick={() => resendEmail(r)}
-                          disabled={resendingId === r._id}
-                          className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900 text-[10px] font-black inline-flex items-center gap-1 hover:bg-amber-100 transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                          {resendingId === r._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />} Resend email
-                        </button>
                       )}
                     </div>
                   </Td>
@@ -301,7 +287,8 @@ export function FulfillmentsAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && (
+        {!loading && loadError && <ErrorState message={loadError} onRetry={() => refresh(page)} />}
+        {!loading && !loadError && rows.length === 0 && (
           <div className="p-6">
             <Empty title="No fulfillment requests" desc="Paid orders awaiting a manually supplied voucher code will appear here." />
           </div>
@@ -352,23 +339,9 @@ export function FulfillmentsAdmin() {
             <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-1.5 text-xs font-bold">
               <div className="flex justify-between"><span className="text-neutral-400">Customer</span><span className="text-neutral-900 dark:text-white">{delivering.customerName} · {delivering.customerEmail}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Product</span><span className="text-neutral-900 dark:text-white">{delivering.productName} ({delivering.voucherType}) × {delivering.quantity || 1}</span></div>
-              <div className="flex justify-between"><span className="text-neutral-400">Order</span><span className="font-mono text-neutral-700 dark:text-neutral-200">{delivering.orderNo}</span></div>
-              <div className="flex justify-between"><span className="text-neutral-400">Payment / Fulfillment</span><span className="text-emerald-600 dark:text-emerald-400">Paid · {delivering.status}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Amount paid</span><span className="text-brand-pink font-black">{formatPrice(delivering.amountPaid)}</span></div>
               {delivering.razorpayPaymentId && <div className="flex justify-between"><span className="text-neutral-400">Payment ID</span><span className="font-mono text-[10px] text-neutral-700 dark:text-neutral-200 break-all">{delivering.razorpayPaymentId}</span></div>}
-              <div className="flex justify-between border-t border-[#EAEAEA] dark:border-[#292929] pt-1.5 mt-1">
-                <span className="text-neutral-400">Inventory in stock</span>
-                <span className={(delivering.availableStock ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-rose-600 dark:text-rose-400 font-black'}>
-                  {delivering.availableStock ?? 0} available code{(delivering.availableStock ?? 0) === 1 ? '' : 's'}
-                </span>
-              </div>
             </div>
-
-            {(delivering.availableStock ?? 0) > 0 && (
-              <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 rounded-xl px-3 py-2">
-                {delivering.availableStock} code(s) are in inventory for this product — paste one of them here, or an externally-sourced code.
-              </p>
-            )}
 
             <label className="block">
               <Label>Voucher Code *</Label>
@@ -381,18 +354,6 @@ export function FulfillmentsAdmin() {
               <span className="block text-[10px] font-bold text-neutral-400 mt-1.5">
                 The code is validated: it must not already belong to another customer. Delivery marks the order FULFILLED and emails the customer instantly.
               </span>
-            </label>
-
-            <label className="block">
-              <Label>Internal note (optional)</Label>
-              <textarea
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                rows={2}
-                maxLength={2000}
-                placeholder="e.g. sourced from supplier batch #42"
-                className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink transition resize-none"
-              />
             </label>
 
             <div className="flex gap-2 pt-1">

@@ -24,6 +24,17 @@ const promotionSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: [0, 'Discount value required'],
+      validate: {
+        // Percentage coupons can never exceed 100%. For fixed coupons any
+        // positive amount is allowed (service clamps the final discount to the
+        // order subtotal, and a ₹0 total can never be paid out). During update
+        // validators `this.discountType` is undefined, so the check is skipped
+        // there rather than guessing the type from the query.
+        validator(v) {
+          return this?.discountType !== 'percentage' || (v >= 0 && v <= 100);
+        },
+        message: 'Percentage discount must be between 0 and 100',
+      },
     },
     minimumOrderAmount: { type: Number, default: 0, min: 0 },
     maximumDiscount: { type: Number, default: null },

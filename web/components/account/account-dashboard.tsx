@@ -41,7 +41,7 @@ import { ApexLogo } from '@/components/apex-logo';
 import { accountApi, apiBase } from '@/lib/api';
 import { PasswordStrengthChecklist } from '@/components/auth/password-strength-checklist';
 import { validatePasswordStrength } from '@/lib/password-rules';
-import { AccountInfoCard, VerifiedBadge, ReadOnlyRow, Field, PasswordField, OrderRow, VoucherMini, EmptyState, Modal, statusColor, formatDate } from '@/components/account/helpers';
+import { AccountInfoCard, VerifiedBadge, ReadOnlyRow, Field, PasswordField, OrderRow, VoucherMini, EmptyState, Modal, statusColor, VR_STATUS_META, formatDate } from '@/components/account/helpers';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Crown, mobileLabel: 'Overview' },
@@ -61,7 +61,7 @@ const avatarUrl = (url?: string | null) => {
 export function AccountDashboard() {
   const { user, logout, updateAuthenticatedUser } = useAuth();
   const { formatPrice } = useCart();
-  const { accountStats, accountOrders, userVouchers, userFulfillments, transferVoucher, markVoucherUsed, requestRefund, loadAccountData } = useVoucher();
+  const { accountStats, accountOrders, userVouchers, userFulfillments, transferVoucher, markVoucherUsed, requestRefund, loadAccountData, startCheckout } = useVoucher();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -90,13 +90,9 @@ export function AccountDashboard() {
   const [showCurrentPwd, setShowCurrentPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
-  // Seed / re-seed the editable name field from the authenticated user —
-  // render-time (React's "adjust state when a prop changes" pattern), no effect.
-  const [prevUserName, setPrevUserName] = useState(user?.name || '');
-  if ((user?.name || '') !== prevUserName) {
-    setPrevUserName(user?.name || '');
-    setProfileName(user?.name || '');
-  }
+  useEffect(() => {
+    if (user) setProfileName(user.name || '');
+  }, [user]);
 
   const profileDirty = editingProfile && profileName.trim() !== (user?.name || '');
 
@@ -111,11 +107,7 @@ export function AccountDashboard() {
   }, [profileDirty]);
 
   useEffect(() => {
-    // Sync the active tab to the ?tab= URL param (e.g. checkout redirects here
-    // with ?tab=vouchers). Reacting to router-driven URL changes is exactly what
-    // an effect is for; the setState is guarded so it only runs on a real change.
     const wanted = searchParams.get('tab');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (wanted && TABS.some((t) => t.id === wanted)) setTab(wanted as (typeof TABS)[number]['id']);
   }, [searchParams]);
 
@@ -539,35 +531,23 @@ export function AccountDashboard() {
 
                   {userFulfillments?.map((r) => {
                     const isProcessing = r.status === 'PROCESSING';
-                    const isDelivered = r.status === 'DELIVERED';
-                    const fStatus = isProcessing
-                      ? { label: 'Paid • Preparing', cls: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400' }
-                      : isDelivered
-                      ? { label: 'Delivered', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' }
-                      : r.status === 'CANCELLED'
-                      ? { label: 'Cancelled — refunded', cls: 'bg-neutral-100 text-neutral-600 border-neutral-300 dark:bg-[#222] dark:text-neutral-400' }
-                      : { label: 'Delivery failed — support notified', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400' };
                     return (
                       <div key={r.id} className="rounded-2xl p-5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-[#202020] pb-3">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-brand-pink">{(r.requestId as string) || (r.orderNo as string) || '—'}</span>
                             <span className="font-black text-neutral-900 dark:text-white text-sm">{(r.productName as string) || 'Voucher'}</span>
-                            <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${fStatus.cls}`}>
-                              {fStatus.label}
+                            <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${isProcessing ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400' : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
+                              {isProcessing ? 'Paid • Preparing' : 'Delivered'}
                             </span>
                           </div>
                           <div className="text-xs font-bold text-neutral-400">Ordered {formatDate(r.createdAt as string)}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-bold">
                           <div>
                             <span className="text-[10px] uppercase text-neutral-400 block">Amount Paid</span>
                             <span className="text-neutral-900 dark:text-white">{formatPrice(r.amountPaid as number)}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase text-neutral-400 block">Payment</span>
-                            <span className="text-emerald-600 dark:text-emerald-400">Paid</span>
                           </div>
                           <div>
                             <span className="text-[10px] uppercase text-neutral-400 block">Order</span>
@@ -586,7 +566,7 @@ export function AccountDashboard() {
                           </div>
                         )}
 
-                        {isDelivered && r.voucherCode && (
+                        {!isProcessing && r.voucherCode && (
                           <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
                             <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
                               <CheckCircle2 className="w-4 h-4 text-emerald-600" />

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ProductDetailPage } from '@/components/product-detail-page';
 import { getProductBySlug, listProducts } from '@/lib/product-detail';
-import { getLayoutConfig } from '@/lib/website-config';
+import { getWebsiteConfig } from '@/lib/website-config';
 import { buildMetadata, JsonLd } from '@/lib/seo';
 
 interface RouteParams {
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
 
 export default async function VoucherDetailRoute({ params }: RouteParams) {
   const { slug } = await params;
-  const [result, config] = await Promise.all([getProductBySlug(slug), getLayoutConfig()]);
+  const [result, config] = await Promise.all([getProductBySlug(slug), getWebsiteConfig()]);
 
   if (!result) notFound();
 
@@ -48,7 +48,6 @@ export default async function VoucherDetailRoute({ params }: RouteParams) {
     <>
       {structuredData.product && <JsonLd data={structuredData.product} />}
       {structuredData.breadcrumb && <JsonLd data={structuredData.breadcrumb} />}
-      {structuredData.faq && <JsonLd data={structuredData.faq} />}
       <ProductDetailPage product={product} related={relatedProducts} supportPhone={config.footerSettings.phone} supportEmail={config.footerSettings.email} />
     </>
   );

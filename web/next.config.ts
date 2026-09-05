@@ -14,12 +14,26 @@ const nextConfig: NextConfig = {
         hostname: "res.cloudinary.com",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: "/calculators/gre-to-gmat",
+        destination: "/calculators/gre-to-gmat-conversion",
+        permanent: true,
+      },
+      {
+        source: "/calculators/toefl-to-ielts",
+        destination: "/calculators/toefl-to-ielts-conversion",
+        permanent: true,
+      },
+      {
+        source: "/calculators/sat-to-act",
+        destination: "/calculators/sat-to-act-conversion",
+        permanent: true,
+      },
+    ];
   },
 };
 

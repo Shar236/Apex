@@ -6,14 +6,7 @@ import type { BlogPost } from './blog-types';
  * /api/admin/blogs (all `protectAdmin`). No blog logic lives in Next.js.
  */
 
-export interface BlogRevision {
-  _id: string;
-  blogId: string;
-  changeSummary: string;
-  editedByEmail: string;
-  createdAt: string;
-  snapshot: Partial<BlogPost>;
-}
+const BASE = '/api/admin/blogs';
 
 export interface BlogSeoAnalysis {
   score: number;
@@ -33,40 +26,27 @@ export interface UploadedImage {
   format?: string;
 }
 
-const BASE = '/api/admin/blogs';
-
 export const adminBlogApi = {
   list: (params: { search?: string; status?: string; category?: string; sort?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
     return request<BlogPost[]>(`${BASE}${qs ? `?${qs}` : ''}`);
   },
-  get: (id: string) => request<BlogPost>(`${BASE}/${id}`),
   create: (payload: Partial<BlogPost>) => request<BlogPost>(BASE, { method: 'POST', body: JSON.stringify(payload) }),
   update: (id: string, payload: Partial<BlogPost> & { __autosave?: boolean }) =>
     request<BlogPost>(`${BASE}/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   publish: (id: string) => request<BlogPost>(`${BASE}/${id}/publish`, { method: 'POST' }),
   unpublish: (id: string) => request<BlogPost>(`${BASE}/${id}/unpublish`, { method: 'POST' }),
-  schedule: (id: string, scheduledAt: string) =>
-    request<BlogPost>(`${BASE}/${id}/schedule`, { method: 'POST', body: JSON.stringify({ scheduledAt }) }),
   duplicate: (id: string) => request<BlogPost>(`${BASE}/${id}/duplicate`, { method: 'POST' }),
   trash: (id: string) => request<BlogPost>(`${BASE}/${id}`, { method: 'DELETE' }),
   restore: (id: string) => request<BlogPost>(`${BASE}/${id}/restore`, { method: 'POST' }),
   permanentDelete: (id: string) => request(`${BASE}/${id}/permanent`, { method: 'DELETE' }),
-
-  revisions: (id: string) => request<BlogRevision[]>(`${BASE}/${id}/revisions`),
-  restoreRevision: (id: string, revisionId: string) =>
-    request<BlogPost>(`${BASE}/${id}/revisions/${revisionId}/restore`, { method: 'POST' }),
 
   preview: (id: string) =>
     request<BlogPost>(`${BASE}/${id}/preview`) as Promise<
       ApiResponse<BlogPost> & { relatedPosts?: BlogPost[]; structuredData?: unknown }
     >,
   seoAnalysis: (id: string) => request<BlogSeoAnalysis>(`${BASE}/${id}/seo-analysis`),
-  internalLinks: (q: string, excludeId?: string) => {
-    const qs = new URLSearchParams({ q, ...(excludeId ? { excludeId } : {}) }).toString();
-    return request<{ label: string; url: string }[]>(`${BASE}/internal-link-suggestions?${qs}`);
-  },
 
   uploadImage: async (file: File): Promise<ApiResponse<never> & UploadedImage> => {
     const fd = new FormData();

@@ -130,9 +130,6 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    // Fetch the signed-in customer's vouchers / orders / fulfilments after mount
-    // and whenever auth changes. Data-fetching in an effect — accepted here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAccountData();
   }, [loadAccountData]);
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   Calendar, Clock, CheckCircle2, AlertTriangle, HelpCircle, ArrowRight, ShieldCheck, FileText,
-  DollarSign, AlertOctagon, BookOpen, Phone, Mail, MessageSquare, ArrowLeftRight, Info, Zap, ChevronRight,
+  DollarSign, AlertOctagon, BookOpen, Phone, Mail, MessageSquare, ArrowLeftRight, Info, Zap, ChevronRight, Copy, Check,
 } from 'lucide-react';
 import { buildMetadata, JsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { FaqAccordion } from '@/components/blog/faq-accordion';

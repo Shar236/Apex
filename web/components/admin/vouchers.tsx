@@ -1,13 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Upload, Search, Eye, EyeOff, Copy, Check as CheckIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Upload, Search, Eye, EyeOff, Copy, Check as CheckIcon, Trash2, Ban, CalendarX, Loader2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Pill, Th, Td, Empty, FormCard, Field, Label } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/alert-dialog';
+import { notify } from '@/components/ui/toast';
+
+/**
+ * Statuses that are pure inventory — safe to remove permanently.
+ * SOLD / ASSIGNED / USED belong to a customer's order and are preserved by the
+ * backend regardless of what this UI sends; they are shown as non-selectable so
+ * the admin is not offered an action that will be refused.
+ */
+const REMOVABLE_STATUSES = ['AVAILABLE', 'RESERVED', 'EXPIRED', 'INVALID', 'CANCELLED'];
+const isRemovable = (status?: string) => REMOVABLE_STATUSES.includes(String(status || '').toUpperCase());
 
 interface VoucherRow {
   _id: string;
-  code: string;
+  /** Absent unless explicitly revealed — the list API returns only `codeDisplay`. */
+  code?: string;
   codeDisplay?: string;
   voucherType?: string;
   status?: string;
@@ -18,6 +31,18 @@ interface VoucherRow {
   userId?: { name?: string; email?: string } | null;
   orderId?: { orderNo?: string } | null;
   productId?: { name?: string; voucherType?: string } | null;
+}
+
+interface PreviewEntry {
+  _id: string | null;
+  code: string | null;
+  status: string | null;
+  reason: string | null;
+}
+
+interface DeletePreview {
+  removable: number;
+  blocked: PreviewEntry[];
 }
 
 interface VoucherSummaryItem {
@@ -45,39 +70,124 @@ export function VouchersAdmin() {
   const [status, setStatus] = useState('');
   const [productId, setProductId] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [products, setProducts] = useState<Array<{ _id: string; name: string; voucherType?: string; brand?: string }>>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulk, setBulk] = useState({ productId: '', codes: '', expiryDate: '' });
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revealingId, setRevealingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; preview: DeletePreview | null } | null>(null);
+  const [working, setWorking] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    setLoadError(null);
+    const params: Record<string, string> = { page: String(page), limit: '50' };
     if (status) params.status = status;
     if (productId) params.productId = productId;
     if (search) params.search = search;
-    try {
-      const [vRes, pRes, sRes] = await Promise.all([
-        adminApi.vouchers(params),
-        adminApi.products(),
-        adminApi.voucherSummaryByProduct(),
-      ]);
-      setRows((vRes?.data as VoucherRow[]) || []);
-      setProducts((pRes?.data as Array<{ _id: string; name: string; voucherType?: string; brand?: string }>) || []);
-      setSummary((sRes?.data as VoucherSummaryItem[]) || []);
-    } catch (err) {
-      console.error('Failed to load vouchers:', err);
-    } finally {
-      setLoading(false);
+    const [vRes, pRes, sRes] = await Promise.all([
+      adminApi.vouchers(params),
+      adminApi.products({ limit: '500', sort: 'name' }),
+      adminApi.voucherSummaryByProduct(),
+    ]);
+    // request() never throws — a failed load must set the error state, not
+    // silently render as "No matching vouchers".
+    if (!vRes.success) {
+      setLoadError(vRes.message || 'Unable to load voucher inventory.');
+      setRows([]);
+    } else {
+      setRows((vRes.data as VoucherRow[]) || []);
+      setPages(Number(vRes.pages) || 1);
+      // Drop selections for rows that are no longer on screen.
+      setSelected((prev) => {
+        const visible = new Set(((vRes.data as VoucherRow[]) || []).map((v) => v._id));
+        return new Set([...prev].filter((id) => visible.has(id)));
+      });
     }
-  }, [status, productId, search]);
+    // The product dropdown feeds the bulk-add form and filter — a failure here
+    // is non-fatal (keep previous list) but must not zero it out.
+    if (pRes.success) setProducts((pRes.data as Array<{ _id: string; name: string; voucherType?: string; brand?: string }>) || []);
+    if (sRes.success) setSummary((sRes.data as VoucherSummaryItem[]) || []);
+    setLoading(false);
+  }, [status, productId, search, page]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 300);
     return () => clearTimeout(t);
   }, [refresh]);
+
+  const selectableIds = useMemo(() => rows.filter((v) => isRemovable(v.status)).map((v) => v._id), [rows]);
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+
+  const toggleRow = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(selectableIds));
+
+  /** Ask the server what would actually happen, then open the confirm dialog. */
+  const askDelete = async (ids: string[]) => {
+    if (!ids.length) return;
+    setWorking(true);
+    try {
+      const res = await adminApi.previewVoucherDelete(ids);
+      setPendingDelete({
+        ids,
+        preview: res?.success
+          ? {
+              removable: ((res.removable as PreviewEntry[]) || []).length,
+              blocked: (res.blocked as PreviewEntry[]) || [],
+            }
+          : null,
+      });
+    } catch {
+      setPendingDelete({ ids, preview: null });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setWorking(true);
+    const { ids } = pendingDelete;
+    const res = ids.length === 1 ? await adminApi.deleteVoucher(ids[0]) : await adminApi.bulkDeleteVouchers(ids);
+    setWorking(false);
+    setPendingDelete(null);
+    if (res?.success) {
+      const deleted = (res.deleted as number) ?? ids.length;
+      const skipped = ((res.skipped as unknown[]) || []).length;
+      notify.success(`${deleted} voucher${deleted === 1 ? '' : 's'} deleted`, skipped ? `${skipped} kept because a customer already has them.` : undefined);
+      setSelected(new Set());
+      refresh();
+    } else {
+      notify.error((res?.message as string) || 'Delete failed.');
+    }
+  };
+
+  /** Mark codes EXPIRED / INVALID — the soft-retire path that keeps the record. */
+  const markStatus = async (ids: string[], next: string) => {
+    if (!ids.length) return;
+    setWorking(true);
+    const res = await adminApi.setVoucherStatus(ids, next);
+    setWorking(false);
+    if (res?.success) {
+      notify.success((res.message as string) || `Marked ${next}.`);
+      setSelected(new Set());
+      refresh();
+    } else {
+      notify.error((res?.message as string) || `Could not mark ${next}.`);
+    }
+  };
 
   const handleReveal = async (voucherId: string) => {
     if (revealedCodes[voucherId]) {
@@ -94,10 +204,10 @@ export function VouchersAdmin() {
       if (res?.success && (res.data as { code?: string })?.code) {
         setRevealedCodes((prev) => ({ ...prev, [voucherId]: (res.data as { code: string }).code }));
       } else {
-        alert((res?.message as string) || 'Failed to reveal voucher code');
+        notify.error((res?.message as string) || 'Failed to reveal voucher code');
       }
     } catch (err) {
-      alert('Error revealing code: ' + (err instanceof Error ? err.message : String(err)));
+      notify.error('Error revealing code: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setRevealingId(null);
     }
@@ -114,7 +224,7 @@ export function VouchersAdmin() {
   const submitBulk = async () => {
     const codes = bulk.codes.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
     if (!bulk.productId || codes.length === 0 || !bulk.expiryDate) {
-      alert('Please choose a product, paste at least one code, and set expiry date.');
+      notify.error('Please choose a product, paste at least one code, and set expiry date.');
       return;
     }
     const res = await adminApi.addVouchersBulk({
@@ -127,7 +237,7 @@ export function VouchersAdmin() {
       setBulk({ productId: '', codes: '', expiryDate: '' });
       refresh();
     } else {
-      alert((res?.message as string) || 'Failed to add vouchers');
+      notify.error((res?.message as string) || 'Failed to add vouchers');
     }
   };
 
@@ -196,7 +306,10 @@ export function VouchersAdmin() {
                   </div>
                   <div>
                     <div className="text-[10px] text-neutral-400 font-bold">Sold</div>
-                    <div className="font-black text-sm text-purple-600 dark:text-purple-400">{(c.sold || 0) + (c.assigned || 0)}</div>
+                    {/* `sold` already counts SOLD + ASSIGNED + USED (see
+                        aggregateVoucherStatsByProduct) — adding `assigned`
+                        again double-counted every assigned code. */}
+                    <div className="font-black text-sm text-purple-600 dark:text-purple-400">{c.sold || 0}</div>
                   </div>
                   <div>
                     <div className="text-[10px] text-neutral-400 font-bold">Total</div>
@@ -250,7 +363,7 @@ export function VouchersAdmin() {
           {STATUS_FILTERS.map((sf) => (
             <button
               key={sf.value}
-              onClick={() => setStatus(sf.value)}
+              onClick={() => { setStatus(sf.value); setPage(1); }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition ${
                 status === sf.value ? 'bg-brand-pink text-white shadow-md' : 'bg-neutral-100 dark:bg-[#202020] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'
               }`}
@@ -266,11 +379,11 @@ export function VouchersAdmin() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by code, customer email, or order #..."
+              placeholder="Search by code or customer email..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold focus:outline-none focus:border-brand-pink"
             />
           </div>
-          <select value={productId} onChange={(e) => setProductId(e.target.value)} className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
+          <select value={productId} onChange={(e) => { setProductId(e.target.value); setPage(1); }} className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-xs font-bold">
             <option value="">All products</option>
             {products.map((p) => (
               <option key={p._id} value={p._id}>{p.name}</option>
@@ -280,11 +393,55 @@ export function VouchersAdmin() {
         </form>
       </div>
 
+      {selected.size > 0 && (
+        <div className="sticky top-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3 bg-neutral-900 dark:bg-white text-white dark:text-black shadow-xl">
+          <span className="text-xs font-black">
+            {selected.size} voucher{selected.size === 1 ? '' : 's'} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => markStatus([...selected], 'EXPIRED')}
+              disabled={working}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 dark:bg-black/10 text-xs font-black disabled:opacity-50"
+            >
+              <CalendarX className="w-3.5 h-3.5" /> Mark expired
+            </button>
+            <button
+              onClick={() => markStatus([...selected], 'INVALID')}
+              disabled={working}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 dark:bg-black/10 text-xs font-black disabled:opacity-50"
+            >
+              <Ban className="w-3.5 h-3.5" /> Mark invalid
+            </button>
+            <button
+              onClick={() => askDelete([...selected])}
+              disabled={working}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-black disabled:opacity-50"
+            >
+              {working ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Delete
+            </button>
+            <button onClick={() => setSelected(new Set())} className="px-3 py-2 rounded-xl text-xs font-black opacity-70 hover:opacity-100">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-3xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-bold">
             <thead className="bg-neutral-50 dark:bg-[#0E0E0E] text-neutral-500">
               <tr>
+                <Th className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    disabled={selectableIds.length === 0}
+                    aria-label="Select all removable vouchers"
+                    className="w-4 h-4 accent-brand-pink disabled:opacity-30"
+                  />
+                </Th>
                 <Th>Voucher Code</Th>
                 <Th>Assigned Product</Th>
                 <Th>Voucher Type</Th>
@@ -293,18 +450,36 @@ export function VouchersAdmin() {
                 <Th>Order ID</Th>
                 <Th>Expiry Date</Th>
                 <Th>Sale Timestamp</Th>
+                <Th className="text-right">Actions</Th>
               </tr>
             </thead>
             <tbody>
-              {loading && (
-                <tr><td colSpan={8} className="p-6"><div className="h-10 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" /></td></tr>
-              )}
+              {loading &&
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`sk-${i}`} className="border-t border-[#EAEAEA] dark:border-[#292929]">
+                    <td colSpan={10} className="p-3">
+                      <div className="h-8 bg-neutral-100 dark:bg-[#292929] rounded-xl animate-pulse" />
+                    </td>
+                  </tr>
+                ))}
               {!loading && rows.map((v) => {
                 const isRevealed = !!revealedCodes[v._id];
                 const displayCode = isRevealed ? revealedCodes[v._id] : v.codeDisplay || v.code;
                 const isCopied = copiedId === v._id;
+                const removable = isRemovable(v.status);
                 return (
-                  <tr key={v._id} className="border-t border-[#EAEAEA] dark:border-[#292929] hover:bg-neutral-50/50 dark:hover:bg-[#111111] transition">
+                  <tr key={v._id} className={`border-t border-[#EAEAEA] dark:border-[#292929] transition ${selected.has(v._id) ? 'bg-[#FFF0F5] dark:bg-[#2A0A17]' : 'hover:bg-neutral-50/50 dark:hover:bg-[#111111]'}`}>
+                    <Td>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(v._id)}
+                        onChange={() => toggleRow(v._id)}
+                        disabled={!removable}
+                        aria-label={removable ? `Select voucher ${displayCode}` : 'Delivered voucher — kept for order history'}
+                        title={removable ? undefined : 'Delivered to a customer — kept for order history'}
+                        className="w-4 h-4 accent-brand-pink disabled:opacity-30 disabled:cursor-not-allowed"
+                      />
+                    </Td>
                     <Td className="whitespace-nowrap font-mono font-black">
                       <div className="flex items-center gap-2">
                         <span className={isRevealed ? 'text-brand-pink bg-[#FFF0F5] dark:bg-[#2A0A17] px-2 py-0.5 rounded-md' : 'text-[#6C3CE0]'}>
@@ -313,7 +488,14 @@ export function VouchersAdmin() {
                         <button onClick={() => handleReveal(v._id)} disabled={revealingId === v._id} className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition" title={isRevealed ? 'Mask Code' : 'Reveal Full Code (Audit Logged)'}>
                           {revealingId === v._id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
-                        <button onClick={() => handleCopy(v._id, isRevealed ? revealedCodes[v._id] : v.code)} className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-brand-pink transition" title="Copy Code">
+                        {/* Only the revealed (audit-logged) code can be copied —
+                            the list response no longer carries the raw code. */}
+                        <button
+                          onClick={() => handleCopy(v._id, revealedCodes[v._id])}
+                          disabled={!isRevealed}
+                          className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-[#262626] text-neutral-400 hover:text-brand-pink transition disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={isRevealed ? 'Copy code' : 'Reveal the code first'}
+                        >
                           {isCopied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
@@ -346,14 +528,97 @@ export function VouchersAdmin() {
                         : v.assignedAt ? new Date(v.assignedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
                         : '—'}
                     </Td>
+                    <Td className="whitespace-nowrap">
+                      {removable ? (
+                        <div className="flex items-center justify-end gap-1">
+                          {v.status !== 'EXPIRED' && (
+                            <button
+                              onClick={() => markStatus([v._id], 'EXPIRED')}
+                              disabled={working}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition disabled:opacity-40"
+                              title="Mark expired (keeps the record)"
+                            >
+                              <CalendarX className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {v.status !== 'INVALID' && (
+                            <button
+                              onClick={() => markStatus([v._id], 'INVALID')}
+                              disabled={working}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition disabled:opacity-40"
+                              title="Mark invalid (keeps the record)"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => askDelete([v._id])}
+                            disabled={working}
+                            className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-40"
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="block text-right text-[10px] font-bold text-neutral-400 italic">Order history</span>
+                      )}
+                    </Td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No matching vouchers" desc="Try adjusting your filter or add voucher inventory codes." />}
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && (
+          <Empty title="No matching vouchers" desc="Try adjusting your filter or add voucher inventory codes." />
+        )}
       </div>
+
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        busy={working}
+        title={
+          pendingDelete && pendingDelete.ids.length > 1
+            ? `Delete ${pendingDelete.ids.length} voucher codes?`
+            : 'Delete this voucher code?'
+        }
+        confirmLabel={working ? 'Deleting…' : 'Delete permanently'}
+        body={
+          <>
+            <p>
+              {pendingDelete?.preview
+                ? `${pendingDelete.preview.removable} code${pendingDelete.preview.removable === 1 ? '' : 's'} will be permanently removed from inventory. This cannot be undone.`
+                : 'These codes will be permanently removed from inventory. This cannot be undone.'}
+            </p>
+            {!!pendingDelete?.preview?.blocked?.length && (
+              <p className="text-amber-700 dark:text-amber-400">
+                {pendingDelete.preview.blocked.length} code
+                {pendingDelete.preview.blocked.length === 1 ? ' is' : 's are'} already delivered to a customer and will be
+                kept so their order history stays intact.
+              </p>
+            )}
+            <p className="text-neutral-400">
+              To retire a code without erasing it, use <strong>Mark expired</strong> or <strong>Mark invalid</strong> instead.
+            </p>
+          </>
+        }
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

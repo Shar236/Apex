@@ -82,6 +82,7 @@ export function CheckoutModal() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [error, setError] = useState('');
 
+  const [guestLoginTab, setGuestLoginTab] = useState<'login' | 'billing'>(isAuthenticated ? 'billing' : 'login');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [registerMode, setRegisterMode] = useState(false);
@@ -99,16 +100,16 @@ export function CheckoutModal() {
   }, [checkoutProduct]);
 
   useEffect(() => {
-    // Pre-fill the billing fields from the account when the modal opens or the
-    // user finishes loading — only fills blanks, never overwrites what's typed.
-    if (!isCheckoutOpen || !user) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFormData((f) => ({
-      ...f,
-      name: f.name || user.name || '',
-      email: f.email || user.email || '',
-      phone: f.phone || (user.phone as string) || '',
-    }));
+    if (!isCheckoutOpen) return;
+    setGuestLoginTab(isAuthenticated ? 'billing' : 'login');
+    if (user) {
+      setFormData((f) => ({
+        ...f,
+        name: f.name || user.name || '',
+        email: f.email || user.email || '',
+        phone: f.phone || (user.phone as string) || '',
+      }));
+    }
   }, [isCheckoutOpen, isAuthenticated, user]);
 
   if (!isCheckoutOpen || checkoutItems.length === 0) return null;
@@ -152,6 +153,8 @@ export function CheckoutModal() {
       const res = registerMode ? await register(registerForm) : await login(loginForm);
       if (!res.success) {
         setAuthError(res.message || 'Login failed');
+      } else {
+        setGuestLoginTab('billing');
       }
     } finally {
       setAuthLoading(false);
@@ -229,6 +232,7 @@ export function CheckoutModal() {
     setError('');
     if (isProcessing) return;
     if (!isAuthenticated) {
+      setGuestLoginTab('login');
       setError('Please log in or create an account to complete your purchase.');
       return;
     }
@@ -381,11 +385,6 @@ export function CheckoutModal() {
   const goAccount = (tab?: string) => {
     handleClose();
     router.push(tab ? `/account?tab=${tab}` : '/account');
-  };
-
-  const closeAndGo = (href: string) => {
-    handleClose();
-    router.push(href);
   };
 
   return (
@@ -628,15 +627,11 @@ export function CheckoutModal() {
                 <div>
                   <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}</span>
                   <h2 className="font-heading font-medium text-3xl">Congratulations! 🎉</h2>
-                  {needsAllocation ? (
-                    <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">
-                      Your payment was successful. Your voucher will be sent to your email within 1–2 minutes. Please check your spam folder if you don’t see it. You can safely close this page.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-ink font-medium mt-1">
-                      Your voucher has been delivered successfully. It has also been sent to your email and is available in My Vouchers.
-                    </p>
-                  )}
+                  <p className="text-sm text-ink font-medium mt-1">
+                    {needsAllocation
+                      ? 'Your payment was successful. Your voucher is being prepared and will be delivered to your email and My Vouchers within 1–2 minutes.'
+                      : 'Your voucher has been delivered successfully. It has also been sent to your email and is available in My Vouchers.'}
+                  </p>
 
                   {!needsAllocation && (
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted max-w-xs mx-auto text-left">
@@ -649,7 +644,7 @@ export function CheckoutModal() {
                       <span>Order number</span>
                       <span className="text-ink font-medium text-right">{completedOrder?.orderNo || '—'}</span>
                       <span>Purchase date</span>
-                      <span className="text-ink font-medium text-right">{completedOrder?.paidAt ? new Date(completedOrder.paidAt).toLocaleDateString() : '—'}</span>
+                      <span className="text-ink font-medium text-right">{new Date(completedOrder?.paidAt || Date.now()).toLocaleDateString()}</span>
                       <span>Payment</span>
                       <span className="text-success font-medium text-right">Paid</span>
                       <span>Voucher</span>
@@ -731,7 +726,10 @@ export function CheckoutModal() {
                       View My Orders
                     </button>
                     <button
-                      onClick={() => closeAndGo('/exam-vouchers')}
+                      onClick={() => {
+                        handleClose();
+                        router.push('/exam-vouchers');
+                      }}
                       className="flex-1 bg-surface-raised text-ink py-3 rounded-xl text-xs font-medium border border-line hover:border-accent transition-colors cursor-pointer"
                     >
                       Continue Shopping

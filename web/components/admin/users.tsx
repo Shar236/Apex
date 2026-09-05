@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Pill, Th, Td, Empty } from '@/components/admin/admin-ui';
+import { ErrorState } from '@/components/ui/data-table';
+import { notify } from '@/components/ui/toast';
 
 interface UserRow {
   _id: string;
@@ -20,24 +22,39 @@ interface UserRow {
 export function UsersAdmin() {
   const [rows, setRows] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const res = await adminApi.users(search ? { search } : {});
-    setRows((res.data as UserRow[]) || []);
+    setLoadError('');
+    const res = await adminApi.users({ ...(search ? { search } : {}), page: String(page), limit: '50' });
+    if (!res.success) {
+      // A failed load must not read as "No customers".
+      setLoadError(res.message || 'Could not load customers.');
+      setRows([]);
+    } else {
+      setRows((res.data as UserRow[]) || []);
+      setPages(Number(res.pages) || 1);
+    }
     setLoading(false);
-  }, [search]);
+  }, [search, page]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 300);
     return () => clearTimeout(t);
-  }, [refresh]);
+  }, [search, page, refresh]);
 
   const toggle = async (u: UserRow) => {
     const next = u.status === 'active' ? 'disabled' : 'active';
-    await adminApi.setUserStatus(u._id, next);
-    refresh();
+    setTogglingId(u._id);
+    const res = await adminApi.setUserStatus(u._id, next);
+    setTogglingId(null);
+    // The button previously gave zero feedback on failure — it just looked dead.
+    if (notify.result(res, `${u.name || u.email} is now ${next}.`, 'Could not update the account status.')) refresh();
   };
 
   return (
@@ -87,8 +104,12 @@ export function UsersAdmin() {
                   <Td className="text-right tabular-nums">{u.voucherCount || 0}</Td>
                   <Td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</Td>
                   <Td>
-                    <button onClick={() => toggle(u)} className="px-3 py-1.5 rounded-xl border text-[10px] font-black border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200">
-                      {u.status === 'active' ? 'Disable' : 'Enable'}
+                    <button
+                      onClick={() => toggle(u)}
+                      disabled={togglingId === u._id}
+                      className="px-3 py-1.5 rounded-xl border text-[10px] font-black border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                    >
+                      {togglingId === u._id ? 'Saving…' : u.status === 'active' ? 'Disable' : 'Enable'}
                     </button>
                   </Td>
                 </tr>
@@ -96,8 +117,21 @@ export function UsersAdmin() {
             </tbody>
           </table>
         </div>
-        {!loading && rows.length === 0 && <Empty title="No customers" />}
+        {!loading && loadError && <ErrorState message={loadError} onRetry={refresh} />}
+        {!loading && !loadError && rows.length === 0 && <Empty title="No customers" />}
       </div>
+
+      {!loading && !loadError && pages > 1 && (
+        <div className="flex items-center justify-between text-xs font-bold text-neutral-500">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            ← Prev
+          </button>
+          <span>Page {page} of {pages}</span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages} className="px-3 py-1.5 rounded-lg border border-[#EAEAEA] dark:border-[#292929] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

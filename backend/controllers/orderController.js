@@ -1,110 +1,19 @@
-import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { VoucherCode } from '../models/VoucherCode.js';
-import { Promotion } from '../models/Promotion.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { generateOrderNo } from '../utils/index.js';
-import { applyPromotion } from '../services/promotions.js';
-import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import { isValidObjectId } from '../config/db.js';
+import { maskVoucherCode } from '../services/voucherInventory.js';
 
-const MAX_LINE_ITEMS = 20;
-const MAX_LINE_ITEM_QUANTITY = 50;
-
-const getProductsWithPrices = async (lineItems) => {
-  const ids = lineItems.map((it) => it.productId);
-  if (ids.some((id) => !isValidObjectId(id))) {
-    throw new AppError('Invalid product id in order items', 400, 'INVALID_PRODUCT_ID');
-  }
-  const found = await Product.find({ _id: { $in: ids }, active: true });
-  const map = Object.fromEntries(found.map((p) => [p._id.toString(), p]));
-  const items = [];
-  for (const it of lineItems) {
-    const product = map[it.productId.toString ? it.productId.toString() : String(it.productId)];
-    if (!product) throw new AppError(`Product not found or inactive`, 400, 'PRODUCT_MISSING');
-    const qty = Math.max(1, parseInt(it.quantity, 10) || 1);
-    if (qty > MAX_LINE_ITEM_QUANTITY) {
-      throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
-    }
-    const voucherType = normalizeVoucherType(product.voucherType, product);
-    items.push({
-      productId: product._id,
-      productName: product.name,
-      voucherType,
-      brand: product.brand || '',
-      unitPrice: product.sellingPrice,
-      originalPrice: product.originalPrice,
-      quantity: qty,
-    });
-  }
-  return items;
-};
-
-export const createOrder = async (req, res, next) => {
-  let session;
-  try {
-    session = await Order.startSession();
-    await session.withTransaction(async () => {
-      const { items, promoCode, billing } = req.body || {};
-      if (!Array.isArray(items) || items.length === 0) {
-        throw new AppError('Items required', 400, 'ITEMS_REQUIRED');
-      }
-      if (items.length > MAX_LINE_ITEMS) {
-        throw new AppError(`Maximum ${MAX_LINE_ITEMS} line items per order`, 400, 'TOO_MANY_ITEMS');
-      }
-
-      // Server-side price calculation & exact product voucher type resolution
-      const lineItems = await getProductsWithPrices(items);
-      const subtotal = lineItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
-      const productIds = lineItems.map((it) => it.productId);
-
-      const promoResult = await applyPromotion(promoCode, subtotal, req.user.id, productIds);
-      const discount = promoResult.discount || 0;
-      const total = Math.max(0, subtotal - discount);
-
-      const order = new Order({
-        orderNo: generateOrderNo(),
-        userId: req.user.id,
-        items: lineItems,
-        subtotal,
-        discountAmount: discount,
-        tax: 0,
-        total,
-        currency: 'INR',
-        promotionId: promoResult.promotion?._id || null,
-        promoCode: promoResult.promotion?.code || null,
-        paymentStatus: 'PENDING',
-        orderStatus: 'PAYMENT_PENDING',
-        fulfillmentStatus: 'PENDING',
-        billingDetails: billing || {},
-        customerSnapshot: {
-          email: req.user.email,
-          name: req.user.name,
-          phone: req.user.phone || null,
-        },
-      });
-      await order.save({ session });
-
-      if (promoResult.promotion) {
-        await Promotion.updateOne(
-          { _id: promoResult.promotion._id },
-          { $inc: { usageCount: 1 }, $push: { usedBy: req.user.id } },
-          { session }
-        );
-      }
-
-      res.status(201).json({
-        success: true,
-        data: order.toObject(),
-        promotionApplied: promoResult,
-      });
-    });
-  } catch (err) {
-    next(err);
-  } finally {
-    if (session) await session.endSession();
-  }
-};
+/**
+ * Order READS only.
+ *
+ * Orders are created in exactly one place — `paymentController.createPaymentOrder`
+ * — so that the internal order and the Razorpay order are always created
+ * together for the same server-calculated total. The old `POST /api/orders`
+ * handler duplicated that pricing logic, had no callers, and produced orders
+ * with no `razorpayOrderId` (unpayable) while still consuming the customer's
+ * one-time promo-code usage. It was removed rather than kept in sync.
+ */
 
 export const getOrder = async (req, res, next) => {
   try {
@@ -113,7 +22,7 @@ export const getOrder = async (req, res, next) => {
     // Ownership enforced in the query — a non-owner (or wrong id) gets 404,
     // never another customer's order or voucher code.
     const order = await Order.findOne({ ...q, userId: req.user.id })
-      .select('-processedEventIds -webhookStatus -paymentSessionId -__v')
+      .select('-processedEventIds -webhookStatus -paymentSessionId -cashfreeOrderId -__v')
       .lean();
     if (!order) return next(new AppError('Order not found', 404));
     const vouchers = await VoucherCode.find({ orderId: order._id, userId: req.user.id })
@@ -134,7 +43,19 @@ export const getOrderByIdAdmin = async (req, res, next) => {
     const vouchers = await VoucherCode.find({ orderId: order._id })
       .populate('productId', 'name brand provider')
       .lean();
-    res.json({ success: true, data: order, vouchers });
+    // Raw codes never leave the server here. The admin order panel shows the
+    // same mask as inventory and must use the audited /vouchers/:id/reveal
+    // endpoint (VOUCHER_VIEW_CODE audit entry) to see a real code — identical
+    // to the voucher inventory list.
+    const maskedVouchers = vouchers.map((v) => ({
+      _id: v._id,
+      codeDisplay: maskVoucherCode(v.code),
+      isMasked: true,
+      status: v.status,
+      voucherType: v.voucherType,
+      productId: v.productId,
+    }));
+    res.json({ success: true, data: order, vouchers: maskedVouchers });
   } catch (err) {
     next(err);
   }

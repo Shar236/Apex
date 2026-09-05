@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ArrowRight, BadgeCheck, ShieldCheck, Phone, Mail, Users, Info, MapPin,
+  ArrowRight, BadgeCheck, ShieldCheck, Phone, Mail, Users, Info, GraduationCap, MapPin,
   Building2, Calendar, Clock, Search, ChevronDown, CheckCircle2, AlertCircle, Loader2,
   Copy, Check, MessageCircle, HelpCircle, FileCheck, Sparkles, ListChecks, Ban, RefreshCcw,
-  Lock, Ticket, ExternalLink, AlertTriangle,
+  Lock, Star, Quote, Ticket, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { pteBookingApi, formatPrice } from '@/lib/api';
 import { PhoneInput } from '@/components/auth/phone-input';
@@ -59,17 +59,10 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
   const howItWorksRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
 
-  const examFromParam = (raw: string | null): string => {
-    const p = raw?.toLowerCase();
-    if (p?.includes('core')) return 'PTE Core';
-    if (p?.includes('ukvi')) return 'PTE Academic UKVI';
-    return 'PTE Academic';
-  };
-
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [examType, setExamType] = useState(() => examFromParam(searchParams.get('exam')));
+  const [examType, setExamType] = useState('PTE Academic');
   const [preferredCity, setPreferredCity] = useState('');
   const [otherCity, setOtherCity] = useState('');
   const [preferredTestCentre, setPreferredTestCentre] = useState('');
@@ -92,14 +85,14 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
   const supportPhone = '+91 9855926113';
   const supportEmail = 'apexvouchers@gmail.com';
 
-  // Re-sync the exam type when the ?exam= param changes (render-time, not an
-  // effect). A manual dropdown change is preserved until the URL changes again.
-  const [prevExamParam, setPrevExamParam] = useState(searchParams.get('exam'));
-  const curExamParam = searchParams.get('exam');
-  if (curExamParam !== prevExamParam) {
-    setPrevExamParam(curExamParam);
-    if (curExamParam) setExamType(examFromParam(curExamParam));
-  }
+  useEffect(() => {
+    const examParam = searchParams.get('exam')?.toLowerCase();
+    if (examParam) {
+      if (examParam.includes('core')) setExamType('PTE Core');
+      else if (examParam.includes('ukvi')) setExamType('PTE Academic UKVI');
+      else setExamType('PTE Academic');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const el = heroRef.current;
