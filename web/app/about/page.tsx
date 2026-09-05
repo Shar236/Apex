@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { ChevronRight, ShieldCheck, Award, ArrowRight, Heart, Zap, Headset } from 'lucide-react';
 import { buildMetadata, JsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { AboutApexVouchers } from '@/components/about-apex-vouchers';
+import { VisualExplainerSection } from '@/components/visual-explainer-section';
+import { HowItWorks } from '@/components/how-it-works';
+import { SecurityTrustSection } from '@/components/redemption-and-security';
 
 export const metadata: Metadata = buildMetadata({
-  title: 'About Apex Vouchers — Our Story, Mission & Values',
+  title: 'About Apex Vouchers | Genuine Exam Vouchers & Student Savings',
   description: 'Learn how Apex Vouchers makes study-abroad exam fees affordable with 100% genuine official PTE, IELTS, TOEFL, GRE and Duolingo vouchers, fast delivery and real human support.',
   path: '/about',
 });
@@ -51,14 +54,19 @@ export default function AboutPage() {
           <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-medium uppercase tracking-widest mb-4">
             <Award className="w-4 h-4" /> About Apex Vouchers
           </span>
-          <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">Our Mission &amp; Story</h1>
+          <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">About Apex Vouchers</h1>
           <p className="text-ink-muted text-sm sm:text-base font-normal mt-3 max-w-2xl mx-auto">
             Apex Vouchers helps Indian study-abroad aspirants save on official exam fees with 100% genuine vouchers, instant delivery, and honest support.
           </p>
         </div>
       </div>
 
+      <VisualExplainerSection />
       <AboutApexVouchers />
+
+      <HowItWorks />
+
+      <SecurityTrustSection />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
         <div className="text-center max-w-2xl mx-auto mb-12">

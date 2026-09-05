@@ -141,6 +141,10 @@ export const productApi = {
   // state) — productApi had thin duplicates of those reads here.
 };
 
+export const contactApi = {
+  submit: (data: unknown) => request('/api/contact', { method: 'POST', body: JSON.stringify(data) }),
+};
+
 export const accountApi = {
   me: () => request('/api/account'),
   updateProfile: (data: unknown) => request('/api/account/profile', { method: 'PATCH', body: JSON.stringify(data) }),

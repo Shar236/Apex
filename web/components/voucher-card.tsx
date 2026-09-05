@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Compass } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
-import { Button, StockBadge, PriceDisplay, DiscountBadge, ProviderLogo, ProductBenefits, DeliveryValidityBar } from '@/components/ui';
+import { Button, StockBadge, PriceDisplay, DiscountBadge, ProviderLogo } from '@/components/ui';
 import type { Product, DurationOption } from '@/lib/types';
 
 /** The single voucher card used on every product surface (grids, best-sellers, related rows). */
@@ -44,38 +44,42 @@ export function VoucherCard({ product }: { product: Product }) {
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
   const canBuyNow = !isComingSoon;
 
-  const providerName = (product.provider || product.brand || '').toUpperCase();
-  const partnerLabel = providerName.includes('PEARSON')
-    ? 'Authorised Pearson Partner'
-    : providerName.includes('ETS')
-      ? 'Authorised ETS Partner'
-      : `Authorised ${product.provider || product.brand || 'Exam'} Partner`;
+  const validityLabel = durationValidity || (product.validityMonths
+    ? `Valid ${product.validityMonths} Month${product.validityMonths === 1 ? '' : 's'}`
+    : product.validity || 'Valid 6 Months');
 
   return (
     <div
       className={[
-        'group relative flex flex-col h-full rounded-2xl overflow-hidden',
+        'group relative flex flex-col h-full rounded-xl overflow-hidden',
         'bg-surface border border-line',
-        'shadow-[0_1px_3px_rgba(15,20,35,0.04),0_10px_30px_-18px_rgba(15,20,35,0.12)]',
+        'shadow-[0_1px_3px_rgba(15,20,35,0.04)]',
         'dark:shadow-[0_1px_3px_rgba(0,0,0,0.4),0_10px_30px_-18px_rgba(0,0,0,0.7)]',
         'transition-all duration-200 hover:border-accent/40 hover:-translate-y-1',
         isComingSoon ? 'opacity-92' : '',
       ].join(' ')}
     >
-      <div className="flex items-start justify-between gap-2 px-4 pt-4">
+      <div className="flex items-center justify-between gap-2 px-4 pt-4">
         <StockBadge product={product} />
-        <span className="text-[9px] font-medium uppercase tracking-widest text-ink-muted text-right leading-tight max-w-[42%]">{partnerLabel}</span>
+        <span className="text-[11px] font-normal text-ink-muted text-right whitespace-nowrap">
+          {validityLabel}
+        </span>
       </div>
 
-      <div className="px-4 pt-3">
+      <div className="mx-4 mt-4 flex h-20 items-center justify-center rounded-xl border border-line bg-surface-raised px-3 py-2">
         <ProviderLogo product={product} size="md" />
       </div>
 
-      <Link href={detailHref} className="px-4 pt-3 text-center font-heading font-normal text-[17px] leading-snug text-ink line-clamp-2 min-h-10.4 hover:text-accent transition-colors">
-        {product.name}
-      </Link>
+      <div className="px-4 pt-4">
+        <Link href={detailHref} className="block font-heading text-[17px] font-normal leading-snug text-ink line-clamp-2 hover:text-accent transition-colors">
+          {product.name}
+        </Link>
+        <p className="mt-2 min-h-10 text-[12px] font-normal leading-relaxed text-ink-muted line-clamp-2">
+          {product.shortDescription || product.description || 'Official exam voucher with instant digital delivery.'}
+        </p>
+      </div>
 
-      <div className="mx-4 mt-3 border-t border-line" />
+      <div className="mx-4 mt-4 border-t border-line" />
 
       {/* Duration selector */}
       {enabledDurations.length > 1 && (
@@ -86,7 +90,9 @@ export function VoucherCard({ product }: { product: Product }) {
               return (
                 <button
                   key={opt.key}
+                  type="button"
                   onClick={() => setSelectedDuration(opt)}
+                  aria-pressed={isActive}
                   className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                     isActive ? 'bg-white dark:bg-[#161616] shadow-sm text-accent' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
                   }`}
@@ -100,16 +106,8 @@ export function VoucherCard({ product }: { product: Product }) {
       )}
 
       <div className="px-4 pt-3 flex items-end justify-between gap-2">
-        <PriceDisplay original={original} current={current} formatPrice={formatPrice} emphasis="accent" />
+        <PriceDisplay original={original} current={current} formatPrice={formatPrice} emphasis="ink" />
         <DiscountBadge percent={discountPercent} savings={savings} formatPrice={formatPrice} />
-      </div>
-
-      <div className="px-4 pt-3">
-        <DeliveryValidityBar product={durationValidity ? { ...product, validity: durationValidity } : product} />
-      </div>
-
-      <div className="px-4 pt-3">
-        <ProductBenefits />
       </div>
 
       <div className="px-4 pt-4 pb-4 mt-auto space-y-2">

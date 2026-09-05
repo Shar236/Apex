@@ -28,9 +28,10 @@ const PAYMENT_METHODS = [
 ] as const;
 
 const COMPANY_LINKS = [
-  { name: 'About Us', href: '/' },
-  { name: 'Contact', href: '/#faq' },
-  { name: 'FAQ', href: '/#faq' },
+  { name: 'About Us', href: '/about' },
+  { name: 'Contact', href: '/contact' },
+  { name: 'FAQ', href: '/faq' },
+  { name: 'How It Works', href: '/#how-it-works' },
   { name: 'Blog', href: '/blog' },
 ] satisfies readonly FooterNavLink[];
 
@@ -82,7 +83,6 @@ const FooterLink = ({
     {children}
   </Link>
 );
-
 const Badge = ({ children }: { children: ReactNode }) => (
   <span className={BADGE_CLASS}>{children}</span>
 );
@@ -259,7 +259,7 @@ export function Footer({
             <ul className="space-y-1.5 pb-2">
               <li>
                 <FooterLink
-                  href="/#faq"
+                  href="/faq"
                   className={`${LINK_CLASS} text-xs`}
                 >
                   Help Center & FAQs

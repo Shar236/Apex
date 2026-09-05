@@ -4,6 +4,7 @@ import { ChevronRight, HelpCircle, MessageCircle, Phone, Mail } from 'lucide-rea
 import { buildMetadata, JsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { FAQSection } from '@/components/faq-section';
 import { FAQ_ITEMS } from '@/lib/faq-data';
+import { getWebsiteConfig } from '@/lib/website-config';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Frequently Asked Questions',
@@ -21,7 +22,11 @@ const faqJsonLd = {
   })),
 };
 
-export default function FAQPage() {
+export default async function FAQPage() {
+  const config = await getWebsiteConfig();
+  const supportEmail = config.footerSettings.email || 'apexvouchers@gmail.com';
+  const supportPhone = config.footerSettings.phone || '+91 9855926113';
+
   return (
     <div className="min-h-screen bg-surface-sunken text-ink transition-colors duration-300">
       <JsonLd data={faqJsonLd} />
@@ -41,9 +46,9 @@ export default function FAQPage() {
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-medium uppercase tracking-widest mb-4">
           <HelpCircle className="w-4 h-4" /> Frequently Asked Questions
         </div>
-        <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">Got Questions? We Have Answers.</h1>
+        <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">Frequently Asked Questions</h1>
         <p className="text-ink-muted text-sm sm:text-base font-normal mt-3 max-w-xl mx-auto">
-          Everything you need to know about exam vouchers, code validity, instant delivery, and booking. Still stuck? Contact our support desk below.
+          Everything you need to know about exam vouchers, code validity, instant delivery, and booking.
         </p>
       </div>
 
@@ -56,14 +61,14 @@ export default function FAQPage() {
             Our student support desk is available 7 days a week to help you with voucher redemption, bookings, and refunds.
           </p>
           <div className="flex flex-wrap gap-4 pt-2 text-xs">
-            <a href={`https://wa.me/${'9855926113'}?text=${encodeURIComponent('Hello Apex Vouchers, I have a question about my exam voucher.')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition">
+            <a href={`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Hello Apex Vouchers, I have a question about my exam voucher.')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium shadow-md transition">
               <MessageCircle className="w-4 h-4" /> WhatsApp Support
             </a>
-            <a href="mailto:info@apexvouchers.com" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition">
-              <Mail className="w-4 h-4 text-accent" /> info@apexvouchers.com
+            <a href={`mailto:${supportEmail}`} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition">
+              <Mail className="w-4 h-4 text-accent" /> {supportEmail}
             </a>
-            <a href="tel:+919855926113" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition">
-              <Phone className="w-4 h-4 text-accent" /> +91 98559 26113
+            <a href={`tel:${supportPhone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition">
+              <Phone className="w-4 h-4 text-accent" /> {supportPhone}
             </a>
           </div>
         </div>

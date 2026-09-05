@@ -18,6 +18,38 @@ const SECURITY_ITEMS = [
   { icon: Headphones, title: 'Human Desk 24/7', desc: 'Instant email & call support' },
 ];
 
+export function SecurityTrustSection() {
+  return (
+    <section className="py-16 sm:py-24 bg-[#0B0D12] text-white border-b border-white/5 relative transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="inline-flex text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-3">100% Security &amp; Trust</span>
+          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight leading-[1.15]">
+            Your Payment. Your Voucher. <br />
+            <span className="text-accent">Your Peace of Mind.</span>
+          </h2>
+          <p className="text-neutral-400 font-normal text-base mt-3">Bank-grade security protocols so you can buy your voucher with 100% confidence.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 text-center">
+          {SECURITY_ITEMS.map((item) => {
+            const IconComp = item.icon;
+            return (
+              <div key={item.title} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3 hover:border-accent/50 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 text-accent border border-white/10 flex items-center justify-center mx-auto">
+                  <IconComp className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading font-medium text-sm text-white">{item.title}</h3>
+                <p className="text-xs text-neutral-400 font-normal leading-relaxed">{item.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function RedemptionAndSecurity() {
   return (
     <>
@@ -90,33 +122,7 @@ export function RedemptionAndSecurity() {
         </div>
       </section>
 
-      <section className="py-16 sm:py-24 bg-[#0B0D12] text-white border-b border-white/5 relative transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="inline-flex text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-3">100% Security &amp; Trust</span>
-            <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight leading-[1.15]">
-              Your Payment. Your Voucher. <br />
-              <span className="text-accent">Your Peace of Mind.</span>
-            </h2>
-            <p className="text-neutral-400 font-normal text-base mt-3">Bank-grade security protocols so you can buy your voucher with 100% confidence.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 text-center">
-            {SECURITY_ITEMS.map((item) => {
-              const IconComp = item.icon;
-              return (
-                <div key={item.title} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3 hover:border-accent/50 hover:-translate-y-1 transition-all duration-300">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 text-accent border border-white/10 flex items-center justify-center mx-auto">
-                    <IconComp className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-heading font-medium text-sm text-white">{item.title}</h3>
-                  <p className="text-xs text-neutral-400 font-normal leading-relaxed">{item.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <SecurityTrustSection />
     </>
   );
 }

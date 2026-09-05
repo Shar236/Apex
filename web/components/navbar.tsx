@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy, Calculator } from 'lucide-react';
+import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy, Calculator, Info, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -89,9 +89,15 @@ export function Navbar({
             {announcementEnabled && !(
               announcementOverrideWithCampaign && activeCampaignTitle
             ) && (
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
-                {announcementText}
-              </span>
+              announcementLink ? (
+                <Link href={announcementLink} className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30 hover:bg-accent/25 transition-colors">
+                  {announcementText}
+                </Link>
+              ) : (
+                <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
+                  {announcementText}
+                </span>
+              )
             )}
             {announcementEnabled && announcementOverrideWithCampaign && activeCampaignTitle && (
               <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 text-accent font-medium text-[10.5px] border border-accent/30">
@@ -120,9 +126,13 @@ export function Navbar({
               <ApexLogo showTagline={false} />
             </Link>
 
-            <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 font-normal text-[13px] xl:text-[14px] text-ink-muted whitespace-nowrap">
+            <div className="hidden 2xl:flex items-center gap-0.5 font-normal text-[13px] text-ink-muted whitespace-nowrap">
               <Link href="/" className={navLinkClass(isHomeActive)}>
                 Home
+              </Link>
+
+              <Link href="/about" className={navLinkClass(pathname === '/about')}>
+                About
               </Link>
 
               <div className="relative" onMouseEnter={() => setVouchersDropdownOpen(true)} onMouseLeave={() => setVouchersDropdownOpen(false)}>
@@ -163,10 +173,6 @@ export function Navbar({
                 Score Calculators
               </Link>
 
-              <Link href="/#how-it-works" className={navLinkClass(false)}>
-                How It Works
-              </Link>
-
               <Link href="/blog" className={navLinkClass(isGuidesActive)}>
                 Blog
               </Link>
@@ -175,8 +181,12 @@ export function Navbar({
                 Awards
               </Link>
 
-              <Link href="/#faq" className={navLinkClass(false)}>
+              <Link href="/faq" className={navLinkClass(pathname === '/faq')}>
                 FAQ
+              </Link>
+
+              <Link href="/contact" className={navLinkClass(pathname === '/contact')}>
+                Contact
               </Link>
             </div>
 
@@ -190,21 +200,21 @@ export function Navbar({
                 )}
               </button>
 
-              <div className="hidden lg:flex">
+              <div className="hidden 2xl:flex">
                 <Button as={Link} href="/exam-booking" variant="secondary" size="sm">
                   <CalendarCheck className="w-3.5 h-3.5" />
                   <span>Book Exam</span>
                 </Button>
               </div>
 
-              <div className="hidden sm:flex">
+              <div className="hidden 2xl:flex">
                 <Button as={Link} href="/exam-vouchers" variant="primary" size="sm">
                   <Ticket className="w-3.5 h-3.5" />
                   <span>Buy Voucher</span>
                 </Button>
               </div>
 
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 rounded-xl bg-surface-raised text-ink border border-line cursor-pointer" aria-label="Open navigation menu">
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="2xl:hidden p-2 rounded-xl bg-surface-raised text-ink border border-line cursor-pointer" aria-label="Open navigation menu">
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
@@ -212,7 +222,7 @@ export function Navbar({
         </div>
 
         {isMenuOpen && (
-          <div className="lg:hidden bg-surface border-b border-line px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
+          <div className="2xl:hidden bg-surface border-b border-line px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-line">
               <span className="text-xs font-medium text-ink">Theme Mode</span>
               <ThemeToggle compact={false} showLabel />
@@ -252,14 +262,24 @@ export function Navbar({
               <span>Students Diary & Blog</span>
             </Link>
 
+            <Link href="/about" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
+              <Info className="w-4 h-4 text-accent" />
+              <span>About Apex Vouchers</span>
+            </Link>
+
             <Link href="/awards" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
               <Trophy className="w-4 h-4 text-accent" />
               <span>Awards & Achievements</span>
             </Link>
 
-            <Link href="/#faq" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
+            <Link href="/faq" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-ink-muted" />
               <span>FAQ & Help</span>
+            </Link>
+
+            <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-accent" />
+              <span>Contact Support</span>
             </Link>
 
             <div className="pt-2 flex flex-col gap-2">

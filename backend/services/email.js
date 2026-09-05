@@ -60,7 +60,7 @@ const htmlToText = (html) =>
  * so callers can decide what to tell the user. `tag` is a short label used only
  * for log correlation (e.g. 'otp', 'voucher').
  */
-export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from, tag = 'generic' }) => {
+export const sendEmail = async ({ to, subject, html, text = '', from = config.smtp.from, replyTo, tag = 'generic' }) => {
   if (!to) {
     console.error(`[email:failed] tag=${tag} reason=recipient-missing`);
     return { sent: false, error: 'Email recipient is missing' };
@@ -73,6 +73,7 @@ export const sendEmail = async ({ to, subject, html, text = '', from = config.sm
     subject,
     html,
     text: text || htmlToText(html),
+    ...(replyTo ? { replyTo } : {}),
   };
   if (!transport) {
     const error = 'SMTP configuration is incomplete';

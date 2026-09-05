@@ -29,6 +29,7 @@ import fulfillmentRoutes from './routes/fulfillmentRoutes.js';
 import awardRoutes from './routes/awardRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import publicBlogRoutes from './routes/publicBlogRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 
 const app = express();
 
@@ -127,6 +128,12 @@ const pteBookingLimiter = rateLimit({
   standardHeaders: true,
   message: { success: false, message: 'Too many booking assistance requests. Please try again later.' },
 });
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  message: { success: false, message: 'Too many contact requests. Please try again later.' },
+});
 app.use('/api/pte-bookings', pteBookingLimiter);
 app.use('/api/pte-booking-requests', pteBookingLimiter);
 
@@ -137,6 +144,7 @@ const voucherRequestLimiter = rateLimit({
   message: { success: false, message: 'Too many voucher requests. Please try again later.' },
 });
 app.use('/api/voucher-requests', voucherRequestLimiter);
+app.use('/api/contact', contactLimiter);
 
 app.get('/sitemap.xml', getSitemapXML);
 app.get('/robots.txt', getRobotsTxt);
@@ -179,6 +187,7 @@ app.use('/api/awards', awardRoutes);
 app.use('/api/admin/blogs', blogRoutes);
 app.use('/api/blog', publicBlogRoutes);
 app.use('/api/admin/fulfillments', fulfillmentRoutes);
+app.use('/api/contact', contactRoutes);
 
 
 app.use('/api/*', (req, res) => {

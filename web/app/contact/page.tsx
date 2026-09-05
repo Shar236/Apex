@@ -2,27 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight, Mail, Phone, MessageCircle, MapPin, Clock, Send, CheckCircle2 } from 'lucide-react';
 import { buildMetadata, JsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import { getWebsiteConfig } from '@/lib/website-config';
+import { ContactForm } from '@/components/contact/contact-form';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Contact Apex Vouchers — Support & Customer Care',
   description: 'Contact Apex Vouchers support for help with exam voucher redemption, PTE booking assistance, refunds, or order status. Email, WhatsApp and phone support available 7 days a week.',
   path: '/contact',
 });
-
-const contactJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ContactPage',
-  name: 'Contact Apex Vouchers',
-  url: 'https://apexvouchers.com/contact',
-  mainEntity: {
-    '@type': 'Organization',
-    name: 'Apex Vouchers',
-    url: 'https://apexvouchers.com',
-    contactPoint: [
-      { '@type': 'ContactPoint', contactType: 'customer support', email: 'info@apexvouchers.com', telephone: '+91 98559 26113', availableLanguage: ['en', 'hi'] },
-    ],
-  },
-};
 
 const CONTACT_METHODS = [
   {
@@ -54,7 +41,25 @@ const CONTACT_METHODS = [
   },
 ];
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const config = await getWebsiteConfig();
+  const supportEmail = config.footerSettings.email || 'apexvouchers@gmail.com';
+  const supportPhone = config.footerSettings.phone || '+91 9855926113';
+  const contactJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: 'Contact Apex Vouchers',
+    url: 'https://apexvouchers.com/contact',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'Apex Vouchers',
+      url: 'https://apexvouchers.com',
+      contactPoint: [
+        { '@type': 'ContactPoint', contactType: 'customer support', email: supportEmail, telephone: supportPhone, availableLanguage: ['en', 'hi'] },
+      ],
+    },
+  };
+
   return (
     <div className="min-h-screen bg-surface-sunken text-ink transition-colors duration-300">
       <JsonLd data={contactJsonLd} />
@@ -75,24 +80,38 @@ export default function ContactPage() {
           <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-medium uppercase tracking-widest mb-4">
             <Send className="w-4 h-4" /> Customer Support
           </span>
-          <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">We&apos;re Here to Help</h1>
+          <h1 className="font-heading font-light text-3xl sm:text-4xl lg:text-5xl text-ink tracking-tight">Contact Us</h1>
           <p className="text-ink-muted text-sm sm:text-base font-normal mt-3">
-            Questions about voucher redemption, PTE booking, order status, or refunds? Reach us through any channel below — our support desk is available 7 days a week.
+            Have a question about a voucher, payment, booking, or your order? We&apos;re here to help.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
-          {CONTACT_METHODS.map((m) => (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.35fr] mb-12">
+          <div className="space-y-5">
+          {[...CONTACT_METHODS].map((m) => {
+            const value = m.title === 'Email Support' ? supportEmail : m.title === 'Phone Support' ? supportPhone : m.value;
+            const href = m.title === 'Email Support'
+              ? `mailto:${supportEmail}`
+              : m.title === 'Phone Support' || m.title.startsWith('WhatsApp')
+                ? (m.title.startsWith('WhatsApp') ? `https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Hello Apex Vouchers, I need assistance with my exam voucher.')}` : `tel:${supportPhone.replace(/\s+/g, '')}`)
+                : m.href;
+            return (
             <div key={m.title} className="rounded-3xl p-6 bg-surface border border-line shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white mb-4" style={{ background: m.tint }}>{m.icon}</div>
               <h2 className="font-heading font-medium text-base text-ink mb-1.5">{m.title}</h2>
               <p className="text-xs font-normal text-ink-muted leading-relaxed mb-4">{m.desc}</p>
-              <div className="text-sm font-medium text-ink mb-4">{m.value}</div>
-              <a href={m.href} target={m.href.startsWith('http') ? '_blank' : undefined} rel={m.href.startsWith('http') ? 'noopener noreferrer' : undefined} className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium text-xs transition-colors">
+              <div className="text-sm font-medium text-ink mb-4">{value}</div>
+              <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined} className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium text-xs transition-colors">
                 {m.cta}
               </a>
             </div>
-          ))}
+            );
+          })}
+          </div>
+
+          <div>
+            <ContactForm />
+          </div>
         </div>
 
         <div className="rounded-3xl p-6 sm:p-8 bg-[#0B0D12] text-white border border-white/5 space-y-4 mb-8">
